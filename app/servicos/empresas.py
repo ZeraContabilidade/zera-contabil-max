@@ -72,6 +72,13 @@ def ler_formulario(sessao: Session, form: dict[str, str | None], empresa: Empres
         valores["ativa"] = form["ativa"] is not None
     if "ia_ligada" in form:
         valores["ia_ligada"] = form["ia_ligada"] is not None
+    if "usa_conta_individual" in form:
+        valores["usa_conta_individual"] = form["usa_conta_individual"] is not None
+    if "grupo_fornecedores" in form:
+        grupo = " ".join((form.get("grupo_fornecedores") or "").split())
+        if len(grupo) > 40:
+            erros.append("O grupo de fornecedores pode ter no máximo 40 letras (ex.: 2.1.3.01).")
+        valores["grupo_fornecedores"] = grupo or None
     if "ia_limite_mensal_usd" in form:
         limite = _ler_dolares(form["ia_limite_mensal_usd"])
         if limite is False:

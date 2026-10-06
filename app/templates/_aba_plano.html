@@ -1,6 +1,7 @@
 {# Aba "2 Plano de Contas" — incluída em empresa.html #}
 {% macro form_envio(texto_botao) %}
-<form method="post" action="/empresas/{{ empresa.id }}/plano" enctype="multipart/form-data" class="form-envio">
+<form method="post" action="/empresas/{{ empresa.id }}/plano" enctype="multipart/form-data" class="form-envio"
+      data-aguarde="Importando e configurando as contas… (pode levar até um minuto)">
   <input type="file" name="arquivo" accept=".txt,.csv,.xlsx,.xls,.ods" required aria-label="Arquivo do plano de contas">
   <button type="submit">{{ texto_botao }}</button>
 </form>
@@ -8,7 +9,7 @@
 
 {% macro form_copia() %}
 {% if plano_outras_empresas %}
-<form method="post" action="/empresas/{{ empresa.id }}/plano/copiar" class="form-envio">
+<form method="post" action="/empresas/{{ empresa.id }}/plano/copiar" class="form-envio" data-aguarde="Copiando e configurando…">
   <select name="origem_id" required aria-label="Empresa de onde copiar o plano">
     <option value="">Copiar o plano de outra empresa…</option>
     {% for outra in plano_outras_empresas %}<option value="{{ outra.id }}">{{ outra.codigo_dominio }} – {{ outra.nome }}</option>{% endfor %}
@@ -28,6 +29,8 @@
   <small class="suave">O arquivo original fica guardado por 5 anos.</small>
 </article>
 {% else %}
+{% include "_contas_chave.html" %}
+
 <article>
   <header class="cabecalho-pagina">
     <strong>Plano de contas</strong>

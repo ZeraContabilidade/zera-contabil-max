@@ -54,8 +54,14 @@ ROTULOS_CAMPO = {
     "observacoes": "Observações",
     "modelo_complemento": "Modelo do complemento",
     "ativa": "Ativa",
+    "usa_conta_individual": "Conta individual por fornecedor",
+    "grupo_fornecedores": "Grupo dos fornecedores",
+    "ia_ligada": "IA ligada",
+    "ia_limite_mensal_usd": "Limite mensal de IA (US$)",
+    "conta_id": "Conta (nº interno)",
+    "confianca": "Confiança (%)",
 }
-ROTULOS_ENTIDADE = {"usuario": "Usuário", "empresa": "Empresa"}
+ROTULOS_ENTIDADE = {"usuario": "Usuário", "empresa": "Empresa", "conta_chave": "Conta-chave"}
 
 
 def _rotulo_campo(campo: str) -> str:

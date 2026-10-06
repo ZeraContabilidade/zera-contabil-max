@@ -1,0 +1,81 @@
+{# Seção "Contas-chave" da aba Plano de Contas — incluída em _aba_plano.html #}
+<article id="contas-chave">
+  <header class="cabecalho-pagina">
+    <strong>Contas-chave</strong>
+    <span class="suave">descobertas sozinhas pelo plano de contas</span>
+  </header>
+
+  <p>
+    <strong>Fornecedores:</strong>
+    {% if empresa.usa_conta_individual %}
+      conta individual por fornecedor{% if empresa.grupo_fornecedores %} (grupo {{ empresa.grupo_fornecedores }}){% endif %}
+    {% elif empresa.usa_conta_individual is sameas false %}
+      conta geral de fornecedores
+    {% else %}
+      ainda não identificado
+    {% endif %}
+    {% if empresa.e_automatico('usa_conta_individual') %}<span class="selo-auto" title="Descoberto pelo plano. Pode alterar no Cadastro.">🤖 automático</span>{% endif %}
+  </p>
+
+  {% if contas_chave %}
+  <div class="tabela-rolavel">
+    <table class="tabela-chaves">
+      <thead><tr><th>Para quê</th><th>Conta</th><th>Como foi achada</th></tr></thead>
+      <tbody>
+        {% for chave in contas_chave %}
+        <tr class="{{ 'chave-faltando' if not chave.conta_id else ('chave-conferir' if chave.confianca < confianca_alta else '') }}">
+          <td><strong>{{ nome_do_tipo(chave.tipo) }}</strong>{% if chave.referencia %}<br><small class="suave">{{ chave.referencia }}</small>{% endif %}</td>
+          <td>
+            {% if chave.conta %}{{ chave.conta.rotulo }}<br><small class="suave">{{ chave.conta.classificacao_formatada }}</small>
+            {% else %}<span class="aviso-inline">⚠ não encontrada</span>{% endif %}
+            <details class="trocar">
+              <summary>trocar</summary>
+              <form method="post" action="/empresas/{{ empresa.id }}/contas-chave/{{ chave.id }}" class="form-trocar">
+                <input name="conta" list="contas-analiticas" placeholder="código ou nome" aria-label="Nova conta para {{ nome_do_tipo(chave.tipo) }}" required>
+                <button type="submit" class="secondary outline">Usar</button>
+              </form>
+            </details>
+          </td>
+          <td>
+            {% if chave.origem == 'USUARIO' %}<span class="etiqueta etiqueta-verde">👤 escolhida</span>
+            {% elif chave.conta_id and chave.confianca >= confianca_alta %}<span class="etiqueta etiqueta-verde">🤖 {{ 'IA' if chave.origem == 'IA' else 'regra' }} · {{ chave.confianca }}%</span>
+            {% elif chave.conta_id %}<span class="etiqueta etiqueta-ambar">🤖 confira · {{ chave.confianca }}%</span>
+            {% else %}<span class="etiqueta etiqueta-apagada">—</span>{% endif %}
+            {% if chave.justificativa %}<br><small class="suave">{{ chave.justificativa }}</small>{% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <p class="suave">Ainda não configuradas.</p>
+  {% endif %}
+
+  <datalist id="contas-analiticas">
+    {% for conta in lista_analiticas %}<option value="{{ conta.rotulo }}"></option>{% endfor %}
+  </datalist>
+
+  <form method="post" action="/empresas/{{ empresa.id }}/contas-chave/refazer" data-aguarde="Configurando… (pode levar até um minuto)">
+    <button type="submit" class="secondary outline">Refazer a configuração automática</button>
+    <small class="suave">Mantém as contas que você escolheu à mão.</small>
+  </form>
+
+  <details>
+    <summary>Ligar uma conta bancária agora</summary>
+    <p class="suave">Normalmente o sistema faz isto sozinho quando o primeiro extrato do banco é importado.</p>
+    <form method="post" action="/empresas/{{ empresa.id }}/contas-chave/banco" data-aguarde="Procurando a conta…">
+      <div class="grid">
+        <label>Banco <input name="banco" placeholder="BB, Itaú, 341…" required></label>
+        <label>Agência <input name="agencia" placeholder="2180-6"></label>
+        <label>Conta <input name="numero" placeholder="72637-0" required></label>
+        <label>Tipo
+          <select name="tipo">
+            {% for chave_tipo, (nome, _) in tipos_bancarios.items() %}<option value="{{ chave_tipo }}">{{ nome }}</option>{% endfor %}
+          </select>
+        </label>
+      </div>
+      <button type="submit">Ligar conta</button>
+    </form>
+  </details>
+</article>

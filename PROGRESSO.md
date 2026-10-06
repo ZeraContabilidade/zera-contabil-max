@@ -3,7 +3,7 @@
 Atualizado em: **06/10/2026**
 
 ## Próximo passo exato
-**Etapa 1.6 — Auto-configuração das contas-chave + conta individual por fornecedor** (§3.2.1): tabela `conta_chave` (empresa, tipo BANCO/POUPANCA/APLICACAO/RENDIMENTO/IR_RETIDO/TARIFA/IOF/JUROS_PAGOS/FORNECEDOR_GENERICO/CLIENTE_GENERICO/SALARIOS/FGTS/INSS..., referência opcional banco+agência+conta, conta_contabil, origem REGRA/IA/USUARIO, confiança, justificativa) — migração `0005`. 1º **regras** (palavras e números nas descrições das analíticas: “BCO BRASIL CC 72637-0” → banco BB c/c 72637-0; “TARIFA BANCÁRIA”; “IRRF A RECUPERAR”; “RENDIMENTOS”...), depois **IA** (modelo forte, `app.ia.servico.chamar_ia`, plano analítico no `contexto` cacheado) para o que ficou incerto, devolvendo `{tipo, conta_reduzida, confianca, justificativa}`; **validar** (conta existe, é analítica) antes de gravar; confiança alta → aplicado com selo 🤖; baixa/inexistente → um aviso (“Não encontrei conta para a poupança do BB — crie no Domínio e reimporte, ou escolha”). Detecção de **conta individual por fornecedor** (grupo Fornecedores com muitas analíticas com nome de empresa → `empresa.usa_conta_individual`) e contas genéricas. Roda sozinho após importar o plano (e de novo quando um extrato de banco novo chegar — Fase 2). Tela: aba Cadastro ou nova seção “Contas-chave” com o resultado e opção de trocar. Testes com cliente falso; `ia_real` opcional. Lembrar: a Casa Criança **não tem conta da poupança 72637-0** (pergunta 5 ao usuário).
+**Etapa 1.7 — Importação do Diário/Razão** (§3.3, §6.1, §11.3) — **precisa do `Diário.xls` da Casa Criança** (pergunta 4; colocar em `AMOSTRAS\historicos`). Ler com `python-calamine` (aba "Diário"; localizar colunas pelo título `Data | Classificação | Descrição | Histórico | Débito | Crédito`; ignorar "TOTAL DO DIA" e vazias; cabeçalho com "Empresa:" e "C.N.P.J.:" → **preencher razão social e CNPJ da empresa com 🤖** e disparar a consulta pública). Converter classificação → reduzido pelo plano (22 classificações repetidas: desempatar pela descrição). Tabela `lancamento_historico` (empresa, data, conta débito/crédito, valor Decimal, histórico, importação; anti-duplicidade por hash). Separar a contrapartida das contas de banco/caixa (contas-chave BANCO + grupo Disponível); **contas de banco usadas no Diário viram contas-chave BANCO** (a conta 8 aparece sozinha — critério da Fase 1). Extrair do histórico favorecido / CNPJ-CPF (validar dígito; `app/servicos/documentos.py`) / natureza por regras (texto antes do primeiro " - ", regex de CNPJ); o que as regras não separam vai para a **IA em lotes** (modelo rápido) → `{favorecido, cnpj_cpf, natureza}`. Usar as contagens por conta do Diário como evidência para **refazer as contas-chave incertas** (ex.: qual das 5 “ÁGUA E ESGOTO”/tarifas a empresa usa). Arquivo original guardado; etapa "Aprendizado" da barra ✔. Enquanto o Diário não chega, dá para adiantar com o `lanctos.txt` de 2025/2026 (formato §11.1) como fonte de aprendizado (§11.5) — é a etapa 1.8.
 
 ## Pendências com o usuário
 | # | Pergunta | Precisa até |
@@ -22,7 +22,7 @@ Atualizado em: **06/10/2026**
 - [x] 1.3 Cadastro de empresas e barra de progresso do mês
 - [x] 1.4 Importação do plano de contas (TXT/Excel/CSV), avisos, reimportação, copiar de outra empresa
 - [x] 1.5 Módulo de IA: cliente real + falso, limites de gasto, registro de custo
-- [ ] 1.6 Auto-configuração das contas-chave + detecção de conta individual por fornecedor
+- [x] 1.6 Auto-configuração das contas-chave + detecção de conta individual por fornecedor
 - [ ] 1.7 Importação do Diário: CNPJ / favorecido / natureza (regras + IA); cadastro preenchido sozinho
 - [ ] 1.8 Listas de fornecedores, clientes e palavras-chave; perfil da empresa; aprendizado inicial com os lanctos.txt de 2025 e 2026
 - [ ] 1.9 Backup automático + RESTAURAR.bat
@@ -46,6 +46,17 @@ Atualizado em: **06/10/2026**
 ### Fase 4 — Extras (um por vez, quando pedido)
 
 ## Histórico
+
+### 06/10/2026 — Etapa 1.6 concluída
+- Tabela `conta_chave` (Auditavel) + `empresa.usa_conta_individual` / `grupo_fornecedores` (migração 0005).
+- `app/servicos/contas_chave.py`: natureza de cada conta pelo **nome** do grupo de 1º nível (Casa Criança: 3 = despesas, 4 = receitas; no outro plano é o contrário); 10 finalidades (rendimentos, IR retido, tarifas, IOF, juros pagos, fornecedores e clientes gerais, salários, FGTS, INSS) com palavras e pesos (negativos afastam: “RETIDO”, “PROVISÃO”...).
+- Regra acha uma conta claramente melhor → aplica (95%/85%). Várias parecidas ou nenhuma → **IA (modelo forte) só para essas**, com as candidatas na pergunta e o plano inteiro no contexto (cache). **Conferência**: conta inexistente, sintética, de natureza errada ou palpite < 50% é recusada. Sem IA → a primeira do plano entre as parecidas, marcada “confira” (60%). Escolha do usuário (👤) nunca é sobrescrita.
+- **Conta individual por fornecedor**: grupo de Fornecedores do passivo com ≥ 5 analíticas com nome → Casa Criança: sim, grupo **2.1.3.01** (205 contas). Editável no Cadastro (selo 🤖).
+- **Contas bancárias**: `ligar_conta_bancaria(banco, agência, conta, tipo)` pontua número + banco + palavras do tipo. Casa Criança real: **BB 2180-6/72637-0 corrente → conta 8 (95%)**; **poupança → não encontrada** com o aviso da §3.2.1. Será chamada sozinha pela importação de extratos (Fase 2); hoje há o formulário “Ligar uma conta bancária agora”.
+- Roda **sozinha ao importar/copiar o plano**; botão “Refazer a configuração automática”; troca com autocompletar (só analíticas). Botões de processos demorados mostram “aguarde” (`aguarde.js`, `data-aguarde`).
+- Plano real da Casa Criança, só com regras: 187 salários, 192 FGTS, 191 INSS/PIS/IRRF/RAT, 31 IRRF a recuperar, 10001 fornecedores — **as mesmas do lanctos.txt do escritório**. Incertas (vão para a IA): rendimentos (5 candidatas), tarifas (8, uma por programa), juros pagos (2), IOF (nenhuma).
+- 149 testes passando (+ `ia_real` da auto-configuração com o plano real, que roda quando a chave estiver no `.env`); ruff limpo. Banco real: versão 0005.
+- **Como testar:** Casa Criança → aba **2 Plano de Contas** → (re)envie o plano → veja **Contas-chave** → em “Ligar uma conta bancária agora” use BB / 2180-6 / 72637-0 corrente e depois poupança.
 
 ### 06/10/2026 — Etapa 1.5 concluída
 - Pacote `app/ia/` isolado: `cliente.py` (PedidoIA → RespostaIA; `ClienteAnthropic` com SDK oficial `anthropic` 1.11 e `ClienteFalso` com respostas gravadas), `precos.py` (custo estimado em Decimal), `servico.py` (`chamar_ia`: confere chave, IA da empresa e limites; registra cada chamada).

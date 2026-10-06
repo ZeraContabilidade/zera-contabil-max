@@ -32,6 +32,34 @@ def cliente_real():
     return ClienteAnthropic(chave, _PADRAO.ia_endereco)
 
 
+@pytest.mark.banco
+@pytest.mark.amostras
+def test_auto_configuracao_real_casa_crianca(cliente_real, sessao, monkeypatch):
+    """A IA de verdade escolhe as contas incertas do plano real (≈ US$ 0,05). Mostra o resultado."""
+    from app.modelos import Empresa
+    from app.servicos.contas_chave import auto_configurar
+    from app.servicos.plano import importar_plano, ler_plano
+    from tests.conftest import AMOSTRAS
+
+    arquivo = AMOSTRAS / "PLANO DE CONTAS" / "contas crianca.csv"
+    if not arquivo.exists():
+        pytest.skip("AMOSTRAS/ não está neste computador")
+    monkeypatch.setattr("app.ia.servico.obter_cliente", lambda: cliente_real)
+    empresa = Empresa(codigo_dominio=230, nome_curto="Casa Criança")
+    sessao.add(empresa)
+    sessao.commit()
+    importar_plano(sessao, empresa, ler_plano(arquivo.read_bytes(), arquivo.name), None)
+    sessao.commit()
+
+    resultado = auto_configurar(sessao, empresa)
+    assert resultado.ia_usada, resultado.aviso_ia
+    for chave in resultado.chaves:
+        conta = chave.conta.rotulo if chave.conta else "—"
+        print(f"\n{chave.tipo:<20} {conta:<45} {chave.origem:<5} {chave.confianca:>3}% {chave.justificativa}")
+        if chave.conta:
+            assert chave.conta.analitica  # conferência: só analíticas que existem
+
+
 @pytest.mark.parametrize("modelo", MODELOS)
 def test_modelos_respondem_json_no_formato_pedido(cliente_real, modelo):
     # o modelo forte pensa antes de responder: precisa de mais espaço

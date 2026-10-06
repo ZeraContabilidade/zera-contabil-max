@@ -90,6 +90,15 @@
           Usar IA nesta empresa
         </label>
       </div>
+      <div class="grid">
+        <label>
+          <input type="checkbox" role="switch" name="usa_conta_individual" {% if (dados.usa_conta_individual if dados is not none else empresa.usa_conta_individual) %}checked{% endif %}>
+          Conta individual por fornecedor {{ selo_automatico(empresa, 'usa_conta_individual') }}
+        </label>
+        <label>Grupo das contas de fornecedores {{ selo_automatico(empresa, 'grupo_fornecedores') }}
+          <input name="grupo_fornecedores" value="{{ valor('grupo_fornecedores', empresa.grupo_fornecedores) }}" placeholder="ex.: 2.1.3.01">
+        </label>
+      </div>
       <label>Limite mensal de IA desta empresa (US$) <small class="suave">(opcional — vale também o limite geral)</small>
         <input name="ia_limite_mensal_usd" inputmode="decimal" placeholder="sem limite próprio"
                value="{{ valor('ia_limite_mensal_usd', (empresa.ia_limite_mensal_usd | string).replace('.', ',') if empresa.ia_limite_mensal_usd is not none else '') }}">

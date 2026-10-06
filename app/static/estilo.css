@@ -203,6 +203,19 @@ details.aviso summary::after { filter: none; }
 .lista-aviso { margin: .5rem 0 0; max-height: 14rem; overflow-y: auto; font-size: .85rem; color: var(--texto); }
 .lista-aviso li { list-style: disc; }
 .tabela-plano tr.sintetica td { font-weight: 600; }
+.etiqueta-ambar { background: var(--ambar-vidro); color: var(--ambar); border-color: transparent; }
+.tabela-chaves td { vertical-align: top; }
+.tabela-chaves tr.chave-faltando td:first-child { box-shadow: inset 3px 0 0 var(--vermelho); }
+.tabela-chaves tr.chave-conferir td:first-child { box-shadow: inset 3px 0 0 var(--ambar); }
+.aviso-inline { color: var(--ambar); font-weight: 600; }
+.tabela-chaves td:first-child { width: 22%; }
+.tabela-chaves td:nth-child(2) { width: 33%; }
+details.trocar { margin: .2rem 0 0; }
+details.trocar summary { font-size: .82rem; color: var(--ouro); }
+details.trocar summary::after { display: none; }
+.form-trocar { display: flex; gap: .4rem; margin: .3rem 0 0; }
+.form-trocar input { margin: 0; padding-block: .35rem; font-size: .9rem; }
+.form-trocar button[type="submit"] { margin: 0; min-width: 0; padding: .35rem .8rem; white-space: nowrap; }
 .tabela-plano td { padding-block: .45rem; }
 
 /* ---------------- barra de progresso do mês ---------------- */

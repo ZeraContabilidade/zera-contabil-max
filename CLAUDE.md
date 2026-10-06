@@ -39,7 +39,7 @@ app/            sistema web
   templates/      HTML (Jinja2); _entrada.html = moldura com o emblema; _macros.html
   static/         estilo.css (identidade Zera), tema.js, marca/ (logos, emblema, Cinzel), vendor/ (Pico, HTMX)
   ia/             cliente.py (Anthropic + falso), precos.py, servico.py (chamar_ia, limites, registro)
-migracoes/      Alembic (0001 usuario+log; 0002 empresa+unaccent; 0003 conta_contabil+arquivo_original+importacao; 0004 chamada_ia + IA na empresa)
+migracoes/      Alembic (0001 usuario+log; 0002 empresa+unaccent; 0003 conta_contabil+arquivo_original+importacao; 0004 chamada_ia + IA na empresa; 0005 conta_chave + conta individual)
 scripts/        rotinas dos .bat (instalar, iniciar, banco_docker, criar_env) + banco_teste e servidor_teste
 tests/          pytest (banco separado <nome>_teste)
 ferramentas/preparar_computador/   instalador da máquina (Git, Python, Node, Docker, Claude Code)
@@ -61,6 +61,8 @@ AMOSTRAS/       arquivos reais da Casa Criança (fora do Git)
 - Importações em bloco (plano, Diário, extrato) **não** usam `Auditavel` linha a linha: gravam `ArquivoOriginal` (`guardar_arquivo`) + `Importacao` (resumo e avisos) + `registrar_evento`.
 - Avisos de importação = `Aviso(texto, itens)`: texto curto com exemplos, lista completa em `itens` (a tela abre ao clicar).
 - **IA:** nunca chamar o SDK direto — montar `PedidoIA` (instruções fixas, `contexto` grande e estável para o cache, `pergunta` variável, `esquema` JSON com `additionalProperties: false`, `forte=True` só quando precisa) e chamar `app.ia.servico.chamar_ia(sessao, pedido, empresa, usuario)`; capturar `ErroIA` (inclui `IAIndisponivel`) e seguir sem IA. **Validar** a resposta (conta existe e é analítica etc.) antes de gravar. Testes: fixture `ia_falsa` (`ia_falsa.respostas[finalidade] = {...}`). Modelos: Haiku 4.5 não aceita `effort`; Sonnet 5.5 não aceita `tool_choice` forçado nem `thinking` desligado. Ler a skill `claude-api` antes de mudar `app/ia/cliente.py`.
+- **Contas-chave:** usar `app/servicos/contas_chave.py` — natureza das contas por `naturezas()` (pelo nome do grupo, nunca pelo número); conta bancária por `ligar_conta_bancaria()`; nunca sobrescrever origem `USUARIO`. Parâmetro de teste não pode se chamar `banco` (é o nome da fixture do PostgreSQL).
+- Processo demorado (importação, IA) → `data-aguarde="texto"` no `<form>`.
 - **Chave da API:** só no `.env` (`ANTHROPIC_API_KEY`). Nunca pedir, mostrar ou registrar a chave no chat/log.
 - Testes com arquivos: cópias anonimizadas em `tests/dados/`; teste com arquivo real de AMOSTRAS usa `@pytest.mark.amostras` e pula se a pasta não existir. Arquivos enviados nos testes vão para uma pasta temporária (`PASTA_ARQUIVOS_TESTE`).
 - Ao ver telas, usar o servidor de teste + Playwright (`browser_take_screenshot`); o painel do app não desenha com a janela minimizada.

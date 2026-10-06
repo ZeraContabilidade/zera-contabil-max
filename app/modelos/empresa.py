@@ -50,6 +50,9 @@ class Empresa(Auditavel, Base):
     observacoes: Mapped[str | None] = mapped_column(Text)
     modelo_complemento: Mapped[str] = mapped_column(String(200), default=MODELO_PADRAO)
     ativa: Mapped[bool] = mapped_column(default=True)
+    # conta individual por fornecedor (descoberta pelo plano): grupo onde ficam as contas dos fornecedores
+    usa_conta_individual: Mapped[bool | None] = mapped_column()
+    grupo_fornecedores: Mapped[str | None] = mapped_column(String(40))  # ex.: 2.1.3.01
     ia_ligada: Mapped[bool] = mapped_column(default=True, server_default=true())
     ia_limite_mensal_usd: Mapped[Decimal | None] = mapped_column(Numeric(10, 2))  # vazio = só o limite geral
     # campos preenchidos pelo sistema (selo "🤖 automático"); sai da lista quando o usuário altera

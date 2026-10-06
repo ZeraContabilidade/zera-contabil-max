@@ -243,6 +243,8 @@ def editar_empresa(
     ativa: str | None = Form(None),
     ia_ligada: str | None = Form(None),
     ia_limite_mensal_usd: str = Form(""),
+    usa_conta_individual: str | None = Form(None),
+    grupo_fornecedores: str = Form(""),
     supervisor: Usuario = Depends(exigir_supervisor),
     sessao: Session = Depends(obter_sessao),
 ):
@@ -260,6 +262,8 @@ def editar_empresa(
         "ativa": ativa,
         "ia_ligada": ia_ligada,
         "ia_limite_mensal_usd": ia_limite_mensal_usd,
+        "usa_conta_individual": usa_conta_individual,
+        "grupo_fornecedores": grupo_fornecedores,
     }
     valores, erros = ler_formulario(sessao, form, empresa)
     if erros:
