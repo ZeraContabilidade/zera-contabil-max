@@ -1,0 +1,5 @@
+/* Ajustes leves sobre o Pico.css */
+.marca { text-decoration: none; }
+.situacao { list-style: none; padding-left: 0; }
+.situacao li { list-style: none; }
+.erro { color: var(--pico-del-color); }
