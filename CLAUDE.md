@@ -38,7 +38,7 @@ app/            sistema web
   rotas/          telas (FastAPI APIRouter)
   templates/      HTML (Jinja2); _entrada.html = moldura com o emblema; _macros.html
   static/         estilo.css (identidade Zera), tema.js, marca/ (logos, emblema, Cinzel), vendor/ (Pico, HTMX)
-migracoes/      Alembic (0001 = usuario + log; 0002 = empresa + unaccent)
+migracoes/      Alembic (0001 = usuario + log; 0002 = empresa + unaccent; 0003 = conta_contabil + arquivo_original + importacao)
 scripts/        rotinas dos .bat (instalar, iniciar, banco_docker, criar_env) + banco_teste e servidor_teste
 tests/          pytest (banco separado <nome>_teste)
 ferramentas/preparar_computador/   instalador da máquina (Git, Python, Node, Docker, Claude Code)
@@ -57,6 +57,9 @@ AMOSTRAS/       arquivos reais da Casa Criança (fora do Git)
 - Barra do mês: cada etapa nova acrescenta sua conferência em `app/servicos/progresso.py::_concluidas`.
 - Testes nunca acessam a internet (fixture autouse `_sem_internet`); para simular a BrasilAPI use `cnpj_responde(resposta)`.
 - CNPJ/CPF: sempre por `app/servicos/documentos.py` (aceita CNPJ alfanumérico de jul/2026); gravar normalizado (só letras e números).
+- Importações em bloco (plano, Diário, extrato) **não** usam `Auditavel` linha a linha: gravam `ArquivoOriginal` (`guardar_arquivo`) + `Importacao` (resumo e avisos) + `registrar_evento`.
+- Avisos de importação = `Aviso(texto, itens)`: texto curto com exemplos, lista completa em `itens` (a tela abre ao clicar).
+- Testes com arquivos: cópias anonimizadas em `tests/dados/`; teste com arquivo real de AMOSTRAS usa `@pytest.mark.amostras` e pula se a pasta não existir. Arquivos enviados nos testes vão para uma pasta temporária (`PASTA_ARQUIVOS_TESTE`).
 - Ao ver telas, usar o servidor de teste + Playwright (`browser_take_screenshot`); o painel do app não desenha com a janela minimizada.
 
 ## Identidade visual Zera (obrigatória em todas as telas)
@@ -77,8 +80,10 @@ AMOSTRAS/       arquivos reais da Casa Criança (fora do Git)
 
 ## Fatos das amostras (complementam §11)
 - `AMOSTRAS/PLANO DE CONTAS/contas crianca.csv` é o **TXT de largura fixa do Domínio** com extensão errada (1.190 contas) → detectar o formato pelo conteúdo, não pela extensão.
-- O plano da Casa Criança tem **44 classificações repetidas** (ex.: 492 VALE TRANSPORTE e 10585 DESPESA COM RESCISÃO = 3.2.2.01.000010) → ao converter classificação → reduzido, usar também a descrição. A conta 10598 é analítica com classificação de nível 4.
+- O plano da Casa Criança tem **22 classificações usadas por 44 contas** (ex.: 492 VALE TRANSPORTE e 10585 DESPESA COM RESCISÃO = 3.2.2.01.000010) → ao converter classificação → reduzido, usar também a descrição. A conta 10598 é analítica com classificação de nível 4.
 - O plano **não tem conta para a poupança BB 72637-0** (só "APLIC BB" e "APLIC BB nnnn" de outras contas).
+- No TXT do Domínio a coluna 68 traz **sempre** o tipo S/A (a descrição é cortada em 40 letras, não invade o tipo). Confiar no tipo do arquivo; a hierarquia discorda em 60 contas (grupos vazios, analíticas com classificação de grupo como a 10598).
+- O plano da Casa Criança repete descrições em grupos diferentes (5× “ÁGUA E ESGOTO”: 355, 10491, 10543, 10490, 10270, 10486) — o lanctos.txt usa a 355. Classificar pelo histórico da empresa, não só pela descrição.
 - `AMOSTRAS/PLANO DE CONTAS/contas.txt` = plano de outra entidade (máscara 1.1.2.2.3.4, reduzidos 1000–7005) → 2º caso de teste.
 - PDFs do BB foram impressos pelo navegador: **coluna Saldo cortada**; valor e C/D às vezes caem em linhas diferentes → ler pela posição das palavras. Conferência: CC entradas = saídas = 149.568,52 (saldo 0 → 0); poupança saldo anterior 227.494,23 → final 239.233,33.
 - `AMOSTRAS/PLANILHA EXPORTAÇÃO/modelo exemplar da exportacao.txt` (2026, 195 linhas, com os 3 erros) e `AMOSTRAS/historicos/lanctos_2025_casa_crianca.txt` (389 linhas) vieram de `Z:\1 ASSOC CRECHES CLIENTES\230 CASA CRIANCA ESPERANCA\3 PRESTAÇÃO\<ano>\lanctos.txt`.

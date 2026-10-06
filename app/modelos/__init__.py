@@ -2,7 +2,20 @@
 
 from app.modelos.base import Auditavel, Base
 from app.modelos.empresa import Empresa, Regime
+from app.modelos.importacao import ArquivoOriginal, Importacao
 from app.modelos.log import Log
+from app.modelos.plano import ContaContabil
 from app.modelos.usuario import Papel, Usuario
 
-__all__ = ["Auditavel", "Base", "Empresa", "Log", "Papel", "Regime", "Usuario"]
+__all__ = [
+    "ArquivoOriginal",
+    "Auditavel",
+    "Base",
+    "ContaContabil",
+    "Empresa",
+    "Importacao",
+    "Log",
+    "Papel",
+    "Regime",
+    "Usuario",
+]

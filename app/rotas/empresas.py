@@ -9,6 +9,8 @@ from sqlalchemy.orm import Session
 from app.auth import exigir_supervisor, usuario_logado
 from app.db import obter_sessao
 from app.modelos import Empresa, Regime, Usuario
+from app.rotas.comum import buscar_empresa
+from app.rotas.plano import contexto_aba_plano
 from app.servicos import cnpj_publico
 from app.servicos.complemento import EXEMPLO, montar_complemento
 from app.servicos.documentos import tipo_documento
@@ -33,7 +35,6 @@ ABAS = (
     ("exportar", "Exportar"),
 )
 CHEGA_NA_ETAPA = {
-    "plano": "na etapa 1.4 (importação do plano de contas)",
     "aprendizado": "nas etapas 1.7 e 1.8 (Diário, fornecedores e palavras-chave)",
     "extratos": "nas etapas 2.1 a 2.5 (leitura dos extratos)",
     "revisao": "na etapa 2.8 (tela de revisão)",
@@ -177,13 +178,6 @@ def _avisar_consulta(request: Request, resultado: ResultadoConsulta) -> None:
         )
 
 
-def _buscar_empresa(sessao: Session, request: Request, empresa_id: int) -> Empresa | None:
-    empresa = sessao.get(Empresa, empresa_id)
-    if empresa is None:
-        avisar(request, "Empresa não encontrada.", "erro")
-    return empresa
-
-
 def _tela_empresa(
     request: Request,
     sessao: Session,
@@ -193,6 +187,7 @@ def _tela_empresa(
     erros: list[str] | None = None,
     dados: dict | None = None,
     status_code: int = 200,
+    **extras,
 ):
     competencia = competencia_da_tela(request, mes)
     aba = aba if aba in dict(ABAS) else "cadastro"
@@ -212,6 +207,7 @@ def _tela_empresa(
         erros=erros or [],
         dados=dados,
         exemplo_complemento=montar_complemento(modelo, EXEMPLO),
+        **extras,
     )
 
 
@@ -221,12 +217,15 @@ def tela_empresa(
     empresa_id: int,
     aba: str = "cadastro",
     mes: str | None = None,
+    q: str = "",
+    analiticas: str = "",
     usuario: Usuario = Depends(usuario_logado),
     sessao: Session = Depends(obter_sessao),
 ):
-    if (empresa := _buscar_empresa(sessao, request, empresa_id)) is None:
+    if (empresa := buscar_empresa(sessao, request, empresa_id)) is None:
         return redirecionar("/")
-    return _tela_empresa(request, sessao, empresa, aba, mes)
+    extras = contexto_aba_plano(sessao, empresa, q, bool(analiticas)) if aba == "plano" else {}
+    return _tela_empresa(request, sessao, empresa, aba, mes, **extras)
 
 
 @router.post("/empresas/{empresa_id}")
@@ -245,7 +244,7 @@ def editar_empresa(
     supervisor: Usuario = Depends(exigir_supervisor),
     sessao: Session = Depends(obter_sessao),
 ):
-    if (empresa := _buscar_empresa(sessao, request, empresa_id)) is None:
+    if (empresa := buscar_empresa(sessao, request, empresa_id)) is None:
         return redirecionar("/")
     form = {
         "codigo_dominio": codigo_dominio,
@@ -277,7 +276,7 @@ def consultar_cnpj_da_empresa(
     supervisor: Usuario = Depends(exigir_supervisor),
     sessao: Session = Depends(obter_sessao),
 ):
-    if (empresa := _buscar_empresa(sessao, request, empresa_id)) is None:
+    if (empresa := buscar_empresa(sessao, request, empresa_id)) is None:
         return redirecionar("/")
     resultado = _completar_pelo_cnpj(empresa)
     if resultado.situacao == "sem_cnpj":

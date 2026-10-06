@@ -108,6 +108,8 @@
   </form>
   {% endif %}
 </article>
+{% elif aba == 'plano' %}
+{% include "_aba_plano.html" %}
 {% else %}
 <article class="vazio">
   <p>Esta parte chega {{ chega_na_etapa }}.</p>

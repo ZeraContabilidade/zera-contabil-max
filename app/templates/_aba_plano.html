@@ -1,0 +1,75 @@
+{# Aba "2 Plano de Contas" — incluída em empresa.html #}
+{% macro form_envio(texto_botao) %}
+<form method="post" action="/empresas/{{ empresa.id }}/plano" enctype="multipart/form-data" class="form-envio">
+  <input type="file" name="arquivo" accept=".txt,.csv,.xlsx,.xls,.ods" required aria-label="Arquivo do plano de contas">
+  <button type="submit">{{ texto_botao }}</button>
+</form>
+{% endmacro %}
+
+{% macro form_copia() %}
+{% if plano_outras_empresas %}
+<form method="post" action="/empresas/{{ empresa.id }}/plano/copiar" class="form-envio">
+  <select name="origem_id" required aria-label="Empresa de onde copiar o plano">
+    <option value="">Copiar o plano de outra empresa…</option>
+    {% for outra in plano_outras_empresas %}<option value="{{ outra.id }}">{{ outra.codigo_dominio }} – {{ outra.nome }}</option>{% endfor %}
+  </select>
+  <button type="submit" class="secondary outline">Copiar plano</button>
+</form>
+{% endif %}
+{% endmacro %}
+
+{% if not plano_total %}
+<article>
+  <header><strong>Importar o plano de contas</strong></header>
+  <p>Envie o <strong>plano de contas exportado do Domínio</strong> (o TXT de sempre). Também serve Excel ou CSV
+    com as colunas Reduzido, Classificação, Descrição e Tipo.</p>
+  {{ form_envio("Importar plano") }}
+  {{ form_copia() }}
+  <small class="suave">O arquivo original fica guardado por 5 anos.</small>
+</article>
+{% else %}
+<article>
+  <header class="cabecalho-pagina">
+    <strong>Plano de contas</strong>
+    <span class="suave">{{ plano_total | milhar }} contas · {{ plano_analiticas | milhar }} analíticas{% if plano_ultima and plano_ultima.resumo.mascara %} · máscara {{ plano_ultima.resumo.mascara }}{% endif %}</span>
+  </header>
+  {% if plano_ultima %}
+  <p class="suave">
+    Última importação: {{ plano_ultima.quando | data_hora }} por {{ plano_ultima.usuario.nome if plano_ultima.usuario else 'Sistema' }}
+    — {{ plano_ultima.resumo.formato }}{% if plano_ultima.arquivo %} ({{ plano_ultima.arquivo.nome_original }}){% endif %}.
+  </p>
+  {% for aviso in plano_ultima.avisos %}
+  <details class="aviso aviso-atencao">
+    <summary>⚠ {{ aviso.texto }}</summary>
+    {% if aviso.itens %}<ul class="lista-aviso">{% for item in aviso.itens %}<li>{{ item }}</li>{% endfor %}</ul>{% endif %}
+  </details>
+  {% endfor %}
+  {% endif %}
+
+  <form id="filtro-plano" method="get" action="/empresas/{{ empresa.id }}" class="filtros">
+    <input type="hidden" name="aba" value="plano">
+    <input type="search" name="q" value="{{ plano_q }}" placeholder="Buscar: “agua”, “355” ou “1.1.1.02”…" aria-label="Buscar conta"
+           hx-get="/empresas/{{ empresa.id }}/plano/contas" hx-trigger="input changed delay:300ms, search"
+           hx-target="#linhas-plano" hx-include="#filtro-plano">
+    <label class="so-minhas">
+      <input type="checkbox" role="switch" name="analiticas" value="1" {% if plano_so_analiticas %}checked{% endif %}
+             hx-get="/empresas/{{ empresa.id }}/plano/contas" hx-trigger="change" hx-target="#linhas-plano" hx-include="#filtro-plano">
+      Só analíticas
+    </label>
+  </form>
+  <div class="tabela-rolavel">
+    <table class="striped tabela-plano">
+      <thead><tr><th>Reduzido</th><th>Classificação</th><th>Descrição</th><th>Tipo</th></tr></thead>
+      <tbody id="linhas-plano">{% include "_plano_linhas.html" %}</tbody>
+    </table>
+  </div>
+</article>
+
+<article>
+  <header><strong>Reimportar ou copiar</strong></header>
+  <p class="suave">Criou contas novas no Domínio (por exemplo, fornecedores)? Exporte o plano de novo e envie aqui.
+    O sistema casa pelo código reduzido: atualiza o que mudou, acrescenta as novas e <strong>não perde o aprendizado</strong>.</p>
+  {{ form_envio("Reimportar plano") }}
+  {{ form_copia() }}
+</article>
+{% endif %}

@@ -20,5 +20,6 @@ testpaths = ["tests"]
 addopts = '-m "not ia_real"'
 markers = [
     "banco: precisa do PostgreSQL rodando (Docker)",
+    "amostras: usa os arquivos reais de AMOSTRAS/ (fora do Git); pula se a pasta não existir",
     "ia_real: chama a API real da Anthropic e custa dinheiro (rode com: pytest -m ia_real)",
 ]

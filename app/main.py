@@ -13,7 +13,7 @@ from starlette.middleware.sessions import SessionMiddleware
 from app.auth import NaoAutenticado, SemPermissao
 from app.config import obter_config
 from app.db import banco_disponivel
-from app.rotas import acesso, empresas, usuarios
+from app.rotas import acesso, empresas, plano, usuarios
 from app.web import pagina, redirecionar
 
 PASTA_APP = Path(__file__).resolve().parent
@@ -30,6 +30,7 @@ app.add_middleware(
 app.mount("/static", StaticFiles(directory=PASTA_APP / "static"), name="static")
 app.include_router(acesso.router)
 app.include_router(empresas.router)
+app.include_router(plano.router)
 app.include_router(usuarios.router)
 
 

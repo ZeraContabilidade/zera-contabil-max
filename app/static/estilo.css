@@ -194,6 +194,17 @@ tr.inativa td { opacity: .6; }
 .dados-publicos dt { color: var(--suave); }
 .dados-publicos dd { margin: 0; }
 
+.form-envio { display: flex; gap: .8rem; align-items: center; flex-wrap: wrap; margin-bottom: .8rem; }
+.form-envio input[type="file"], .form-envio select { flex: 1 1 280px; margin-bottom: 0; }
+.form-envio button { margin-bottom: 0; }
+details.aviso { padding: .55rem 1rem; }
+details.aviso summary { font-size: .92rem; }
+details.aviso summary::after { filter: none; }
+.lista-aviso { margin: .5rem 0 0; max-height: 14rem; overflow-y: auto; font-size: .85rem; color: var(--texto); }
+.lista-aviso li { list-style: disc; }
+.tabela-plano tr.sintetica td { font-weight: 600; }
+.tabela-plano td { padding-block: .45rem; }
+
 /* ---------------- barra de progresso do mês ---------------- */
 .progresso-titulo { margin: 1rem 0 .4rem; font-size: .8rem; color: var(--suave); text-transform: uppercase;
   letter-spacing: 1.5px; }

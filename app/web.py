@@ -86,6 +86,7 @@ templates.env.filters["data_hora"] = _data_hora
 templates.env.filters["rotulo_campo"] = _rotulo_campo
 templates.env.filters["rotulo_entidade"] = _rotulo_entidade
 templates.env.filters["valor_log"] = _valor_log
+templates.env.filters["milhar"] = lambda n: f"{n or 0:,}".replace(",", ".")
 templates.env.filters["nome_competencia"] = nome_competencia
 templates.env.filters["valor_campo_mes"] = valor_campo_mes
 templates.env.globals["tirar_avisos"] = _tirar_avisos

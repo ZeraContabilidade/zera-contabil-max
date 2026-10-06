@@ -1,8 +1,17 @@
-"""Os testes usam um banco separado (<nome>_teste) no mesmo PostgreSQL: os dados reais nunca são tocados."""
+"""Os testes usam um banco separado (<nome>_teste) no mesmo PostgreSQL e uma pasta temporária
+para os arquivos enviados: os dados reais nunca são tocados."""
+
+import os
+import tempfile
+from pathlib import Path
 
 from scripts.banco_teste import criar_banco_teste, esvaziar_tabelas, usar_banco_teste
 
 URL_TESTE = usar_banco_teste()  # antes de importar o sistema
+PASTA_ARQUIVOS_TESTE = Path(tempfile.mkdtemp(prefix="zcm_arquivos_teste_"))
+os.environ["PASTA_ARQUIVOS"] = str(PASTA_ARQUIVOS_TESTE)
+DADOS = Path(__file__).parent / "dados"
+AMOSTRAS = Path(__file__).parent.parent / "AMOSTRAS"
 
 import pytest  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402

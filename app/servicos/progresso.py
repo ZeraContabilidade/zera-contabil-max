@@ -6,6 +6,7 @@ from datetime import date
 from sqlalchemy.orm import Session
 
 from app.modelos import Empresa
+from app.servicos.plano import contar_contas
 
 ETAPAS = (
     ("plano", "Plano"),
@@ -27,7 +28,11 @@ class Etapa:
 def _concluidas(sessao: Session, empresa: Empresa, competencia: date) -> dict[str, str]:
     """Etapas já feitas → detalhe. Cada parte do sistema acrescenta a sua conferência aqui:
     plano (1.4), aprendizado (1.7), extrato (2.1), revisão (2.8) e exportado (3.1)."""
-    return {}
+    feitas = {}
+    total_contas, _ = contar_contas(sessao, empresa)
+    if total_contas:
+        feitas["plano"] = f"{total_contas:,} contas".replace(",", ".")
+    return feitas
 
 
 def progresso_do_mes(sessao: Session, empresa: Empresa, competencia: date) -> list[Etapa]:

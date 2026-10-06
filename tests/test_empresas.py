@@ -200,8 +200,8 @@ def test_pagina_da_empresa_tem_barra_do_mes_e_abas(cliente, supervisor_logado, s
         assert etapa in html
     assert 'aria-current="step"' in html  # a próxima etapa a fazer fica destacada
     assert "SABESP - 43.776.517/0001-80 - CONTA DE AGUA - S/N" in html  # exemplo do complemento
-    plano = cliente.get(f"/empresas/{empresa.id}", params={"aba": "plano"}).text
-    assert "Esta parte chega na etapa 1.4" in plano
+    aprendizado = cliente.get(f"/empresas/{empresa.id}", params={"aba": "aprendizado"}).text
+    assert "Esta parte chega nas etapas 1.7 e 1.8" in aprendizado
 
 
 def test_empresa_inexistente_volta_para_a_lista(cliente, supervisor_logado):

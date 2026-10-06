@@ -5,6 +5,8 @@ e sobe o sistema em http://127.0.0.1:8001 (o sistema real continua na 8000).
 Uso: .venv\\Scripts\\python -m scripts.servidor_teste
 """
 
+import os
+
 import uvicorn
 
 from scripts.banco_teste import criar_banco_teste, esvaziar_tabelas, usar_banco_teste
@@ -20,6 +22,7 @@ USUARIOS_EXEMPLO = [
 
 
 def main() -> int:
+    os.environ["PASTA_ARQUIVOS"] = "dados/arquivos_teste"  # nunca mistura com os arquivos reais
     url = usar_banco_teste()
     if not criar_banco_teste(url):
         raise ErroAmigavel("O PostgreSQL está desligado. Rode o INICIAR.bat uma vez para ligar o banco.")

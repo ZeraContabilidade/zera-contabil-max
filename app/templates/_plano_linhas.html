@@ -1,0 +1,13 @@
+{% for c in plano_contas %}
+<tr class="{{ 'sintetica' if c.tipo == 'S' else '' }}">
+  <td class="num">{{ c.reduzido }}</td>
+  <td class="num">{{ c.classificacao_formatada }}</td>
+  <td style="padding-left: {{ 0.6 + (c.nivel - 1) * 1.1 }}rem">{{ c.descricao }}</td>
+  <td>{% if c.tipo == 'S' %}<span class="etiqueta etiqueta-apagada">Sintética</span>{% else %}<span class="etiqueta">Analítica</span>{% endif %}</td>
+</tr>
+{% else %}
+<tr><td colspan="4" class="suave">Nenhuma conta encontrada{% if plano_q %} para “{{ plano_q }}”{% endif %}.</td></tr>
+{% endfor %}
+{% if plano_encontradas > plano_contas | length %}
+<tr><td colspan="4" class="suave">Mostrando {{ plano_contas | length }} de {{ plano_encontradas | milhar }} contas. Use a busca para achar a conta.</td></tr>
+{% endif %}
