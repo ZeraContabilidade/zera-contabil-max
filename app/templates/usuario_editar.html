@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% from "_macros.html" import lista_erros %}
+{% block titulo %}{{ alvo.nome }} — {{ nome_sistema }}{% endblock %}
+{% block conteudo %}
+<p><a href="/usuarios">← Voltar para Usuários</a></p>
+<h1>{{ alvo.nome }}</h1>
+
+<article>
+  <header><strong>Cadastro</strong></header>
+  {{ lista_erros(erros) }}
+  <form method="post" action="/usuarios/{{ alvo.id }}">
+    <div class="grid">
+      <label>Nome <input name="nome" value="{{ alvo.nome }}" required></label>
+      <label>Usuário para entrar <input value="{{ alvo.login }}" disabled></label>
+    </div>
+    <div class="grid">
+      <label>E-mail <small class="suave">(opcional)</small>
+        <input type="email" name="email" value="{{ alvo.email or '' }}">
+      </label>
+      <label>Papel
+        <select name="papel" required>
+          {% for p in papeis %}
+          <option value="{{ p.value }}" {% if alvo.papel == p %}selected{% endif %}>{{ p.rotulo }}</option>
+          {% endfor %}
+        </select>
+      </label>
+    </div>
+    <label>
+      <input type="checkbox" role="switch" name="ativo" {% if alvo.ativo %}checked{% endif %}>
+      Ativo (pode entrar no sistema)
+    </label>
+    <button type="submit">Salvar</button>
+  </form>
+</article>
+
+<article>
+  <header><strong>Definir nova senha</strong></header>
+  {% if erro_senha %}<p class="aviso aviso-erro" role="alert">{{ erro_senha }}</p>{% endif %}
+  <form method="post" action="/usuarios/{{ alvo.id }}/senha">
+    <div class="grid">
+      <label>Nova senha <input type="password" name="senha" autocomplete="new-password" required></label>
+      <label>Repita a senha <input type="password" name="confirmacao" autocomplete="new-password" required></label>
+    </div>
+    <button type="submit" class="secondary">Definir senha</button>
+  </form>
+  <small class="suave">Use quando a pessoa esquecer a senha. Os logins abertos dela são encerrados.</small>
+</article>
+{% endblock %}

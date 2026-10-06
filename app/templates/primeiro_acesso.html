@@ -1,0 +1,27 @@
+{% extends "_entrada.html" %}
+{% from "_macros.html" import lista_erros %}
+{% block titulo %}Primeiro acesso — {{ nome_sistema }}{% endblock %}
+{% block formulario %}
+<h1>Primeiro acesso</h1>
+<p class="suave">Cadastre o <strong>Supervisor</strong>: a pessoa que cadastra os outros usuários e as empresas
+  e acompanha o trabalho de todos.</p>
+{{ lista_erros(erros) }}
+<form method="post" action="/primeiro-acesso">
+  <label>Nome
+    <input name="nome" value="{{ dados.nome or '' }}" autocomplete="name" required autofocus>
+  </label>
+  <label>Usuário para entrar <small class="suave">(ex.: maria.silva)</small>
+    <input name="login" value="{{ dados.login or '' }}" autocomplete="username" required>
+  </label>
+  <label>E-mail <small class="suave">(opcional)</small>
+    <input type="email" name="email" value="{{ dados.email or '' }}" autocomplete="email">
+  </label>
+  <label>Senha <small class="suave">(mínimo 8 caracteres)</small>
+    <input type="password" name="senha" autocomplete="new-password" required>
+  </label>
+  <label>Repita a senha
+    <input type="password" name="confirmacao" autocomplete="new-password" required>
+  </label>
+  <button type="submit">Cadastrar e entrar</button>
+</form>
+{% endblock %}

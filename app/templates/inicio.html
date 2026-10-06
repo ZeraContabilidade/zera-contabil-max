@@ -1,15 +1,19 @@
 {% extends "base.html" %}
 {% block conteudo %}
+<h1>Olá, {{ usuario.nome }}!</h1>
 <article>
-  <header><strong>Sistema instalado</strong></header>
-  <ul class="situacao">
-    <li>✔ Sistema no ar</li>
-    {% if banco_ok %}
-    <li>✔ Banco de dados conectado</li>
-    {% else %}
-    <li class="erro">✖ Banco de dados desligado — feche esta janela e abra de novo pelo <strong>INICIAR.bat</strong>.</li>
-    {% endif %}
-  </ul>
-  <p>As próximas etapas trazem o login, o cadastro de empresas e a importação do plano de contas.</p>
+  <header><strong>Em construção</strong></header>
+  <p>O login e os usuários já funcionam. As próximas etapas trazem:</p>
+  <ol>
+    <li>Cadastro das empresas</li>
+    <li>Importação do plano de contas</li>
+    <li>Aprendizado com o Diário e configuração automática das contas</li>
+  </ol>
+  {% if usuario.e_supervisor %}
+  <footer>
+    <a href="/usuarios" role="button">Cadastrar usuários</a>
+    <a href="/log" role="button" class="secondary outline">Ver o log</a>
+  </footer>
+  {% endif %}
 </article>
 {% endblock %}

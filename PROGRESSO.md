@@ -3,7 +3,7 @@
 Atualizado em: **06/10/2026**
 
 ## Próximo passo exato
-**Etapa 1.2 — Banco, login e papéis:** SQLAlchemy 2 + Alembic; tabelas `usuario` e `log`; login com senha (hash seguro); papéis Assistente / Contador / Supervisor; criação do primeiro Supervisor durante o INSTALAR; sessão por cookie (`CHAVE_SESSAO`); log de auditoria (quem, quando, antes/depois); INSTALAR e INICIAR passam a aplicar as migrações; testes de banco num banco separado `*_teste`.
+**Etapa 1.3 — Cadastro de empresas:** tabela `empresa` (razão social, nome curto, CNPJ com validação de dígito, código no Domínio, responsável = usuário, observações, `usa_conta_individual`, contas genéricas, modelo do complemento `FAVORECIDO - NATUREZA - DOCUMENTO`, selo "🤖 automático" por campo) — modelo `Auditavel`, migração `0002`. Telas: lista de empresas (nome, CNPJ, código, responsável, situação do mês) que vira a página inicial, "+ Nova empresa" (só Supervisor cadastra), página da empresa com abas 1–6 (só "Cadastro" funciona agora) e a barra de progresso do mês (Plano → Aprendizado → Extrato → Revisão → Exportado, tudo pendente por enquanto). Consulta pública de CNPJ (BrasilAPI) opcional, com o sistema funcionando sem internet.
 
 ## Pendências com o usuário
 | # | Pergunta | Precisa até |
@@ -18,7 +18,7 @@ Atualizado em: **06/10/2026**
 
 ### Fase 1 — Base e Aprendizado
 - [x] 1.1 Estrutura do projeto, PostgreSQL no Docker, INSTALAR.bat / INICIAR.bat, CLAUDE.md, PROGRESSO.md
-- [ ] 1.2 Banco de dados, login, papéis e log de auditoria
+- [x] 1.2 Banco de dados, login, papéis e log de auditoria (+ identidade visual Zera)
 - [ ] 1.3 Cadastro de empresas e barra de progresso do mês
 - [ ] 1.4 Importação do plano de contas (TXT/Excel/CSV), avisos, reimportação, copiar de outra empresa
 - [ ] 1.5 Módulo de IA: cliente real + falso, limites de gasto, registro de custo
@@ -46,6 +46,17 @@ Atualizado em: **06/10/2026**
 ### Fase 4 — Extras (um por vez, quando pedido)
 
 ## Histórico
+
+### 06/10/2026 — Etapa 1.2 concluída
+- Banco com migrações (Alembic): tabelas `usuario` e `log`. INSTALAR e INICIAR criam/atualizam as tabelas sozinhos.
+- **Primeiro acesso:** sem nenhum usuário, o sistema pede o cadastro do Supervisor na própria tela (não pergunta nada no INSTALAR).
+- Login por usuário ou e-mail, senha guardada só como hash (argon2), sessão de 12 h. Trocar a senha encerra os logins abertos em outros computadores; usuário desativado sai na hora.
+- Papéis Assistente / Contador / Supervisor. Só o Supervisor vê **Usuários** e **Log**; o sistema nunca fica sem um Supervisor ativo.
+- **Log de auditoria automático:** toda inclusão/alteração/exclusão grava quem, quando, antes e depois (senha aparece como ***); entradas, saídas e senhas erradas também.
+- **Identidade visual Zera** aplicada: logos oficiais (clara/escura), emblema na tela de entrada, preto e dourado, Cinzel, modo claro/escuro (botão ◐). Conferido no navegador em computador e celular.
+- Servidor de teste (`scripts/servidor_teste.py`, porta 8001) para ver as telas sem tocar nos dados reais.
+- 37 testes passando; ruff sem avisos. Banco real: versão 0001, nenhum usuário (o primeiro Supervisor é criado pelo usuário).
+- **Como testar:** dois cliques no `INICIAR.bat` → aparece **Primeiro acesso** → cadastre-se como Supervisor → em **Usuários**, cadastre um Assistente → saia e entre como ele (não vê Usuários/Log) → volte como Supervisor e veja tudo no **Log**.
 
 ### 06/10/2026 — Etapa 1.1 concluída
 - Projeto criado: FastAPI + Jinja2 + HTMX + Pico.css (arquivos locais), configuração pelo `.env`, PostgreSQL 16 no Docker (porta 127.0.0.1:5433, volume persistente).

@@ -6,7 +6,7 @@ import time
 from pathlib import Path
 
 from app.config import RAIZ
-from app.db import banco_disponivel
+from app.db import aplicar_migracoes, banco_disponivel
 from scripts.comum import ErroAmigavel
 
 
@@ -71,12 +71,11 @@ def esperar_banco(espera_segundos: int = 90) -> None:
 
 
 def preparar_banco() -> None:
-    if banco_disponivel():  # caso comum: o banco já sobe junto com o Docker Desktop
-        print("Banco de dados pronto.")
-        return
-    print("Verificando o Docker...")
-    ligar_docker()
-    print("Ligando o banco de dados...")
-    subir_banco()
-    esperar_banco()
+    if not banco_disponivel():  # no dia a dia o banco já sobe junto com o Docker Desktop
+        print("Verificando o Docker...")
+        ligar_docker()
+        print("Ligando o banco de dados...")
+        subir_banco()
+        esperar_banco()
+    aplicar_migracoes()  # cria ou atualiza as tabelas para esta versão do sistema
     print("Banco de dados pronto.")

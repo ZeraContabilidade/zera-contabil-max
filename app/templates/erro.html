@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% block titulo %}{{ titulo }} — {{ nome_sistema }}{% endblock %}
+{% block conteudo %}
+<article>
+  <header><strong>{{ titulo }}</strong></header>
+  <p>{{ mensagem }}</p>
+  <footer><a href="/" role="button" class="secondary outline">Voltar ao início</a></footer>
+</article>
+{% endblock %}

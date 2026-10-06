@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% from "_macros.html" import lista_erros, etiqueta_papel, etiqueta_situacao %}
+{% block titulo %}Usuários — {{ nome_sistema }}{% endblock %}
+{% block conteudo %}
+<div class="cabecalho-pagina">
+  <h1>Usuários</h1>
+  <span class="suave">{{ usuarios | length }} cadastrado(s)</span>
+</div>
+
+<article>
+  <div class="tabela-rolavel">
+    <table class="striped">
+      <thead>
+        <tr><th>Nome</th><th>Usuário</th><th>E-mail</th><th>Papel</th><th>Situação</th><th>Último acesso</th><th></th></tr>
+      </thead>
+      <tbody>
+        {% for u in usuarios %}
+        <tr>
+          <td>{{ u.nome }}</td>
+          <td>{{ u.login }}</td>
+          <td>{{ u.email or '—' }}</td>
+          <td>{{ etiqueta_papel(u.papel) }}</td>
+          <td>{{ etiqueta_situacao(u.ativo) }}</td>
+          <td class="num">{{ u.ultimo_acesso | data_hora }}</td>
+          <td><a href="/usuarios/{{ u.id }}">Editar</a></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</article>
+
+<article>
+  <details {% if erros %}open{% endif %}>
+    <summary><strong>+ Novo usuário</strong></summary>
+    {{ lista_erros(erros) }}
+    <form method="post" action="/usuarios">
+      <div class="grid">
+        <label>Nome <input name="nome" value="{{ dados.nome or '' }}" autocomplete="off" required></label>
+        <label>Usuário para entrar <input name="login" value="{{ dados.login or '' }}" placeholder="maria.silva" autocomplete="off" required></label>
+      </div>
+      <div class="grid">
+        <label>E-mail <small class="suave">(opcional)</small>
+          <input type="email" name="email" value="{{ dados.email or '' }}">
+        </label>
+        <label>Papel
+          <select name="papel" required>
+            {% for p in papeis %}
+            <option value="{{ p.value }}" {% if dados.papel == p.value %}selected{% endif %}>{{ p.rotulo }}</option>
+            {% endfor %}
+          </select>
+        </label>
+      </div>
+      <div class="grid">
+        <label>Senha <small class="suave">(mínimo 8 caracteres)</small>
+          <input type="password" name="senha" autocomplete="new-password" required>
+        </label>
+        <label>Repita a senha <input type="password" name="confirmacao" autocomplete="new-password" required></label>
+      </div>
+      <button type="submit">Cadastrar usuário</button>
+    </form>
+    <p class="suave"><small>Assistente e Contador importam, classificam, corrigem e exportam.
+      O Supervisor faz tudo isso e ainda cadastra usuários e empresas, acompanha o painel e reabre meses exportados.</small></p>
+  </details>
+</article>
+{% endblock %}

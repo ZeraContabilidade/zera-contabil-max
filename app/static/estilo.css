@@ -1,5 +1,208 @@
-/* Ajustes leves sobre o Pico.css */
-.marca { text-decoration: none; }
-.situacao { list-style: none; padding-left: 0; }
-.situacao li { list-style: none; }
-.erro { color: var(--pico-del-color); }
+/* =====================================================================
+   ZERA CONTÁBIL MAX — identidade Zera (preto e dourado).
+   Mesma paleta do PrestacaoContas. Escuro por padrão; claro quando o
+   Windows pede ou o usuário escolhe no botão ◐ (guardado no navegador).
+   O Pico.css desenha os componentes; aqui as variáveis dele apontam
+   para as cores da Zera.
+   ===================================================================== */
+@font-face { font-family: "Cinzel"; src: url("marca/Cinzel-Medium.ttf") format("truetype");
+  font-weight: 500; font-display: swap; }
+@font-face { font-family: "Cinzel"; src: url("marca/Cinzel-Bold.ttf") format("truetype");
+  font-weight: 700; font-display: swap; }
+
+:root {
+  --bg: #0A0A0B; --bg-2: #101012; --cartao: #141416; --cartao-2: #1A1A1D; --cartao-3: #222226;
+  --borda: #26262B; --borda-forte: #34343A; --texto: #F3F0E8; --suave: #9C978C; --fraco: #6E6A62;
+  --ouro: #C9A662; --ouro-2: #E6CB8D; --ouro-3: #A8843F; --sobre-ouro: #141107;
+  --ouro-vidro: rgba(201, 166, 98, .10); --ouro-borda: rgba(201, 166, 98, .35);
+  --verde: #3FB27F; --verde-vidro: rgba(63, 178, 127, .12);
+  --ambar: #E0A43B; --ambar-vidro: rgba(224, 164, 59, .12);
+  --vermelho: #E5484D; --vermelho-vidro: rgba(229, 72, 77, .12);
+  --sombra: 0 1px 0 rgba(255, 255, 255, .03) inset, 0 10px 30px rgba(0, 0, 0, .35);
+  --sombra-alta: 0 24px 60px rgba(0, 0, 0, .55);
+  --raio: 18px; --raio-p: 12px;
+  --grad-ouro: linear-gradient(135deg, #EED6A0 0%, #C9A662 45%, #A8843F 100%);
+  --fonte: "Segoe UI Variable Text", "Segoe UI", Inter, system-ui, -apple-system, Roboto, Arial, sans-serif;
+  --fonte-titulo: "Cinzel", "Times New Roman", serif;
+  --rapido: 160ms; --medio: 280ms;
+  color-scheme: dark;
+}
+:root[data-theme="light"] {
+  --bg: #F6F3EC; --bg-2: #EFEBE2; --cartao: #FFFFFF; --cartao-2: #FAF8F3; --cartao-3: #F2EEE5;
+  --borda: #E6DFD1; --borda-forte: #D6CDBB; --texto: #1B1A17; --suave: #6B665C; --fraco: #9A9386;
+  --ouro: #A8843F; --ouro-2: #C9A662; --ouro-3: #8F6F31; --sobre-ouro: #FFFFFF;
+  --ouro-vidro: rgba(168, 132, 63, .10); --ouro-borda: rgba(168, 132, 63, .40);
+  --verde: #1F8A5B; --verde-vidro: rgba(31, 138, 91, .10);
+  --ambar: #B7791F; --ambar-vidro: rgba(183, 121, 31, .12);
+  --vermelho: #C4383D; --vermelho-vidro: rgba(196, 56, 61, .10);
+  --sombra: 0 1px 2px rgba(30, 25, 15, .04), 0 8px 24px rgba(30, 25, 15, .06);
+  --sombra-alta: 0 24px 60px rgba(30, 25, 15, .18);
+  color-scheme: light;
+}
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    --bg: #F6F3EC; --bg-2: #EFEBE2; --cartao: #FFFFFF; --cartao-2: #FAF8F3; --cartao-3: #F2EEE5;
+    --borda: #E6DFD1; --borda-forte: #D6CDBB; --texto: #1B1A17; --suave: #6B665C; --fraco: #9A9386;
+    --ouro: #A8843F; --ouro-2: #C9A662; --ouro-3: #8F6F31; --sobre-ouro: #FFFFFF;
+    --ouro-vidro: rgba(168, 132, 63, .10); --ouro-borda: rgba(168, 132, 63, .40);
+    --verde: #1F8A5B; --verde-vidro: rgba(31, 138, 91, .10);
+    --ambar: #B7791F; --ambar-vidro: rgba(183, 121, 31, .12);
+    --vermelho: #C4383D; --vermelho-vidro: rgba(196, 56, 61, .10);
+    --sombra: 0 1px 2px rgba(30, 25, 15, .04), 0 8px 24px rgba(30, 25, 15, .06);
+    --sombra-alta: 0 24px 60px rgba(30, 25, 15, .18);
+    color-scheme: light;
+  }
+}
+
+/* Variáveis do Pico → cores da Zera. ":root" repetido vence a especificidade dos temas do Pico. */
+:root:root:root {
+  --pico-font-family: var(--fonte);
+  --pico-background-color: var(--bg);
+  --pico-color: var(--texto);
+  --pico-muted-color: var(--suave);
+  --pico-muted-border-color: var(--borda);
+  --pico-h1-color: var(--texto); --pico-h2-color: var(--texto); --pico-h3-color: var(--texto);
+  --pico-h4-color: var(--texto); --pico-h5-color: var(--texto); --pico-h6-color: var(--texto);
+  --pico-primary: var(--ouro);
+  --pico-primary-background: var(--ouro-3);
+  --pico-primary-border: var(--ouro-3);
+  --pico-primary-underline: var(--ouro-borda);
+  --pico-primary-hover: var(--ouro-2);
+  --pico-primary-hover-background: var(--ouro);
+  --pico-primary-hover-border: var(--ouro);
+  --pico-primary-hover-underline: var(--ouro);
+  --pico-primary-focus: var(--ouro-vidro);
+  --pico-primary-inverse: var(--sobre-ouro);
+  --pico-secondary: var(--suave);
+  --pico-secondary-background: var(--cartao-3);
+  --pico-secondary-border: var(--borda-forte);
+  --pico-secondary-underline: var(--borda-forte);
+  --pico-secondary-hover: var(--texto);
+  --pico-secondary-hover-background: var(--cartao-3);
+  --pico-secondary-hover-border: var(--ouro-borda);
+  --pico-secondary-focus: var(--ouro-vidro);
+  --pico-secondary-inverse: var(--texto);
+  --pico-card-background-color: var(--cartao);
+  --pico-card-border-color: var(--borda);
+  --pico-card-box-shadow: var(--sombra);
+  --pico-card-sectioning-background-color: var(--cartao-2);
+  --pico-form-element-background-color: var(--cartao-2);
+  --pico-form-element-selected-background-color: var(--cartao-3);
+  --pico-form-element-border-color: var(--borda-forte);
+  --pico-form-element-color: var(--texto);
+  --pico-form-element-placeholder-color: var(--fraco);
+  --pico-form-element-active-background-color: var(--cartao-2);
+  --pico-form-element-active-border-color: var(--ouro);
+  --pico-form-element-focus-color: var(--ouro-vidro);
+  --pico-table-border-color: var(--borda);
+  --pico-table-row-stripped-background-color: var(--cartao-2);
+  --pico-dropdown-background-color: var(--cartao);
+  --pico-dropdown-border-color: var(--borda);
+  --pico-code-background-color: var(--cartao-2);
+  --pico-del-color: var(--vermelho);
+  --pico-ins-color: var(--verde);
+  --pico-border-radius: var(--raio-p);
+}
+
+body { background: var(--bg); color: var(--texto); -webkit-font-smoothing: antialiased; }
+h1, h2, h3 { font-family: var(--fonte-titulo); font-weight: 700; letter-spacing: .5px; }
+h1 { font-size: 1.7rem; }
+h2 { font-size: 1.3rem; }
+::selection { background: var(--ouro-vidro); }
+.suave { color: var(--suave); }
+.num { font-variant-numeric: tabular-nums; }
+
+/* botão principal com o degradê dourado */
+button:not(.secondary):not(.outline):not(.contrast):not(.btn-icone),
+[type="submit"]:not(.secondary):not(.outline),
+[role="button"]:not(.secondary):not(.outline) {
+  /* texto escuro nos dois temas: o degradê é dourado claro e o branco ficaria ilegível */
+  background: var(--grad-ouro); border-color: transparent; color: #141107; font-weight: 600;
+  box-shadow: 0 6px 20px rgba(201, 166, 98, .22);
+  transition: box-shadow var(--rapido), transform var(--rapido);
+}
+button:not(.secondary):not(.outline):not(.contrast):not(.btn-icone):hover,
+[type="submit"]:not(.secondary):not(.outline):hover { box-shadow: 0 8px 28px rgba(201, 166, 98, .38); }
+button:active { transform: translateY(1px); }
+
+.btn-icone { display: inline-grid; place-items: center; width: 38px; height: 38px; padding: 0; margin: 0;
+  border-radius: 11px; border: 1px solid var(--borda); background: transparent; color: var(--suave);
+  cursor: pointer; font-size: 1.05rem; box-shadow: none; }
+.btn-icone:hover { color: var(--texto); border-color: var(--ouro-borda); background: var(--ouro-vidro); }
+
+/* logo clara/escura conforme o tema */
+.so-tema-claro { display: none; }
+:root[data-theme="light"] .so-tema-claro { display: inline-block; }
+:root[data-theme="light"] .so-tema-escuro { display: none; }
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) .so-tema-claro { display: inline-block; }
+  :root:not([data-theme="dark"]) .so-tema-escuro { display: none; }
+}
+
+/* ---------------- topo ---------------- */
+.topo { border-bottom: 1px solid var(--borda); background: var(--bg-2); margin-bottom: 1.5rem; }
+.topo-linha { display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+  flex-wrap: wrap; padding-block: .7rem; }
+.topo-marca { display: flex; align-items: center; gap: .9rem; text-decoration: none; }
+.topo-marca img { height: 44px; width: auto; }
+.topo-produto { font-family: var(--fonte-titulo); font-weight: 700; color: var(--ouro); letter-spacing: 3px;
+  text-transform: uppercase; font-size: .8rem; padding-left: .9rem; border-left: 1px solid var(--borda-forte); }
+.topo-menu { display: flex; align-items: center; gap: .3rem 1.1rem; flex-wrap: wrap; }
+.topo-menu a { color: var(--suave); text-decoration: none; font-size: .95rem; }
+.topo-menu a:hover { color: var(--texto); }
+.form-sair { margin: 0; }
+.form-sair button { padding: .35rem .9rem; margin: 0; font-size: .9rem; width: auto; }
+
+/* ---------------- avisos e etiquetas ---------------- */
+.aviso { padding: .75rem 1rem; border-radius: var(--raio-p); border: 1px solid transparent; margin-bottom: 1rem; }
+.aviso ul { margin: 0; padding-left: 1.1rem; }
+.aviso li { list-style: disc; }
+.aviso-ok { background: var(--verde-vidro); color: var(--verde); border-color: var(--verde-vidro); }
+.aviso-erro { background: var(--vermelho-vidro); color: var(--vermelho); border-color: var(--vermelho-vidro); }
+.etiqueta { display: inline-block; padding: .1rem .6rem; border-radius: 999px; font-size: .8rem; font-weight: 600;
+  background: var(--ouro-vidro); color: var(--ouro); border: 1px solid var(--ouro-borda); }
+.etiqueta-verde { background: var(--verde-vidro); color: var(--verde); border-color: transparent; }
+.etiqueta-apagada { background: var(--cartao-3); color: var(--fraco); border-color: transparent; }
+
+article > header strong { font-family: var(--fonte-titulo); letter-spacing: .5px; }
+.tabela-rolavel { overflow-x: auto; }
+.cabecalho-pagina { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
+.mudancas { margin: 0; padding: 0; font-size: .85rem; }
+.mudancas li { list-style: none; }
+.mudancas .de { color: var(--fraco); text-decoration: line-through; }
+
+/* ---------------- tela de entrada (com o emblema) ---------------- */
+.entrar { min-height: 100vh; display: grid; grid-template-columns: 1.1fr 1fr; background: var(--bg); }
+.entrar-marca { position: relative; overflow: hidden; padding: 56px 7vw; display: flex; flex-direction: column;
+  justify-content: center; gap: 12px; background: #0B0B0C; color: #F3F0E8; }
+.entrar-brilho { position: absolute; inset: -30%; pointer-events: none;
+  background: radial-gradient(40% 35% at 30% 30%, rgba(201, 166, 98, .22), transparent 70%),
+              radial-gradient(35% 30% at 80% 75%, rgba(201, 166, 98, .12), transparent 70%);
+  animation: brilho 14s ease-in-out infinite alternate; }
+@keyframes brilho { to { transform: translate(4%, -3%) scale(1.06); } }
+.entrar-emblema { position: relative; width: min(260px, 60%); height: auto; }
+.entrar-titulo { position: relative; font-family: var(--fonte-titulo); font-weight: 700; color: #C9A662;
+  letter-spacing: 4px; text-transform: uppercase; font-size: 1rem; margin: 6px 0 10px; }
+.entrar-frase { position: relative; font-size: 1.35rem; line-height: 1.35; max-width: 460px; margin: 0; color: #F3F0E8; }
+.entrar-pontos { position: relative; padding: 0; margin: 14px 0 0; display: grid; gap: 8px; color: #B9B3A6; }
+.entrar-pontos li { list-style: none; }
+.entrar-pontos li::before { content: ""; display: inline-block; width: 7px; height: 7px; border-radius: 50%;
+  background: var(--grad-ouro); margin-right: 12px; transform: translateY(-1px); }
+.entrar-lado { display: grid; place-items: center; padding: 32px 16px; position: relative; }
+.entrar-lado .btn-icone { position: absolute; top: 16px; right: 16px; }
+.entrar-form { width: min(420px, 100%); padding: 32px 28px; border: 1px solid var(--borda); border-radius: 22px;
+  background: var(--cartao); box-shadow: var(--sombra-alta); animation: subir var(--medio) ease both; }
+.entrar-form h1 { margin-bottom: .4rem; }
+.entrar-form button[type="submit"] { width: 100%; margin-top: .5rem; }
+@keyframes subir { from { opacity: 0; transform: translateY(8px); } }
+
+@media (max-width: 860px) {
+  .entrar { grid-template-columns: 1fr; }
+  .entrar-marca { padding: 36px 16px 28px; align-items: center; text-align: center; }
+  .entrar-emblema { width: 150px; }
+  .entrar-frase { font-size: 1.1rem; }
+  .entrar-pontos { display: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .entrar-brilho, .entrar-form { animation: none; }
+}

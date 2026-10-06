@@ -4,18 +4,44 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block titulo %}{{ nome_sistema }}{% endblock %}</title>
-  <link rel="stylesheet" href="{{ url_for('static', path='vendor/pico.min.css') }}">
-  <link rel="stylesheet" href="{{ url_for('static', path='estilo.css') }}">
-  <script src="{{ url_for('static', path='vendor/htmx.min.js') }}" defer></script>
+  <link rel="icon" type="image/png" href="{{ estatico('marca/emblema.png') }}">
+  <script>try { var t = localStorage.getItem("zcm-tema"); if (t === "light" || t === "dark") document.documentElement.setAttribute("data-theme", t); } catch (e) {}</script>
+  <link rel="stylesheet" href="{{ estatico('vendor/pico.min.css') }}">
+  <link rel="stylesheet" href="{{ estatico('estilo.css') }}">
+  <script src="{{ estatico('vendor/htmx.min.js') }}" defer></script>
+  <script src="{{ estatico('tema.js') }}" defer></script>
 </head>
 <body>
-  <header class="container">
-    <nav>
-      <ul><li><a href="/" class="marca"><strong>{{ nome_sistema }}</strong></a></li></ul>
-    </nav>
+{% block corpo %}
+  <header class="topo">
+    <div class="container topo-linha">
+      <a href="/" class="topo-marca" aria-label="Início">
+        <img class="so-tema-escuro" src="{{ estatico('marca/logo_escuro.png') }}" alt="Zera Contabilidade">
+        <img class="so-tema-claro" src="{{ estatico('marca/logo_claro.png') }}" alt="Zera Contabilidade">
+        <span class="topo-produto">Contábil MAX</span>
+      </a>
+      <nav class="topo-menu">
+        {% if usuario %}
+        <a href="/">Início</a>
+        {% if usuario.e_supervisor %}
+        <a href="/usuarios">Usuários</a>
+        <a href="/log">Log</a>
+        {% endif %}
+        <a href="/minha-senha" title="Trocar minha senha">{{ usuario.nome }}</a>
+        {% endif %}
+        <button type="button" class="btn-icone" data-alternar-tema title="Tema claro / escuro" aria-label="Alternar tema claro ou escuro">◐</button>
+        {% if usuario %}
+        <form method="post" action="/sair" class="form-sair"><button type="submit" class="secondary outline">Sair</button></form>
+        {% endif %}
+      </nav>
+    </div>
   </header>
   <main class="container">
+    {% for aviso in tirar_avisos(request) %}
+    <p class="aviso aviso-{{ aviso.tipo }}" role="status">{{ aviso.texto }}</p>
+    {% endfor %}
     {% block conteudo %}{% endblock %}
   </main>
+{% endblock %}
 </body>
 </html>

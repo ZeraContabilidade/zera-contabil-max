@@ -1,0 +1,13 @@
+{% macro lista_erros(erros) %}
+{% if erros %}
+<div class="aviso aviso-erro" role="alert">
+  <ul>{% for erro in erros %}<li>{{ erro }}</li>{% endfor %}</ul>
+</div>
+{% endif %}
+{% endmacro %}
+
+{% macro etiqueta_papel(papel) %}<span class="etiqueta">{{ papel.rotulo }}</span>{% endmacro %}
+
+{% macro etiqueta_situacao(ativo) %}
+{% if ativo %}<span class="etiqueta etiqueta-verde">Ativo</span>{% else %}<span class="etiqueta etiqueta-apagada">Inativo</span>{% endif %}
+{% endmacro %}

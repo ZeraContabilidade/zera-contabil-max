@@ -4,7 +4,8 @@ from app.config import RAIZ, Config
 
 
 def config_teste(**valores) -> Config:
-    return Config(_env_file=None, **valores)
+    # ignora o .env e o DATABASE_URL do banco de teste (conftest); valores passados aqui têm prioridade
+    return Config(_env_file=None, **{"database_url": "", **valores})
 
 
 def test_url_do_banco_montada_pelas_partes_com_senha_especial():

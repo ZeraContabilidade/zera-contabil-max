@@ -5,6 +5,9 @@ amostras/
 dados/
 *.log
 
+# Capturas de tela dos testes com o Playwright
+.playwright-mcp/
+
 # Ambiente Python
 .venv/
 __pycache__/

@@ -1,0 +1,26 @@
+{# Moldura das telas de entrada: emblema da Zera à esquerda, formulário à direita. #}
+{% extends "base.html" %}
+{% block corpo %}
+<div class="entrar">
+  <section class="entrar-marca" aria-label="Zera Contabilidade">
+    <div class="entrar-brilho"></div>
+    <img class="entrar-emblema" src="{{ estatico('marca/emblema.png') }}" alt="Zera Contabilidade">
+    <p class="entrar-titulo">Contábil MAX</p>
+    <p class="entrar-frase">Extrato classificado sozinho, lançamento pronto para o Domínio.</p>
+    <ul class="entrar-pontos">
+      <li>Aprende com o Diário de cada empresa</li>
+      <li>Você só confere o que ficou em dúvida</li>
+      <li>Gera o lanctos.txt para importar</li>
+    </ul>
+  </section>
+  <section class="entrar-lado">
+    <button type="button" class="btn-icone" data-alternar-tema title="Tema claro / escuro" aria-label="Alternar tema claro ou escuro">◐</button>
+    <div class="entrar-form">
+      {% for aviso in tirar_avisos(request) %}
+      <p class="aviso aviso-{{ aviso.tipo }}" role="status">{{ aviso.texto }}</p>
+      {% endfor %}
+      {% block formulario %}{% endblock %}
+    </div>
+  </section>
+</div>
+{% endblock %}

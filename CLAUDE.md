@@ -22,15 +22,42 @@ A especificação completa está em `PROMPT_Claude_Code_ZeraConcilia.md` (citada
 | Testes | `.venv\Scripts\python -m pytest` (marcados `banco` pulam se o PostgreSQL estiver desligado; `-m ia_real` usa a API real) |
 | Qualidade | `.venv\Scripts\python -m ruff check .` e `.venv\Scripts\python -m ruff format .` |
 | Banco | `docker compose up -d banco` · contêiner `zera-contabil-max-banco` · porta `127.0.0.1:5433` |
+| Nova migração | `.venv\Scripts\alembic revision --autogenerate -m "descricao" --rev-id 0002` → revisar o arquivo (Enum gera CHECK em dobro: apagar o explícito) |
+| Ver as telas | `.venv\Scripts\python -m scripts.servidor_teste` → http://127.0.0.1:8001 (banco `_teste`, usuários ana/carla/davi; senha em `scripts/servidor_teste.py`). Também em `.claude/launch.json` (`zera-teste`). Rodar o pytest apaga esses dados: reinicie o servidor. |
 
 ## Estrutura
 ```
-app/            sistema web: config.py (.env), db.py, main.py, templates/, static/vendor (Pico.css e HTMX locais)
-scripts/        rotinas chamadas pelos .bat: instalar, iniciar, banco_docker, criar_env
-tests/          pytest
+app/            sistema web
+  config.py       configurações do .env
+  db.py           conexão, sessão por requisição, migrações (e liga a auditoria)
+  auth.py         senhas (argon2), login por sessão, usuario_logado / exigir_supervisor
+  auditoria.py    log automático de CRIAR/ALTERAR/EXCLUIR de todo modelo Auditavel
+  web.py          templates, avisar(), pagina(), estatico() (CSS/JS com ?v= contra cache velho)
+  modelos/        tabelas (SQLAlchemy) — importar tudo por app.modelos
+  servicos/       regras de negócio (sem HTTP)
+  rotas/          telas (FastAPI APIRouter)
+  templates/      HTML (Jinja2); _entrada.html = moldura com o emblema; _macros.html
+  static/         estilo.css (identidade Zera), tema.js, marca/ (logos, emblema, Cinzel), vendor/ (Pico, HTMX)
+migracoes/      Alembic (0001 = usuario + log)
+scripts/        rotinas dos .bat (instalar, iniciar, banco_docker, criar_env) + banco_teste e servidor_teste
+tests/          pytest (banco separado <nome>_teste)
 ferramentas/preparar_computador/   instalador da máquina (Git, Python, Node, Docker, Claude Code)
 AMOSTRAS/       arquivos reais da Casa Criança (fora do Git)
 ```
+
+## Convenções do código
+- Modelo novo que guarda dados do escritório → herdar `Auditavel` (o log de auditoria sai sozinho; campos sigilosos em `campos_sigilosos`).
+- Tela nova que exige login → `Depends(usuario_logado)`; só Supervisor → `Depends(exigir_supervisor)`.
+- Mensagem para a próxima tela → `avisar(request, "texto", "ok"|"erro")`; formulário com erro → renderiza de novo com status 400 e a lista `erros`.
+- Formulários usam `Form("")` e validam na mão (mensagens em português), nunca o erro 422 automático.
+- Arquivos estáticos nos templates sempre por `estatico('caminho')`.
+- Ao ver telas, usar o servidor de teste + Playwright (`browser_take_screenshot`); o painel do app não desenha com a janela minimizada.
+
+## Identidade visual Zera (obrigatória em todas as telas)
+- Logos oficiais em `app/static/marca/` (copiadas de `Desktop\PrestacaoContas\PREVIA DA NOVA LOGO\`): `logo_escuro.png` (fundo escuro), `logo_claro.png` (fundo claro), `emblema.png` (círculo, usado na tela de entrada e como ícone). Z e E ligados pela base; R sem base; A sem travessão — **não redesenhar, usar os PNGs**.
+- Paleta e fonte iguais às do PrestacaoContas (`prestacao/web/estilo.css`): fundo `#0A0A0B`, dourado `#C9A662` (claro `#A8843F`), degradê `--grad-ouro`, títulos em **Cinzel**, texto em Segoe UI.
+- Escuro por padrão; claro quando o Windows pede ou pelo botão ◐ (guardado no navegador). Off-white `#F6F3EC` no modo claro.
+- Botão principal = degradê dourado com texto escuro `#141107` (branco fica ilegível no dourado claro).
 
 ## Armadilhas já conhecidas (Windows)
 - Conexões internas usam `127.0.0.1`, não `localhost` (o Windows tenta IPv6 antes e perde ~2 s).
@@ -38,6 +65,8 @@ AMOSTRAS/       arquivos reais da Casa Criança (fora do Git)
 - `.bat` só com ASCII e quebra de linha CRLF (o `.gitattributes` garante no Git).
 - Não trocar `POSTGRES_PASSWORD` no `.env` depois que o banco foi criado (o volume guarda a senha antiga).
 - TestClient da Starlette: usar `httpx2` (o `httpx` gera aviso de descontinuação).
+- Jinja escapa `'` como `&#39;`: nas mensagens use aspas tipográficas “assim”.
+- Segurança do login: cookie assinado (`CHAVE_SESSAO`), SameSite=Lax (bloqueia formulário de outro site). Antes de ir para a nuvem (Fase 4), avaliar token CSRF e HTTPS.
 - O Python do computador é o 3.13 (a especificação citava 3.12; tudo é compatível).
 
 ## Fatos das amostras (complementam §11)

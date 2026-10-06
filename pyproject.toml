@@ -11,6 +11,10 @@ target-version = "py312"
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B"]
 
+[tool.ruff.lint.flake8-bugbear]
+# padrão do FastAPI: Depends/Form como valor padrão do parâmetro
+extend-immutable-calls = ["fastapi.Depends", "fastapi.Form", "fastapi.Query", "fastapi.File"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = '-m "not ia_real"'
