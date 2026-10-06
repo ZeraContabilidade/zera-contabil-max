@@ -1,0 +1,33 @@
+00000011                   ATIVO                                   S          
+000000211                  ATIVO CIRCULANTE                        S          
+0000003111                 DISPONÍVEL                              S          
+000000711102               BANCOS CONTA MOVIMENTO                  S          
+000000811102000001         BCO BRASIL CC 12345-6                   A          
+000000911102000002         CAIXA ECONÔMICA FEDERAL                 A          
+000001011103               APLICAÇÕES FINANCEIRAS LIQUIDEZ IMEDIATAS          
+000001111103000001         POUPANÇA NA CAIXA ECONOMICA FEDERAL     A          
+001050211103000013         APLIC BB 99999-9                        A          
+0000012112                 CLIENTES                                S          
+000001611202               (-) DUPLICATAS DESCONTADAS              S          
+000001411203               Mensalidades a Receber                  A          
+000001711203               CRÉDITOS VENCIDOS E NÃO LIQUIDADOS      S          
+00001492                   PASSIVO                                 S          
+000015021                  PASSIVO CIRCULANTE                      S          
+0000164213                 FORNECEDORES                            S          
+000016521301               FORNECEDORES                            S          
+001000121301000001         FORNECEDORES                            A          
+001057121301000190         FORNECEDOR EXEMPLO LTDA                 A          
+0000185215                 OBRIGAÇÕES TRABALHISTA E PREVIDENCIÁRIA S          
+000018621501               OBRIGAÇÕES COM O PESSOAL                S          
+000018721501000001         SALÁRIOS E ORDENADOS A PAGAR            A          
+00002693                   CONTAS DE RESULTADOS - CUSTOS E DESPESASS          
+000029532                  DESPESAS OPERACIONAIS                   S          
+0000329322                 DESPESAS ADMINISTRATIVAS                S          
+000033032201               DESPESAS COM PESSOAL                    S          
+000049232201000010         VALE TRANSPORTE                         A          
+001058532201000010         DESPESA COM RESCISÃO                    A          
+000035332204               DESPESAS GERAIS                         S          
+001059832204               MATERIAL DE MANUTENÇÃO                  A          
+000035432204000001         ENERGIA ELÉTRICA                        A          
+000035532204000002         ÁGUA E ESGOTO                           A          
+999999999999999999999999999999999999999999999999999999999999999999999999999999
