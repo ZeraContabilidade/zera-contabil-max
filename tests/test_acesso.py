@@ -33,7 +33,8 @@ def test_primeiro_acesso_cria_supervisor_e_ja_entra(cliente, sessao):
         },
         follow_redirects=True,
     )
-    assert "Olá, Maria Supervisora!" in resposta.text
+    assert "Nenhuma empresa cadastrada ainda" in resposta.text
+    assert "Maria Supervisora" in resposta.text  # nome no menu do topo
     usuario = sessao.scalar(select(Usuario))
     assert usuario.login == "maria.silva"
     assert usuario.papel == Papel.SUPERVISOR

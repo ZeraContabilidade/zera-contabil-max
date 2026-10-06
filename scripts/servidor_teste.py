@@ -26,15 +26,41 @@ def main() -> int:
 
     from app.auth import gerar_hash
     from app.db import aplicar_migracoes, fabrica_sessoes
-    from app.modelos import Papel, Usuario
+    from app.modelos import Empresa, Papel, Regime, Usuario
 
     aplicar_migracoes()
     esvaziar_tabelas()
     with fabrica_sessoes()() as sessao:
+        usuarios = {}
         for login, nome, papel in USUARIOS_EXEMPLO:
-            sessao.add(
-                Usuario(nome=nome, login=login, senha_hash=gerar_hash(SENHA_EXEMPLO), papel=Papel(papel))
+            usuarios[login] = Usuario(
+                nome=nome, login=login, senha_hash=gerar_hash(SENHA_EXEMPLO), papel=Papel(papel)
             )
+            sessao.add(usuarios[login])
+        sessao.flush()
+        # empresas fictícias (nunca dados reais de clientes no código)
+        sessao.add_all(
+            [
+                Empresa(
+                    codigo_dominio=900,
+                    razao_social="ASSOCIACAO CRECHE EXEMPLO",
+                    nome_curto="Creche Exemplo",
+                    cnpj_cpf="12ABC34501DE35",
+                    regime=Regime.TERCEIRO_SETOR,
+                    responsavel_id=usuarios["carla"].id,
+                    campos_automaticos=["razao_social", "regime"],
+                    dados_publicos={
+                        "natureza_juridica": "3999 - Associação Privada",
+                        "atividade": "Educação infantil - creche",
+                        "municipio": "SÃO PAULO/SP",
+                        "situacao": "ATIVA",
+                        "consultado_em": "2026-10-06",
+                    },
+                ),
+                Empresa(codigo_dominio=901, razao_social="PADARIA PÃO MODELO LTDA", regime=Regime.SIMPLES),
+                Empresa(codigo_dominio=902, nome_curto="Mercado Teste", ativa=False),
+            ]
+        )
         sessao.commit()
 
     print(f"Servidor de TESTE em http://127.0.0.1:{PORTA} (usuários: ana, carla, davi)")

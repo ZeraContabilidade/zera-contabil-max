@@ -15,6 +15,28 @@ from app.modelos import Papel, Usuario  # noqa: E402
 SENHA_TESTE = "senha-de-teste-123"
 
 
+@pytest.fixture(autouse=True)
+def _sem_internet(monkeypatch):
+    """Nenhum teste consulta a internet: a consulta pública do CNPJ responde "fora do ar".
+    Testes que precisam de dados usam `cnpj_responde` com uma resposta gravada."""
+    monkeypatch.setattr("app.servicos.cnpj_publico._buscar_http", lambda cnpj: None)
+
+
+@pytest.fixture
+def cnpj_responde(monkeypatch):
+    def _responder(resposta: dict | None):
+        consultados = []
+
+        def _falso(cnpj):
+            consultados.append(cnpj)
+            return resposta
+
+        monkeypatch.setattr("app.servicos.cnpj_publico._buscar_http", _falso)
+        return consultados
+
+    return _responder
+
+
 @pytest.fixture(scope="session")
 def _banco_teste_pronto() -> bool:
     if not criar_banco_teste(URL_TESTE):

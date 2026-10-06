@@ -8,6 +8,33 @@
 
 {% macro etiqueta_papel(papel) %}<span class="etiqueta">{{ papel.rotulo }}</span>{% endmacro %}
 
+{% macro selo_automatico(empresa, campo) %}
+{% if empresa and empresa.e_automatico(campo) %}<span class="selo-auto" title="Preenchido pelo sistema. Pode alterar à vontade.">🤖 automático</span>{% endif %}
+{% endmacro %}
+
+{# Barra completa do mês: Plano → Aprendizado → Extrato → Revisão → Exportado #}
+{% macro barra_progresso(etapas, competencia) %}
+<p class="progresso-titulo">Situação de {{ competencia | nome_competencia }}</p>
+<ol class="progresso" aria-label="Situação de {{ competencia | nome_competencia }}">
+  {% for etapa in etapas %}
+  <li class="etapa-{{ etapa.situacao }}" {% if etapa.situacao == 'atual' %}aria-current="step"{% endif %}
+      title="{{ etapa.nome }}: {{ {'feita': 'feito', 'atual': 'é a próxima', 'pendente': 'pendente'}[etapa.situacao] }}">
+    <span class="etapa-marca">{% if etapa.situacao == 'feita' %}✔{% elif etapa.situacao == 'atual' %}●{% endif %}</span>
+    <span class="etapa-nome">{{ etapa.nome }}</span>
+    {% if etapa.detalhe %}<small class="etapa-detalhe">{{ etapa.detalhe }}</small>{% endif %}
+  </li>
+  {% endfor %}
+</ol>
+{% endmacro %}
+
+{# Versão compacta para a lista de empresas #}
+{% macro pontos_progresso(etapas, atual) %}
+<span class="pontos" title="{% for e in etapas %}{{ e.nome }}: {{ 'feito' if e.situacao == 'feita' else 'pendente' }}{{ ' · ' if not loop.last }}{% endfor %}">
+  {% for e in etapas %}<i class="ponto ponto-{{ e.situacao }}"></i>{% endfor %}
+</span>
+<small class="suave">{% if atual %}Próximo: {{ atual.nome }}{% else %}Mês concluído{% endif %}</small>
+{% endmacro %}
+
 {% macro etiqueta_situacao(ativo) %}
 {% if ativo %}<span class="etiqueta etiqueta-verde">Ativo</span>{% else %}<span class="etiqueta etiqueta-apagada">Inativo</span>{% endif %}
 {% endmacro %}

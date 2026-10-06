@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% from "_macros.html" import lista_erros %}
+{% block titulo %}Nova empresa — {{ nome_sistema }}{% endblock %}
+{% block conteudo %}
+<p><a href="/">← Empresas</a></p>
+<h1>Nova empresa</h1>
+<article>
+  {{ lista_erros(erros) }}
+  <form method="post" action="/empresas">
+    <div class="grid">
+      <label>Código da empresa no Domínio
+        <input name="codigo_dominio" value="{{ dados.codigo_dominio or '' }}" inputmode="numeric" placeholder="ex.: 230" required autofocus>
+        <small class="suave">É o único campo obrigatório. Vai em todas as linhas do lanctos.txt.</small>
+      </label>
+      <label>CNPJ ou CPF <small class="suave">(opcional)</small>
+        <input name="cnpj_cpf" value="{{ dados.cnpj_cpf or '' }}" placeholder="00.000.000/0000-00">
+        <small class="suave">Com o CNPJ, o sistema busca razão social e regime na consulta pública.</small>
+      </label>
+    </div>
+    <details {% if dados.razao_social or dados.nome_curto or dados.regime or dados.responsavel_id or dados.observacoes %}open{% endif %}>
+      <summary>Mais dados (o sistema preenche sozinho depois)</summary>
+      <div class="grid">
+        <label>Razão social <input name="razao_social" value="{{ dados.razao_social or '' }}"></label>
+        <label>Nome curto <small class="suave">(como aparece nas listas)</small>
+          <input name="nome_curto" value="{{ dados.nome_curto or '' }}" placeholder="ex.: Casa Criança">
+        </label>
+      </div>
+      <div class="grid">
+        <label>Regime
+          <select name="regime">
+            <option value="">— descobrir sozinho —</option>
+            {% for r in regimes %}<option value="{{ r.value }}" {% if dados.regime == r.value %}selected{% endif %}>{{ r.rotulo }}</option>{% endfor %}
+          </select>
+        </label>
+        <label>Responsável
+          <select name="responsavel_id">
+            <option value="">— sem responsável —</option>
+            {% for u in usuarios %}<option value="{{ u.id }}" {% if dados.responsavel_id == u.id|string %}selected{% endif %}>{{ u.nome }}</option>{% endfor %}
+          </select>
+        </label>
+      </div>
+      <label>Observações <textarea name="observacoes" rows="2">{{ dados.observacoes or '' }}</textarea></label>
+    </details>
+    <button type="submit">Cadastrar empresa</button>
+  </form>
+</article>
+{% endblock %}

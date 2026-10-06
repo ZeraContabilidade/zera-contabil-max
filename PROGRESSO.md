@@ -3,7 +3,7 @@
 Atualizado em: **06/10/2026**
 
 ## Próximo passo exato
-**Etapa 1.3 — Cadastro de empresas:** tabela `empresa` (razão social, nome curto, CNPJ com validação de dígito, código no Domínio, responsável = usuário, observações, `usa_conta_individual`, contas genéricas, modelo do complemento `FAVORECIDO - NATUREZA - DOCUMENTO`, selo "🤖 automático" por campo) — modelo `Auditavel`, migração `0002`. Telas: lista de empresas (nome, CNPJ, código, responsável, situação do mês) que vira a página inicial, "+ Nova empresa" (só Supervisor cadastra), página da empresa com abas 1–6 (só "Cadastro" funciona agora) e a barra de progresso do mês (Plano → Aprendizado → Extrato → Revisão → Exportado, tudo pendente por enquanto). Consulta pública de CNPJ (BrasilAPI) opcional, com o sistema funcionando sem internet.
+**Etapa 1.4 — Plano de contas:** tabela `conta_contabil` (por empresa: reduzido, classificação sem pontos, classificação formatada, descrição, tipo S/A, nível, ativa) — `Auditavel`, migração `0003`. Leitor do TXT de largura fixa do Domínio (§11.2; reconhecer pelo conteúdo, não pela extensão — `contas crianca.csv` é TXT), deduzir máscara pela hierarquia, tipo invadido pela descrição → deduzir pela hierarquia, ignorar linha de 9s; avisos (classificação repetida — 44 casos na Casa Criança —, descrição cortada, tipo inválido). Leitura também de Excel/CSV. Aba "2 Plano de Contas": enviar arquivo, tabela pesquisável (sem acento, `unaccent`), reimportar casando pelo reduzido (avisa contas removidas; mantém aprendizado), "copiar de outra empresa". Etapa "Plano" da barra fica ✔ quando houver plano. Testes com os 2 planos de `AMOSTRAS` (cópias anonimizadas em `tests/dados/`). Arquivo original guardado: preparar a interface `ArmazenamentoLocal` (§7.3/§7.4).
 
 ## Pendências com o usuário
 | # | Pergunta | Precisa até |
@@ -19,7 +19,7 @@ Atualizado em: **06/10/2026**
 ### Fase 1 — Base e Aprendizado
 - [x] 1.1 Estrutura do projeto, PostgreSQL no Docker, INSTALAR.bat / INICIAR.bat, CLAUDE.md, PROGRESSO.md
 - [x] 1.2 Banco de dados, login, papéis e log de auditoria (+ identidade visual Zera)
-- [ ] 1.3 Cadastro de empresas e barra de progresso do mês
+- [x] 1.3 Cadastro de empresas e barra de progresso do mês
 - [ ] 1.4 Importação do plano de contas (TXT/Excel/CSV), avisos, reimportação, copiar de outra empresa
 - [ ] 1.5 Módulo de IA: cliente real + falso, limites de gasto, registro de custo
 - [ ] 1.6 Auto-configuração das contas-chave + detecção de conta individual por fornecedor
@@ -46,6 +46,16 @@ Atualizado em: **06/10/2026**
 ### Fase 4 — Extras (um por vez, quando pedido)
 
 ## Histórico
+
+### 06/10/2026 — Etapa 1.3 concluída
+- Tabela `empresa` (migração 0002, + extensão `unaccent`). **Só o código no Domínio é obrigatório** (critério da Fase 1).
+- CNPJ e CPF validados pelos dígitos, **inclusive o CNPJ alfanumérico** (com letras) que a Receita emite desde julho/2026.
+- Com CNPJ, o sistema consulta a BrasilAPI e preenche razão social, nome fantasia e **regime** (MEI/Simples/Presumido/Real/Terceiro setor) com o selo **🤖 automático**; o que o usuário digitou nunca é trocado; campo alterado à mão perde o selo. Sem internet: cadastra e avisa. Testado de verdade com a Casa Criança: “IMUNE DE IRPJ” → Terceiro setor.
+- Página inicial = lista de empresas: busca instantânea sem acento (nome, CNPJ, código), “Só as minhas”, mês de trabalho (padrão: mês passado, lembrado entre telas) e situação do mês em pontinhos.
+- Página da empresa: barra do mês (Plano → Aprendizado → Extrato → Revisão → Exportado; cada etapa futura liga a sua conferência em `app/servicos/progresso.py`), abas 1–6 (só Cadastro funciona; as outras dizem em que etapa chegam), dados públicos do CNPJ, modelo do complemento com exemplo ao vivo (padrão `FAVORECIDO - CNPJ - NATUREZA - DOCUMENTO`, igual ao lanctos.txt atual).
+- Só o Supervisor cadastra/altera empresas; Assistente e Contador veem.
+- 75 testes passando (nenhum acessa a internet); ruff limpo. Banco real: versão 0002, sem dados.
+- **Como testar:** `INICIAR.bat` → entre como Supervisor → **+ Nova empresa** → digite só `230` e o CNPJ `06.101.084/0001-36` → veja razão social e regime chegarem sozinhos com 🤖 → altere o nome curto para “Casa Criança” e salve → volte à lista e busque “crianca”.
 
 ### 06/10/2026 — Etapa 1.2 concluída
 - Banco com migrações (Alembic): tabelas `usuario` e `log`. INSTALAR e INICIAR criam/atualizam as tabelas sozinhos.

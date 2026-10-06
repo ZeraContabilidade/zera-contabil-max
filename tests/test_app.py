@@ -46,4 +46,5 @@ def test_inicio_logado_mostra_logo_no_topo_e_nome(cliente, criar_usuario):
     entrar(cliente, "ana")
     html = cliente.get("/").text
     assert "marca/logo_escuro.png" in html and "marca/logo_claro.png" in html
-    assert "Olá, Ana Paula!" in html
+    assert "Ana Paula" in html
+    assert "<h1>Empresas</h1>" in html

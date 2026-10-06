@@ -4,17 +4,16 @@ import secrets
 from pathlib import Path
 from urllib.parse import quote
 
-from fastapi import Depends, FastAPI, Request
+from fastapi import FastAPI, Request
 from fastapi.responses import Response
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy.exc import OperationalError
 from starlette.middleware.sessions import SessionMiddleware
 
-from app.auth import NaoAutenticado, SemPermissao, usuario_logado
+from app.auth import NaoAutenticado, SemPermissao
 from app.config import obter_config
 from app.db import banco_disponivel
-from app.modelos import Usuario
-from app.rotas import acesso, usuarios
+from app.rotas import acesso, empresas, usuarios
 from app.web import pagina, redirecionar
 
 PASTA_APP = Path(__file__).resolve().parent
@@ -30,6 +29,7 @@ app.add_middleware(
 )
 app.mount("/static", StaticFiles(directory=PASTA_APP / "static"), name="static")
 app.include_router(acesso.router)
+app.include_router(empresas.router)
 app.include_router(usuarios.router)
 
 
@@ -58,11 +58,6 @@ def _banco_fora(request: Request, _erro: OperationalError):
         mensagem="Feche esta janela e abra o sistema de novo pelo INICIAR.bat "
         "(ele liga o Docker e o banco de dados sozinho).",
     )
-
-
-@app.get("/")
-def inicio(request: Request, usuario: Usuario = Depends(usuario_logado)):
-    return pagina(request, "inicio.html")
 
 
 @app.get("/saude")

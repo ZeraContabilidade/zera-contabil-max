@@ -104,7 +104,7 @@ def criar_primeiro_supervisor(
     sessao.add(usuario)
     sessao.commit()
     iniciar_sessao(request, usuario)
-    avisar(request, "Cadastro do Supervisor concluído. Agora você já pode cadastrar os outros usuários.")
+    avisar(request, "Cadastro do Supervisor concluído. Agora cadastre as empresas e, em Usuários, a equipe.")
     return redirecionar("/")
 
 

@@ -124,6 +124,15 @@ button:not(.secondary):not(.outline):not(.contrast):not(.btn-icone),
 button:not(.secondary):not(.outline):not(.contrast):not(.btn-icone):hover,
 [type="submit"]:not(.secondary):not(.outline):hover { box-shadow: 0 8px 28px rgba(201, 166, 98, .38); }
 button:active { transform: translateY(1px); }
+/* botões dos formulários no tamanho do texto (o Pico estica para a largura toda) */
+form button[type="submit"] { width: auto; min-width: 12rem; }
+
+/* chave liga/desliga nos tons da Zera */
+:root:root:root {
+  --pico-switch-background-color: var(--borda-forte);
+  --pico-switch-checked-background-color: var(--ouro-3);
+  --pico-switch-color: var(--cartao);
+}
 
 .btn-icone { display: inline-grid; place-items: center; width: 38px; height: 38px; padding: 0; margin: 0;
   border-radius: 11px; border: 1px solid var(--borda); background: transparent; color: var(--suave);
@@ -151,7 +160,7 @@ button:active { transform: translateY(1px); }
 .topo-menu a { color: var(--suave); text-decoration: none; font-size: .95rem; }
 .topo-menu a:hover { color: var(--texto); }
 .form-sair { margin: 0; }
-.form-sair button { padding: .35rem .9rem; margin: 0; font-size: .9rem; width: auto; }
+.form-sair button[type="submit"] { padding: .35rem .9rem; margin: 0; font-size: .9rem; width: auto; min-width: 0; }
 
 /* ---------------- avisos e etiquetas ---------------- */
 .aviso { padding: .75rem 1rem; border-radius: var(--raio-p); border: 1px solid transparent; margin-bottom: 1rem; }
@@ -164,7 +173,58 @@ button:active { transform: translateY(1px); }
 .etiqueta-verde { background: var(--verde-vidro); color: var(--verde); border-color: transparent; }
 .etiqueta-apagada { background: var(--cartao-3); color: var(--fraco); border-color: transparent; }
 
+.aviso-atencao { background: var(--ambar-vidro); color: var(--ambar); border-color: var(--ambar-vidro); }
+.selo-auto { display: inline-block; margin-left: .35rem; padding: 0 .5rem; border-radius: 999px; font-size: .75rem;
+  font-weight: 600; background: var(--ouro-vidro); color: var(--ouro); border: 1px dashed var(--ouro-borda);
+  vertical-align: middle; cursor: help; }
+
 article > header strong { font-family: var(--fonte-titulo); letter-spacing: .5px; }
+.subtitulo { margin: -.6rem 0 0; }
+.acoes-cabecalho { display: flex; align-items: end; gap: 1rem; flex-wrap: wrap; }
+.acoes-cabecalho [role="button"] { margin-bottom: var(--pico-spacing); }
+.form-mes label { font-size: .85rem; color: var(--suave); }
+.form-mes input { width: auto; margin-bottom: 0; }
+.filtros { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; }
+.filtros input[type="search"] { flex: 1 1 260px; margin-bottom: 0; }
+.so-minhas { white-space: nowrap; }
+.vazio { text-align: center; padding-block: 2.5rem; }
+.vazio h2 { margin-bottom: .5rem; }
+tr.inativa td { opacity: .6; }
+.dados-publicos { display: grid; grid-template-columns: max-content 1fr; gap: .3rem 1.2rem; margin: 0 0 .6rem; }
+.dados-publicos dt { color: var(--suave); }
+.dados-publicos dd { margin: 0; }
+
+/* ---------------- barra de progresso do mês ---------------- */
+.progresso-titulo { margin: 1rem 0 .4rem; font-size: .8rem; color: var(--suave); text-transform: uppercase;
+  letter-spacing: 1.5px; }
+.progresso { display: flex; gap: .5rem; padding: 0; margin: 0 0 1.4rem; flex-wrap: wrap; }
+.progresso li { list-style: none; flex: 1 1 120px; display: flex; align-items: center; gap: .55rem;
+  padding: .55rem .8rem; border-radius: var(--raio-p); border: 1px solid var(--borda); background: var(--cartao);
+  color: var(--fraco); position: relative; }
+.etapa-marca { display: inline-grid; place-items: center; width: 1.6rem; height: 1.6rem; border-radius: 50%;
+  font-size: .8rem; font-weight: 700; border: 1px solid var(--borda-forte); flex: none; }
+.etapa-nome { font-weight: 600; font-size: .92rem; }
+.etapa-detalhe { display: block; width: 100%; font-size: .75rem; color: var(--suave); }
+.progresso .etapa-feita { color: var(--texto); border-color: var(--ouro-borda); }
+.progresso .etapa-feita .etapa-marca { background: var(--grad-ouro); color: #141107; border-color: transparent; }
+.progresso .etapa-atual { color: var(--texto); border-color: var(--ouro); background: var(--ouro-vidro); }
+.progresso .etapa-atual .etapa-marca { border-color: var(--ouro); color: var(--ouro); }
+
+.pontos { display: inline-flex; gap: 4px; margin-right: .5rem; vertical-align: middle; }
+.ponto { width: 9px; height: 9px; border-radius: 50%; background: var(--cartao-3); border: 1px solid var(--borda-forte); }
+.ponto-feita { background: var(--grad-ouro); border-color: transparent; }
+.ponto-atual { border-color: var(--ouro); background: var(--ouro-vidro); }
+
+/* ---------------- abas da empresa ---------------- */
+.abas { display: flex; gap: .25rem; border-bottom: 1px solid var(--borda); margin-bottom: 1.2rem;
+  overflow-x: auto; scrollbar-width: thin; }
+.abas a { display: inline-flex; align-items: center; gap: .45rem; padding: .6rem .9rem; white-space: nowrap;
+  color: var(--suave); text-decoration: none; border-bottom: 2px solid transparent; margin-bottom: -1px; }
+.abas a:hover { color: var(--texto); }
+.abas a[aria-current="page"] { color: var(--texto); border-bottom-color: var(--ouro); font-weight: 600; }
+.aba-numero { display: inline-grid; place-items: center; width: 1.3rem; height: 1.3rem; border-radius: 50%;
+  font-size: .72rem; border: 1px solid var(--borda-forte); }
+.abas a[aria-current="page"] .aba-numero { border-color: var(--ouro); color: var(--ouro); }
 .tabela-rolavel { overflow-x: auto; }
 .cabecalho-pagina { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
 .mudancas { margin: 0; padding: 0; font-size: .85rem; }

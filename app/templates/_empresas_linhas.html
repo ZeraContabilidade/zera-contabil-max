@@ -1,0 +1,17 @@
+{% from "_macros.html" import pontos_progresso %}
+{% for linha in linhas %}
+{% set e = linha.empresa %}
+<tr class="{{ '' if e.ativa else 'inativa' }}">
+  <td>
+    <a href="/empresas/{{ e.id }}"><strong>{{ e.nome }}</strong></a>
+    {% if not e.ativa %}<span class="etiqueta etiqueta-apagada">Inativa</span>{% endif %}
+    {% if e.nome_curto and e.razao_social %}<br><small class="suave">{{ e.razao_social }}</small>{% endif %}
+  </td>
+  <td class="num">{{ e.documento_formatado or '—' }}</td>
+  <td class="num">{{ e.codigo_dominio }}</td>
+  <td>{{ e.responsavel.nome if e.responsavel else '—' }}</td>
+  <td>{{ pontos_progresso(linha.etapas, linha.atual) }}</td>
+</tr>
+{% else %}
+<tr><td colspan="5" class="suave">Nenhuma empresa encontrada{% if q %} para “{{ q }}”{% endif %}.</td></tr>
+{% endfor %}

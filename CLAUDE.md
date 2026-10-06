@@ -38,7 +38,7 @@ app/            sistema web
   rotas/          telas (FastAPI APIRouter)
   templates/      HTML (Jinja2); _entrada.html = moldura com o emblema; _macros.html
   static/         estilo.css (identidade Zera), tema.js, marca/ (logos, emblema, Cinzel), vendor/ (Pico, HTMX)
-migracoes/      Alembic (0001 = usuario + log)
+migracoes/      Alembic (0001 = usuario + log; 0002 = empresa + unaccent)
 scripts/        rotinas dos .bat (instalar, iniciar, banco_docker, criar_env) + banco_teste e servidor_teste
 tests/          pytest (banco separado <nome>_teste)
 ferramentas/preparar_computador/   instalador da máquina (Git, Python, Node, Docker, Claude Code)
@@ -51,6 +51,12 @@ AMOSTRAS/       arquivos reais da Casa Criança (fora do Git)
 - Mensagem para a próxima tela → `avisar(request, "texto", "ok"|"erro")`; formulário com erro → renderiza de novo com status 400 e a lista `erros`.
 - Formulários usam `Form("")` e validam na mão (mensagens em português), nunca o erro 422 automático.
 - Arquivos estáticos nos templates sempre por `estatico('caminho')`.
+- Campo preenchido pelo sistema → incluir o nome em `campos_automaticos` (selo 🤖); `aplicar_edicao` tira o selo quando o usuário muda o valor; preenchimento automático só ocupa campo vazio ou ainda automático.
+- Busca de texto: `func.unaccent(coluna).ilike(func.unaccent(padrao))` (extensão criada na migração 0002).
+- Mês de trabalho: `competencia_da_tela(request, mes)` (padrão mês passado; guardado na sessão).
+- Barra do mês: cada etapa nova acrescenta sua conferência em `app/servicos/progresso.py::_concluidas`.
+- Testes nunca acessam a internet (fixture autouse `_sem_internet`); para simular a BrasilAPI use `cnpj_responde(resposta)`.
+- CNPJ/CPF: sempre por `app/servicos/documentos.py` (aceita CNPJ alfanumérico de jul/2026); gravar normalizado (só letras e números).
 - Ao ver telas, usar o servidor de teste + Playwright (`browser_take_screenshot`); o painel do app não desenha com a janela minimizada.
 
 ## Identidade visual Zera (obrigatória em todas as telas)

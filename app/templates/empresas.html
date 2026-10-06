@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block titulo %}Empresas — {{ nome_sistema }}{% endblock %}
+{% block conteudo %}
+<div class="cabecalho-pagina">
+  <h1>Empresas</h1>
+  <div class="acoes-cabecalho">
+    <form method="get" action="/" class="form-mes">
+      <label>Mês
+        <input type="month" name="mes" value="{{ competencia | valor_campo_mes }}" onchange="this.form.requestSubmit()">
+      </label>
+    </form>
+    {% if usuario.e_supervisor %}<a href="/empresas/nova" role="button">+ Nova empresa</a>{% endif %}
+  </div>
+</div>
+
+{% if total == 0 %}
+<article class="vazio">
+  <h2>Nenhuma empresa cadastrada ainda</h2>
+  {% if usuario.e_supervisor %}
+  <p>Clique em <strong>+ Nova empresa</strong>. Basta o <strong>código da empresa no Domínio</strong> —
+    razão social, CNPJ e o resto o sistema descobre sozinho.</p>
+  <a href="/empresas/nova" role="button">+ Nova empresa</a>
+  {% else %}
+  <p>O Supervisor ainda não cadastrou as empresas.</p>
+  {% endif %}
+</article>
+{% else %}
+<article>
+  <form id="filtros" method="get" action="/" class="filtros">
+    <input type="search" name="q" value="{{ q }}" placeholder="Buscar por nome, CNPJ ou código…" aria-label="Buscar empresa"
+           hx-get="/empresas/linhas" hx-trigger="input changed delay:300ms, search" hx-target="#linhas-empresas" hx-include="#filtros">
+    <label class="so-minhas">
+      <input type="checkbox" role="switch" name="minhas" value="1" {% if minhas %}checked{% endif %}
+             hx-get="/empresas/linhas" hx-trigger="change" hx-target="#linhas-empresas" hx-include="#filtros">
+      Só as minhas
+    </label>
+  </form>
+  <div class="tabela-rolavel">
+    <table class="striped">
+      <thead>
+        <tr><th>Empresa</th><th>CNPJ/CPF</th><th>Cód. Domínio</th><th>Responsável</th><th>{{ competencia | nome_competencia | capitalize }}</th></tr>
+      </thead>
+      <tbody id="linhas-empresas">
+        {% include "_empresas_linhas.html" %}
+      </tbody>
+    </table>
+  </div>
+</article>
+{% endif %}
+{% endblock %}

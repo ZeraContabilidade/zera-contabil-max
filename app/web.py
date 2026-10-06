@@ -1,6 +1,6 @@
 """Ferramentas comuns das telas: modelos HTML, avisos e redirecionamentos."""
 
-from datetime import datetime
+from datetime import date, datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
@@ -9,6 +9,7 @@ from fastapi.responses import RedirectResponse
 from fastapi.templating import Jinja2Templates
 
 from app.config import obter_config
+from app.servicos.competencia import ler_competencia, mes_anterior, nome_competencia, valor_campo_mes
 
 FUSO = ZoneInfo("America/Sao_Paulo")
 PASTA_APP = Path(__file__).resolve().parent
@@ -44,8 +45,15 @@ ROTULOS_CAMPO = {
     "email": "E-mail",
     "senha_hash": "Senha",
     "criado_em": "Criado em",
+    "codigo_dominio": "Código no Domínio",
+    "razao_social": "Razão social",
+    "cnpj_cpf": "CNPJ/CPF",
+    "responsavel_id": "Responsável (nº do usuário)",
+    "observacoes": "Observações",
+    "modelo_complemento": "Modelo do complemento",
+    "ativa": "Ativa",
 }
-ROTULOS_ENTIDADE = {"usuario": "Usuário"}
+ROTULOS_ENTIDADE = {"usuario": "Usuário", "empresa": "Empresa"}
 
 
 def _rotulo_campo(campo: str) -> str:
@@ -66,6 +74,11 @@ def _valor_log(valor) -> str:
             return _data_hora(datetime.fromisoformat(valor))
         except ValueError:
             pass
+    if isinstance(valor, str) and len(valor) == 10 and valor[4] == "-" and valor[7] == "-":
+        try:
+            return date.fromisoformat(valor).strftime("%d/%m/%Y")
+        except ValueError:
+            pass
     return str(valor)
 
 
@@ -73,12 +86,23 @@ templates.env.filters["data_hora"] = _data_hora
 templates.env.filters["rotulo_campo"] = _rotulo_campo
 templates.env.filters["rotulo_entidade"] = _rotulo_entidade
 templates.env.filters["valor_log"] = _valor_log
+templates.env.filters["nome_competencia"] = nome_competencia
+templates.env.filters["valor_campo_mes"] = valor_campo_mes
 templates.env.globals["tirar_avisos"] = _tirar_avisos
 
 
 def avisar(request: Request, texto: str, tipo: str = "ok") -> None:
-    """Mensagem mostrada no topo da próxima tela (tipo 'ok' ou 'erro')."""
+    """Mensagem mostrada no topo da próxima tela (tipo 'ok', 'atencao' ou 'erro')."""
     request.session.setdefault("avisos", []).append({"texto": texto, "tipo": tipo})
+
+
+def competencia_da_tela(request: Request, mes: str | None) -> date:
+    """Mês escolhido na tela; fica guardado para as próximas telas. Padrão: mês passado."""
+    competencia = (
+        ler_competencia(mes) or ler_competencia(request.session.get("competencia")) or mes_anterior()
+    )
+    request.session["competencia"] = valor_campo_mes(competencia)
+    return competencia
 
 
 def pagina(request: Request, nome: str, status_code: int = 200, **contexto):

@@ -1,0 +1,116 @@
+{% extends "base.html" %}
+{% from "_macros.html" import lista_erros, selo_automatico, barra_progresso %}
+{% block titulo %}{{ empresa.nome }} — {{ nome_sistema }}{% endblock %}
+
+{# valor do campo: o que foi digitado (quando houve erro) ou o que está gravado #}
+{% macro valor(campo, atual) %}{{ dados[campo] if dados is not none else (atual if atual is not none else '') }}{% endmacro %}
+
+{% block conteudo %}
+<p><a href="/">← Empresas</a></p>
+<div class="cabecalho-pagina">
+  <div>
+    <h1>{{ empresa.nome }}</h1>
+    <p class="suave subtitulo">
+      Código {{ empresa.codigo_dominio }}{% if empresa.documento_formatado %} · {{ empresa.documento_formatado }}{% endif %}
+      {% if empresa.regime %} · {{ empresa.regime.rotulo }}{% endif %}
+      {% if not empresa.ativa %} · <span class="etiqueta etiqueta-apagada">Inativa</span>{% endif %}
+    </p>
+  </div>
+  <form method="get" action="/empresas/{{ empresa.id }}" class="form-mes">
+    <input type="hidden" name="aba" value="{{ aba }}">
+    <label>Mês
+      <input type="month" name="mes" value="{{ competencia | valor_campo_mes }}" onchange="this.form.requestSubmit()">
+    </label>
+  </form>
+</div>
+
+{{ barra_progresso(etapas, competencia) }}
+
+<nav class="abas" aria-label="Partes do trabalho da empresa">
+  {% for chave, nome in abas %}
+  <a href="/empresas/{{ empresa.id }}?aba={{ chave }}" {% if chave == aba %}aria-current="page"{% endif %}>
+    <span class="aba-numero">{{ loop.index }}</span> {{ nome }}
+  </a>
+  {% endfor %}
+</nav>
+
+{% if aba == 'cadastro' %}
+<article>
+  {{ lista_erros(erros) }}
+  {% if not usuario.e_supervisor %}
+  <p class="aviso aviso-atencao">Só o Supervisor altera o cadastro da empresa.</p>
+  {% endif %}
+  <form method="post" action="/empresas/{{ empresa.id }}">
+    <fieldset {% if not usuario.e_supervisor %}disabled{% endif %}>
+      <div class="grid">
+        <label>Código no Domínio
+          <input name="codigo_dominio" value="{{ valor('codigo_dominio', empresa.codigo_dominio) }}" inputmode="numeric" required>
+        </label>
+        <label>CNPJ ou CPF {{ selo_automatico(empresa, 'cnpj_cpf') }}
+          <input name="cnpj_cpf" value="{{ valor('cnpj_cpf', empresa.documento_formatado) }}" placeholder="00.000.000/0000-00">
+        </label>
+      </div>
+      <div class="grid">
+        <label>Razão social {{ selo_automatico(empresa, 'razao_social') }}
+          <input name="razao_social" value="{{ valor('razao_social', empresa.razao_social) }}">
+        </label>
+        <label>Nome curto {{ selo_automatico(empresa, 'nome_curto') }}
+          <input name="nome_curto" value="{{ valor('nome_curto', empresa.nome_curto) }}" placeholder="como aparece nas listas">
+        </label>
+      </div>
+      {% set regime_atual = dados.regime if dados is not none else (empresa.regime.value if empresa.regime else '') %}
+      {% set responsavel_atual = dados.responsavel_id if dados is not none else (empresa.responsavel_id|string if empresa.responsavel_id else '') %}
+      <div class="grid">
+        <label>Regime {{ selo_automatico(empresa, 'regime') }}
+          <select name="regime">
+            <option value="">— não informado —</option>
+            {% for r in regimes %}<option value="{{ r.value }}" {% if regime_atual == r.value %}selected{% endif %}>{{ r.rotulo }}</option>{% endfor %}
+          </select>
+        </label>
+        <label>Responsável
+          <select name="responsavel_id">
+            <option value="">— sem responsável —</option>
+            {% for u in usuarios %}<option value="{{ u.id }}" {% if responsavel_atual == u.id|string %}selected{% endif %}>{{ u.nome }}</option>{% endfor %}
+          </select>
+        </label>
+      </div>
+      <label>Modelo do complemento do histórico
+        <input name="modelo_complemento" value="{{ valor('modelo_complemento', empresa.modelo_complemento) }}" required>
+        <small class="suave">Use FAVORECIDO, CNPJ, NATUREZA e DOCUMENTO. Parte sem informação some sozinha.
+          Exemplo: <code>{{ exemplo_complemento }}</code></small>
+      </label>
+      <label>Observações <textarea name="observacoes" rows="2">{{ valor('observacoes', empresa.observacoes) }}</textarea></label>
+      <label>
+        <input type="checkbox" role="switch" name="ativa" {% if (dados.ativa if dados is not none else empresa.ativa) %}checked{% endif %}>
+        Empresa ativa (cliente atual do escritório)
+      </label>
+      {% if usuario.e_supervisor %}<button type="submit">Salvar cadastro</button>{% endif %}
+    </fieldset>
+  </form>
+</article>
+
+<article>
+  <header><strong>Dados públicos do CNPJ</strong> <span class="selo-auto">🤖 automático</span></header>
+  {% if empresa.dados_publicos %}
+  <dl class="dados-publicos">
+    {% if empresa.dados_publicos.natureza_juridica %}<dt>Natureza jurídica</dt><dd>{{ empresa.dados_publicos.natureza_juridica }}</dd>{% endif %}
+    {% if empresa.dados_publicos.atividade %}<dt>Atividade principal</dt><dd>{{ empresa.dados_publicos.atividade }}</dd>{% endif %}
+    {% if empresa.dados_publicos.municipio %}<dt>Município</dt><dd>{{ empresa.dados_publicos.municipio }}</dd>{% endif %}
+    {% if empresa.dados_publicos.situacao %}<dt>Situação na Receita</dt><dd>{{ empresa.dados_publicos.situacao }}</dd>{% endif %}
+  </dl>
+  <small class="suave">Consultado em {{ empresa.dados_publicos.consultado_em | valor_log }}.</small>
+  {% else %}
+  <p class="suave">Ainda não consultado. Com o CNPJ preenchido, o sistema busca natureza jurídica, atividade e regime.</p>
+  {% endif %}
+  {% if usuario.e_supervisor and empresa.cnpj_cpf %}
+  <form method="post" action="/empresas/{{ empresa.id }}/consultar-cnpj">
+    <button type="submit" class="secondary outline">Buscar dados públicos do CNPJ</button>
+  </form>
+  {% endif %}
+</article>
+{% else %}
+<article class="vazio">
+  <p>Esta parte chega {{ chega_na_etapa }}.</p>
+</article>
+{% endif %}
+{% endblock %}
