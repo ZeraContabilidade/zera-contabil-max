@@ -80,9 +80,19 @@
           Exemplo: <code>{{ exemplo_complemento }}</code></small>
       </label>
       <label>Observações <textarea name="observacoes" rows="2">{{ valor('observacoes', empresa.observacoes) }}</textarea></label>
-      <label>
-        <input type="checkbox" role="switch" name="ativa" {% if (dados.ativa if dados is not none else empresa.ativa) %}checked{% endif %}>
-        Empresa ativa (cliente atual do escritório)
+      <div class="grid">
+        <label>
+          <input type="checkbox" role="switch" name="ativa" {% if (dados.ativa if dados is not none else empresa.ativa) %}checked{% endif %}>
+          Empresa ativa (cliente atual do escritório)
+        </label>
+        <label>
+          <input type="checkbox" role="switch" name="ia_ligada" {% if (dados.ia_ligada if dados is not none else empresa.ia_ligada) %}checked{% endif %}>
+          Usar IA nesta empresa
+        </label>
+      </div>
+      <label>Limite mensal de IA desta empresa (US$) <small class="suave">(opcional — vale também o limite geral)</small>
+        <input name="ia_limite_mensal_usd" inputmode="decimal" placeholder="sem limite próprio"
+               value="{{ valor('ia_limite_mensal_usd', (empresa.ia_limite_mensal_usd | string).replace('.', ',') if empresa.ia_limite_mensal_usd is not none else '') }}">
       </label>
       {% if usuario.e_supervisor %}<button type="submit">Salvar cadastro</button>{% endif %}
     </fieldset>

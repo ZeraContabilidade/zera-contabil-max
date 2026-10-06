@@ -2,6 +2,7 @@
 
 from app.modelos.base import Auditavel, Base
 from app.modelos.empresa import Empresa, Regime
+from app.modelos.ia import ChamadaIA
 from app.modelos.importacao import ArquivoOriginal, Importacao
 from app.modelos.log import Log
 from app.modelos.plano import ContaContabil
@@ -11,6 +12,7 @@ __all__ = [
     "ArquivoOriginal",
     "Auditavel",
     "Base",
+    "ChamadaIA",
     "ContaContabil",
     "Empresa",
     "Importacao",

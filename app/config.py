@@ -1,5 +1,6 @@
 """Configurações do sistema, lidas do arquivo .env (nenhum caminho fixo no código)."""
 
+from decimal import Decimal
 from functools import lru_cache
 from pathlib import Path
 
@@ -30,6 +31,14 @@ class Config(BaseSettings):
     host: str = "127.0.0.1"
     porta: int = 8000
     chave_sessao: str = ""
+
+    # IA (API da Anthropic). Sem chave, o sistema funciona só com regras e aprendizado.
+    anthropic_api_key: str = ""
+    ia_endereco: str = "https://api.anthropic.com"  # fixo: ignora ANTHROPIC_BASE_URL de outros programas
+    ia_modelo_rapido: str = "claude-haiku-4-5"  # lotes de históricos e classificação
+    ia_modelo_forte: str = "claude-sonnet-5-5"  # auto-configuração, PDF e casos difíceis
+    ia_limite_mensal_usd: Decimal = Decimal("20")
+    ia_simulada: bool = False  # True = respostas de demonstração, sem internet e sem custo
 
     def url_banco(self) -> str:
         if self.database_url:

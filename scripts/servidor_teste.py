@@ -23,6 +23,8 @@ USUARIOS_EXEMPLO = [
 
 def main() -> int:
     os.environ["PASTA_ARQUIVOS"] = "dados/arquivos_teste"  # nunca mistura com os arquivos reais
+    os.environ["IA_SIMULADA"] = "true"  # IA de demonstração: sem custo e nunca com a chave real
+    os.environ["ANTHROPIC_API_KEY"] = ""
     url = usar_banco_teste()
     if not criar_banco_teste(url):
         raise ErroAmigavel("O PostgreSQL está desligado. Rode o INICIAR.bat uma vez para ligar o banco.")

@@ -4,13 +4,15 @@ from app.config import obter_config
 from app.db import fabrica_sessoes, obter_engine
 from scripts.banco_docker import preparar_banco
 from scripts.comum import rodar
-from scripts.criar_env import criar_env
+from scripts.criar_env import completar_env, criar_env
 
 
 def main() -> int:
     print("Preparando o arquivo de configuração (.env)...")
     if criar_env():
         print("  .env criado com senhas novas.")
+    elif novas := completar_env():
+        print(f"  .env mantido; acrescentadas as configurações novas: {', '.join(novas)}.")
     else:
         print("  .env já existia — mantido como está.")
     obter_config.cache_clear()

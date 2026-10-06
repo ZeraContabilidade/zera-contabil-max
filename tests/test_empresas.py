@@ -1,4 +1,5 @@
 from datetime import date
+from decimal import Decimal
 
 import pytest
 from sqlalchemy import select
@@ -120,6 +121,20 @@ def test_edicao_com_erro_mostra_o_que_foi_digitado(cliente, supervisor_logado, s
     assert resposta.status_code == 400
     assert "não pode ter ponto e vírgula" in resposta.text
     assert 'value="Digitado agora"' in resposta.text
+
+
+def test_ia_por_empresa_ligar_desligar_e_limite(cliente, supervisor_logado, sessao):
+    cadastrar(cliente, codigo_dominio="230", nome_curto="Casa Criança")
+    empresa = sessao.scalar(select(Empresa))
+    assert empresa.ia_ligada and empresa.ia_limite_mensal_usd is None
+    dados = {"codigo_dominio": "230", "modelo_complemento": "FAVORECIDO", "ativa": "on"}
+    resposta = cliente.post(f"/empresas/{empresa.id}", data={**dados, "ia_limite_mensal_usd": "abc"})
+    assert "Informe o limite de IA em dólares" in resposta.text
+    cliente.post(f"/empresas/{empresa.id}", data={**dados, "ia_limite_mensal_usd": "5,50"})  # sem ia_ligada
+    sessao.refresh(empresa)
+    assert not empresa.ia_ligada
+    assert empresa.ia_limite_mensal_usd == Decimal("5.50")
+    assert 'value="5,50"' in cliente.get(f"/empresas/{empresa.id}").text
 
 
 def test_desativar_empresa(cliente, supervisor_logado, sessao):

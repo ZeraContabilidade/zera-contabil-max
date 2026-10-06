@@ -3,14 +3,14 @@
 Atualizado em: **06/10/2026**
 
 ## Próximo passo exato
-**Etapa 1.5 — Módulo de IA** (ler antes a skill `claude-api`): pacote `app/ia/` isolado com cliente real (SDK `anthropic`, saída estruturada por *tool use*, *prompt caching* do plano/perfil) e **cliente falso** com respostas gravadas para os testes; modelos no `.env` (rápido = Haiku 4.5 para lotes; forte = Sonnet 5.5 para auto-configuração/PDF); `ANTHROPIC_API_KEY` no `.env` (vazio = IA desligada, sistema segue só com regras); tabela `chamada_ia` (empresa, finalidade, modelo, tokens, custo estimado, resumo da entrada/resposta) — migração `0004`; limite de gasto mensal geral e por empresa (ao atingir: para e avisa); liga/desliga por empresa (padrão ligado); painel simples de uso (Supervisor); `pytest -m ia_real` separado. **Pendente com o usuário:** chave da API e limite mensal (sugestão US$ 20) — dá para construir e testar tudo com o cliente falso antes.
+**Etapa 1.6 — Auto-configuração das contas-chave + conta individual por fornecedor** (§3.2.1): tabela `conta_chave` (empresa, tipo BANCO/POUPANCA/APLICACAO/RENDIMENTO/IR_RETIDO/TARIFA/IOF/JUROS_PAGOS/FORNECEDOR_GENERICO/CLIENTE_GENERICO/SALARIOS/FGTS/INSS..., referência opcional banco+agência+conta, conta_contabil, origem REGRA/IA/USUARIO, confiança, justificativa) — migração `0005`. 1º **regras** (palavras e números nas descrições das analíticas: “BCO BRASIL CC 72637-0” → banco BB c/c 72637-0; “TARIFA BANCÁRIA”; “IRRF A RECUPERAR”; “RENDIMENTOS”...), depois **IA** (modelo forte, `app.ia.servico.chamar_ia`, plano analítico no `contexto` cacheado) para o que ficou incerto, devolvendo `{tipo, conta_reduzida, confianca, justificativa}`; **validar** (conta existe, é analítica) antes de gravar; confiança alta → aplicado com selo 🤖; baixa/inexistente → um aviso (“Não encontrei conta para a poupança do BB — crie no Domínio e reimporte, ou escolha”). Detecção de **conta individual por fornecedor** (grupo Fornecedores com muitas analíticas com nome de empresa → `empresa.usa_conta_individual`) e contas genéricas. Roda sozinho após importar o plano (e de novo quando um extrato de banco novo chegar — Fase 2). Tela: aba Cadastro ou nova seção “Contas-chave” com o resultado e opção de trocar. Testes com cliente falso; `ia_real` opcional. Lembrar: a Casa Criança **não tem conta da poupança 72637-0** (pergunta 5 ao usuário).
 
 ## Pendências com o usuário
 | # | Pergunta | Precisa até |
 |---|---|---|
 | 1 | Destino do backup — o Google Drive para computador **não está instalado**; o Z:\ está disponível. Recomendado: os dois. | Etapa 1.9 |
-| 2 | Chave da API Anthropic já criada? (o cliente falso dos testes funciona sem ela) | Etapa 1.5 |
-| 3 | Limite mensal de gasto com IA (sugestão: US$ 20) | Etapa 1.5 |
+| 2 | ~~Chave da API~~ — o usuário tem a chave (06/10). **Falta colar** em `ANTHROPIC_API_KEY=` no `.env` e testar em **IA → Testar conexão** (ou `pytest -m ia_real -s`). Nunca pedir a chave no chat. | Etapa 1.6 |
+| 3 | Limite mensal de IA: adotado o padrão **US$ 20** (`IA_LIMITE_MENSAL_USD`) até o usuário dizer outro valor | — |
 | 4 | **Diário.xls** da Casa Criança (jan–ago/2026) em `AMOSTRAS\historicos` | Etapa 1.7 |
 | 5 | Como a poupança BB 72637-0 é lançada hoje (conta própria ou tudo na conta 8)? Talvez o Diário responda. | Etapa 1.6 |
 
@@ -21,7 +21,7 @@ Atualizado em: **06/10/2026**
 - [x] 1.2 Banco de dados, login, papéis e log de auditoria (+ identidade visual Zera)
 - [x] 1.3 Cadastro de empresas e barra de progresso do mês
 - [x] 1.4 Importação do plano de contas (TXT/Excel/CSV), avisos, reimportação, copiar de outra empresa
-- [ ] 1.5 Módulo de IA: cliente real + falso, limites de gasto, registro de custo
+- [x] 1.5 Módulo de IA: cliente real + falso, limites de gasto, registro de custo
 - [ ] 1.6 Auto-configuração das contas-chave + detecção de conta individual por fornecedor
 - [ ] 1.7 Importação do Diário: CNPJ / favorecido / natureza (regras + IA); cadastro preenchido sozinho
 - [ ] 1.8 Listas de fornecedores, clientes e palavras-chave; perfil da empresa; aprendizado inicial com os lanctos.txt de 2025 e 2026
@@ -46,6 +46,18 @@ Atualizado em: **06/10/2026**
 ### Fase 4 — Extras (um por vez, quando pedido)
 
 ## Histórico
+
+### 06/10/2026 — Etapa 1.5 concluída
+- Pacote `app/ia/` isolado: `cliente.py` (PedidoIA → RespostaIA; `ClienteAnthropic` com SDK oficial `anthropic` 1.11 e `ClienteFalso` com respostas gravadas), `precos.py` (custo estimado em Decimal), `servico.py` (`chamar_ia`: confere chave, IA da empresa e limites; registra cada chamada).
+- **Resposta sempre em JSON válido** por saída estruturada (`output_config.format` + JSON Schema) — o Sonnet 5.5 não aceita “forçar ferramenta”. Instruções + contexto (plano/perfil) marcados para **cache de prompt**. No modelo forte, **substituto automático em caso de recusa** (`fallbacks: "default"`, beta `server-side-fallback-2026-07-01`); recusa/corte/JSON inválido viram erro explicado.
+- Modelos no `.env`: rápido `claude-haiku-4-5` (lotes), forte `claude-sonnet-5-5` (configuração, PDF, casos difíceis) — famílias pedidas na especificação. Endereço da API **fixo** (`ia_endereco`): a `ANTHROPIC_BASE_URL` que o Claude Code define neste computador não desvia as chamadas.
+- Tabela `chamada_ia` (migração 0004): toda chamada — inclusive as que falham — com tokens, custo estimado, duração, request id, começo da pergunta e resposta; gravada em sessão própria (o gasto fica registrado mesmo se a tela desistir).
+- **Limites:** geral `IA_LIMITE_MENSAL_USD` (padrão US$ 20) e por empresa (cadastro); IA liga/desliga por empresa (padrão ligada). Sem chave / limite atingido → `IAIndisponivel` e o sistema segue só com regras.
+- Tela **IA** (Supervisor): situação, gasto do mês × limite, gasto por empresa, últimas 50 chamadas, botão **Testar conexão com a IA** (fração de centavo) e passo a passo para colar a chave.
+- `INSTALAR.bat` agora **completa o `.env`** com configurações novas sem mexer nas existentes (acrescentou `ANTHROPIC_API_KEY=` em branco, modelos e limite).
+- Testes nunca usam a chave real (`ANTHROPIC_API_KEY=""` no conftest; fixture `ia_falsa`). `pytest -m ia_real -s` testa os dois modelos de verdade (pula sem chave). Servidor de teste usa IA simulada (custo zero).
+- 131 testes passando; ruff limpo. Banco real: versão 0004.
+- **Como testar:** abra o `.env` no Bloco de Notas → cole a chave depois de `ANTHROPIC_API_KEY=` → salve → reabra pelo `INICIAR.bat` → menu **IA** → **Testar conexão com a IA**.
 
 ### 06/10/2026 — Etapa 1.4 concluída
 - Tabelas `conta_contabil`, `arquivo_original` e `importacao` (migração 0003). Arquivo original guardado por SHA-256 em `PASTA_ARQUIVOS` (5 anos; mesmo arquivo 2× ocupa espaço 1×) — `ArmazenamentoLocal`, pronto para trocar por Supabase.

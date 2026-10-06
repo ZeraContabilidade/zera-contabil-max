@@ -241,6 +241,8 @@ def editar_empresa(
     observacoes: str = Form(""),
     modelo_complemento: str = Form(""),
     ativa: str | None = Form(None),
+    ia_ligada: str | None = Form(None),
+    ia_limite_mensal_usd: str = Form(""),
     supervisor: Usuario = Depends(exigir_supervisor),
     sessao: Session = Depends(obter_sessao),
 ):
@@ -256,6 +258,8 @@ def editar_empresa(
         "observacoes": observacoes,
         "modelo_complemento": modelo_complemento,
         "ativa": ativa,
+        "ia_ligada": ia_ligada,
+        "ia_limite_mensal_usd": ia_limite_mensal_usd,
     }
     valores, erros = ler_formulario(sessao, form, empresa)
     if erros:

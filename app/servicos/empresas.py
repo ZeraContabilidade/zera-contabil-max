@@ -1,5 +1,7 @@
 """Regras do cadastro de empresas."""
 
+from decimal import Decimal, InvalidOperation
+
 from sqlalchemy import String, cast, func, or_, select
 from sqlalchemy.orm import Session, joinedload
 
@@ -68,7 +70,29 @@ def ler_formulario(sessao: Session, form: dict[str, str | None], empresa: Empres
         valores["modelo_complemento"] = modelo or MODELO_PADRAO
     if "ativa" in form:
         valores["ativa"] = form["ativa"] is not None
+    if "ia_ligada" in form:
+        valores["ia_ligada"] = form["ia_ligada"] is not None
+    if "ia_limite_mensal_usd" in form:
+        limite = _ler_dolares(form["ia_limite_mensal_usd"])
+        if limite is False:
+            erros.append("Informe o limite de IA em dólares (ex.: 5,00) ou deixe em branco.")
+        else:
+            valores["ia_limite_mensal_usd"] = limite
     return valores, erros
+
+
+def _ler_dolares(texto: str | None) -> Decimal | None | bool:
+    """'5,00' → Decimal('5.00'); vazio → None; inválido ou negativo → False."""
+    texto = (texto or "").strip().replace("US$", "").replace(" ", "")
+    if not texto:
+        return None
+    if "," in texto:
+        texto = texto.replace(".", "").replace(",", ".")
+    try:
+        valor = Decimal(texto)
+    except InvalidOperation:
+        return False
+    return valor.quantize(Decimal("0.01")) if valor >= 0 else False
 
 
 def aplicar_edicao(empresa: Empresa, valores: dict) -> None:

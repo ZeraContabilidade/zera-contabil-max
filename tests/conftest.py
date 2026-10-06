@@ -10,6 +10,8 @@ from scripts.banco_teste import criar_banco_teste, esvaziar_tabelas, usar_banco_
 URL_TESTE = usar_banco_teste()  # antes de importar o sistema
 PASTA_ARQUIVOS_TESTE = Path(tempfile.mkdtemp(prefix="zcm_arquivos_teste_"))
 os.environ["PASTA_ARQUIVOS"] = str(PASTA_ARQUIVOS_TESTE)
+os.environ["ANTHROPIC_API_KEY"] = ""  # testes nunca usam a chave real (ver tests/test_ia_real.py)
+os.environ["IA_SIMULADA"] = "false"
 DADOS = Path(__file__).parent / "dados"
 AMOSTRAS = Path(__file__).parent.parent / "AMOSTRAS"
 
@@ -18,6 +20,7 @@ from fastapi.testclient import TestClient  # noqa: E402
 
 from app.auth import gerar_hash  # noqa: E402
 from app.db import aplicar_migracoes, fabrica_sessoes  # noqa: E402
+from app.ia.cliente import ClienteFalso  # noqa: E402
 from app.main import app  # noqa: E402
 from app.modelos import Papel, Usuario  # noqa: E402
 
@@ -44,6 +47,14 @@ def cnpj_responde(monkeypatch):
         return consultados
 
     return _responder
+
+
+@pytest.fixture
+def ia_falsa(monkeypatch):
+    """Liga a IA com o cliente falso. Use `ia_falsa.respostas[finalidade] = {...}` (ou uma Exception)."""
+    falso = ClienteFalso({"teste": {"ok": True, "mensagem": "Olá do teste"}})
+    monkeypatch.setattr("app.ia.servico.obter_cliente", lambda: falso)
+    return falso
 
 
 @pytest.fixture(scope="session")

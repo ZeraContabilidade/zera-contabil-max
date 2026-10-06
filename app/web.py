@@ -1,6 +1,7 @@
 """Ferramentas comuns das telas: modelos HTML, avisos e redirecionamentos."""
 
 from datetime import date, datetime
+from decimal import Decimal
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
@@ -9,6 +10,7 @@ from fastapi.responses import RedirectResponse
 from fastapi.templating import Jinja2Templates
 
 from app.config import obter_config
+from app.ia.servico import dolar
 from app.servicos.competencia import ler_competencia, mes_anterior, nome_competencia, valor_campo_mes
 
 FUSO = ZoneInfo("America/Sao_Paulo")
@@ -87,6 +89,7 @@ templates.env.filters["rotulo_campo"] = _rotulo_campo
 templates.env.filters["rotulo_entidade"] = _rotulo_entidade
 templates.env.filters["valor_log"] = _valor_log
 templates.env.filters["milhar"] = lambda n: f"{n or 0:,}".replace(",", ".")
+templates.env.filters["dolar"] = lambda valor, casas=2: dolar(Decimal(valor or 0), casas)
 templates.env.filters["nome_competencia"] = nome_competencia
 templates.env.filters["valor_campo_mes"] = valor_campo_mes
 templates.env.globals["tirar_avisos"] = _tirar_avisos

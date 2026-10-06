@@ -1,8 +1,9 @@
 import enum
 from datetime import datetime
+from decimal import Decimal
 from typing import Any
 
-from sqlalchemy import DateTime, Enum, ForeignKey, String, Text, func
+from sqlalchemy import DateTime, Enum, ForeignKey, Numeric, String, Text, func, true
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -49,6 +50,8 @@ class Empresa(Auditavel, Base):
     observacoes: Mapped[str | None] = mapped_column(Text)
     modelo_complemento: Mapped[str] = mapped_column(String(200), default=MODELO_PADRAO)
     ativa: Mapped[bool] = mapped_column(default=True)
+    ia_ligada: Mapped[bool] = mapped_column(default=True, server_default=true())
+    ia_limite_mensal_usd: Mapped[Decimal | None] = mapped_column(Numeric(10, 2))  # vazio = só o limite geral
     # campos preenchidos pelo sistema (selo "🤖 automático"); sai da lista quando o usuário altera
     campos_automaticos: Mapped[list[str]] = mapped_column(JSONB, default=list)
     dados_publicos: Mapped[dict[str, Any] | None] = mapped_column(JSONB)  # resumo da consulta do CNPJ
