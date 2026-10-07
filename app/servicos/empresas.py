@@ -1,17 +1,19 @@
 """Regras do cadastro de empresas."""
 
+from dataclasses import dataclass, field
 from decimal import Decimal, InvalidOperation
 
 from sqlalchemy import String, cast, func, or_, select
 from sqlalchemy.orm import Session, joinedload
 
 from app.modelos import Empresa, Regime, Usuario
+from app.servicos import cnpj_publico
 from app.servicos.cnpj_publico import DadosPublicos
 from app.servicos.complemento import MODELO_PADRAO, problema_no_modelo
 from app.servicos.documentos import formatar_documento, normalizar_documento, tipo_documento
 
 TAMANHOS = {"razao_social": 200, "nome_curto": 80}
-ROTULOS = {"razao_social": "razão social", "nome_curto": "nome curto", "regime": "regime"}
+ROTULOS = {"razao_social": "razão social", "nome_curto": "nome curto", "regime": "regime", "cnpj_cpf": "CNPJ"}
 
 
 def ler_formulario(sessao: Session, form: dict[str, str | None], empresa: Empresa | None = None):
@@ -131,6 +133,22 @@ def aplicar_dados_publicos(empresa: Empresa, dados: DadosPublicos) -> list[str]:
     empresa.campos_automaticos = automaticos
     empresa.dados_publicos = dados.resumo
     return preenchidos
+
+
+@dataclass
+class ResultadoConsulta:
+    situacao: str  # "sem_cnpj", "falhou" ou "ok"
+    preenchidos: list[str] = field(default_factory=list)
+
+
+def completar_pelo_cnpj(empresa: Empresa) -> ResultadoConsulta:
+    """Consulta pública do CNPJ e preenche o que estiver vazio (CPF não tem consulta pública)."""
+    if not empresa.cnpj_cpf or tipo_documento(empresa.cnpj_cpf) != "CNPJ":
+        return ResultadoConsulta("sem_cnpj")
+    dados = cnpj_publico.consultar_cnpj(empresa.cnpj_cpf)
+    if dados is None:
+        return ResultadoConsulta("falhou")
+    return ResultadoConsulta("ok", aplicar_dados_publicos(empresa, dados))
 
 
 def descrever_campos(campos: list[str]) -> str:

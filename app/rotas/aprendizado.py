@@ -9,7 +9,7 @@ from app.db import obter_sessao
 from app.ia.cliente import ErroIA
 from app.ia.servico import IAIndisponivel
 from app.modelos import ContaContabil, Empresa, Importacao, Padrao, Usuario
-from app.rotas.comum import buscar_empresa
+from app.rotas.comum import avisar_consulta, buscar_empresa
 from app.servicos.aprendizado import (
     aprender,
     despesas_por_conta,
@@ -20,6 +20,7 @@ from app.servicos.aprendizado import (
     resumo_historico,
 )
 from app.servicos.contas_chave import achar_conta_analitica
+from app.servicos.empresas import completar_pelo_cnpj, descrever_campos
 from app.servicos.plano import ErroLeitura, buscar_contas
 from app.web import avisar, pagina, redirecionar
 
@@ -89,13 +90,21 @@ def enviar_historico(
         avisar(request, str(erro), "erro")
         return redirecionar(_destino(empresa))
     resultado = aprender(sessao, empresa)
+    resumo = importacao.resumo
+    preenchidos = resumo.get("preenchidos") or []
+    consulta = completar_pelo_cnpj(empresa) if "cnpj_cpf" in preenchidos else None
     sessao.commit()
 
-    resumo = importacao.resumo
     texto = f"Histórico importado: {resumo['novos']} lançamento(s) novo(s)"
     if resumo["repetidos"]:
         texto += f", {resumo['repetidos']} repetido(s) ignorado(s) (já estavam no sistema)"
+    if resumo.get("completados"):
+        texto += f", {resumo['completados']} completado(s) (estavam só com um lado, vindos do Diário)"
     avisar(request, texto + ".")
+    if preenchidos:
+        avisar(request, f"🤖 Preenchido pelo Diário: {descrever_campos(preenchidos)}.")
+    if consulta:
+        avisar_consulta(request, consulta)
     if importacao.avisos:
         avisar(request, f"Há {len(importacao.avisos)} aviso(s) sobre o arquivo. Veja abaixo.", "atencao")
     avisar(request, resultado.resumo(), "atencao" if resultado.ambiguos else "ok")

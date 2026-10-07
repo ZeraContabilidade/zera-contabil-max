@@ -1,7 +1,5 @@
 """Lista de empresas (página inicial), cadastro e página da empresa com as abas do mês."""
 
-from dataclasses import dataclass, field
-
 from fastapi import APIRouter, Depends, Form, Request
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
@@ -10,16 +8,15 @@ from app.auth import exigir_supervisor, usuario_logado
 from app.db import obter_sessao
 from app.modelos import Empresa, Regime, Usuario
 from app.rotas.aprendizado import contexto_aba_aprendizado
-from app.rotas.comum import buscar_empresa
+from app.rotas.comum import avisar_consulta, buscar_empresa
 from app.rotas.plano import contexto_aba_plano
-from app.servicos import backup, cnpj_publico
+from app.servicos import backup
 from app.servicos.complemento import EXEMPLO, montar_complemento
-from app.servicos.documentos import tipo_documento
 from app.servicos.empresas import (
-    aplicar_dados_publicos,
+    ResultadoConsulta,
     aplicar_edicao,
     buscar_empresas,
-    descrever_campos,
+    completar_pelo_cnpj,
     ler_formulario,
 )
 from app.servicos.progresso import etapa_atual, progresso_do_mes
@@ -140,43 +137,12 @@ def criar_empresa(
         return _tela_nova(request, sessao, dados=form, erros=erros, status_code=400)
 
     empresa = Empresa(**valores)
-    resultado = _completar_pelo_cnpj(empresa)
+    resultado = completar_pelo_cnpj(empresa)
     sessao.add(empresa)
     sessao.commit()
     avisar(request, f"Empresa {empresa.nome} (código {empresa.codigo_dominio}) cadastrada.")
-    _avisar_consulta(request, resultado)
+    avisar_consulta(request, resultado)
     return redirecionar(f"/empresas/{empresa.id}")
-
-
-@dataclass
-class ResultadoConsulta:
-    situacao: str  # "sem_cnpj", "falhou" ou "ok"
-    preenchidos: list[str] = field(default_factory=list)
-
-
-def _completar_pelo_cnpj(empresa: Empresa) -> ResultadoConsulta:
-    """Consulta pública do CNPJ e preenche o que estiver vazio (CPF não tem consulta pública)."""
-    if not empresa.cnpj_cpf or tipo_documento(empresa.cnpj_cpf) != "CNPJ":
-        return ResultadoConsulta("sem_cnpj")
-    dados = cnpj_publico.consultar_cnpj(empresa.cnpj_cpf)
-    if dados is None:
-        return ResultadoConsulta("falhou")
-    return ResultadoConsulta("ok", aplicar_dados_publicos(empresa, dados))
-
-
-def _avisar_consulta(request: Request, resultado: ResultadoConsulta) -> None:
-    if resultado.situacao == "falhou":
-        avisar(
-            request,
-            "Não consegui consultar o CNPJ na internet agora. Pode preencher à mão "
-            "ou clicar em “Buscar dados públicos do CNPJ” mais tarde.",
-            "atencao",
-        )
-    elif resultado.preenchidos:
-        avisar(
-            request,
-            f"🤖 Preenchido pela consulta pública do CNPJ: {descrever_campos(resultado.preenchidos)}.",
-        )
 
 
 def _tela_empresa(
@@ -276,10 +242,10 @@ def editar_empresa(
         return _tela_empresa(request, sessao, empresa, "cadastro", erros=erros, dados=form, status_code=400)
     cnpj_mudou = valores["cnpj_cpf"] != empresa.cnpj_cpf
     aplicar_edicao(empresa, valores)
-    resultado = _completar_pelo_cnpj(empresa) if cnpj_mudou else ResultadoConsulta("sem_cnpj")
+    resultado = completar_pelo_cnpj(empresa) if cnpj_mudou else ResultadoConsulta("sem_cnpj")
     sessao.commit()
     avisar(request, f"Cadastro de {empresa.nome} salvo.")
-    _avisar_consulta(request, resultado)
+    avisar_consulta(request, resultado)
     return redirecionar(f"/empresas/{empresa.id}")
 
 
@@ -292,12 +258,12 @@ def consultar_cnpj_da_empresa(
 ):
     if (empresa := buscar_empresa(sessao, request, empresa_id)) is None:
         return redirecionar("/")
-    resultado = _completar_pelo_cnpj(empresa)
+    resultado = completar_pelo_cnpj(empresa)
     if resultado.situacao == "sem_cnpj":
         avisar(request, "Informe um CNPJ no cadastro para buscar os dados públicos.", "atencao")
     else:
         sessao.commit()
         if resultado.situacao == "ok" and not resultado.preenchidos:
             avisar(request, "Dados públicos do CNPJ atualizados. Nada mudou no cadastro.")
-        _avisar_consulta(request, resultado)
+        avisar_consulta(request, resultado)
     return redirecionar(f"/empresas/{empresa.id}")

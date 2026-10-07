@@ -19,18 +19,21 @@
   <p class="aviso aviso-atencao">Importe primeiro o plano de contas (aba 2): o histórico usa as contas dele.</p>
   {% endif %}
   <p>O sistema aprende com os lançamentos que o escritório já fez: quem é cada fornecedor, em que conta vai,
-    qual a natureza e os valores que se repetem. Envie o <strong>lanctos.txt</strong> de meses ou anos anteriores
-    (pode enviar vários; repetidos são ignorados). <span class="suave">Diário e Razão chegam na próxima etapa.</span></p>
+    qual a natureza e os valores que se repetem. Envie o <strong>Diário do Domínio em Excel</strong> (.xls ou .xlsx,
+    com todas as contas) e/ou o <strong>lanctos.txt</strong> de meses ou anos anteriores. Pode enviar vários:
+    o mesmo lançamento que está nos dois arquivos conta uma vez só. <span class="suave">O Razão chega quando houver um exemplo.</span></p>
   <form method="post" action="/empresas/{{ empresa.id }}/historico" enctype="multipart/form-data" class="form-envio"
         data-aguarde="Lendo e aprendendo… (pode levar até um minuto)">
-    <input type="file" name="arquivo" accept=".txt,.csv" required aria-label="Arquivo do histórico (lanctos.txt)">
+    <input type="file" name="arquivo" accept=".txt,.csv,.xls,.xlsx" required aria-label="Arquivo do histórico (Diário ou lanctos.txt)">
     <button type="submit">Importar histórico</button>
   </form>
 
   {% for imp in importacoes_hist %}
   <p class="suave linha-importacao">
-    {{ imp.quando | data_hora }} — {{ imp.arquivo.nome_original if imp.arquivo else '' }}:
+    {{ imp.quando | data_hora }} — {{ imp.arquivo.nome_original if imp.arquivo else '' }}
+    ({{ imp.resumo.formato }}{% if imp.resumo.periodo %} {{ imp.resumo.periodo }}{% endif %}):
     {{ imp.resumo.novos }} novo(s){% if imp.resumo.repetidos %}, {{ imp.resumo.repetidos }} repetido(s) ignorado(s){% endif %}
+    {%- if imp.resumo.completados %}, {{ imp.resumo.completados }} completado(s){% endif %}
     {% if imp.usuario %}· {{ imp.usuario.nome }}{% endif %}
   </p>
   {% if loop.first %}{{ lista_avisos(imp.avisos) }}{% endif %}

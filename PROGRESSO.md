@@ -3,9 +3,13 @@
 Atualizado em: **07/10/2026**
 
 ## Próximo passo exato
-**Etapa 1.7 — Importação do Diário** — o arquivo chegou: `AMOSTRAS\historicos\Diário.xls` (e o PDF igual, não usar). O que já se sabe do arquivo: aba “Diário”, 417 linhas, período **01/01/2026–30/06/2026**; cabeçalho `Empresa:` / `C.N.P.J.:` (06.101.084/0001-36, válido) / `Período:`; títulos na linha 8; **cada linha tem só um lado** (Débito **ou** Crédito) e os lançamentos de um dia fecham em “TOTAL DO DIA” → montar as partidas juntando as linhas do mesmo dia/histórico até débito = crédito (lançamento com várias contas = 1 contra N); rodapé com assinaturas e “Sistema licenciado para…” → ignorar. Histórico no padrão “FAVORECIDO - CNPJ - NATUREZA - DOC”.
-
-Detalhes da 1.7 (§3.3, §6.1, §11.3): Ler com `python-calamine` (localizar colunas pelo título `Data | Classificação | Descrição | Histórico | Débito | Crédito`; ignorar "TOTAL DO DIA" e vazias; cabeçalho com "Empresa:" e "C.N.P.J.:" → **preencher razão social e CNPJ da empresa com 🤖** e disparar a consulta pública). Converter classificação → reduzido pelo plano (22 classificações repetidas: desempatar pela descrição). Tabela `lancamento_historico` (empresa, data, conta débito/crédito, valor Decimal, histórico, importação; anti-duplicidade por hash). Separar a contrapartida das contas de banco/caixa (contas-chave BANCO + grupo Disponível); **contas de banco usadas no Diário viram contas-chave BANCO** (a conta 8 aparece sozinha — critério da Fase 1). Extrair do histórico favorecido / CNPJ-CPF (validar dígito; `app/servicos/documentos.py`) / natureza por regras (texto antes do primeiro " - ", regex de CNPJ); o que as regras não separam vai para a **IA em lotes** (modelo rápido) → `{favorecido, cnpj_cpf, natureza}`. Usar as contagens por conta do Diário como evidência para **refazer as contas-chave incertas** (ex.: qual das 5 “ÁGUA E ESGOTO”/tarifas a empresa usa). Arquivo original guardado. **Reaproveitar o que a 1.8 já fez:** cada linha do Diário vira `LancamentoHistorico` (mesma tabela, mesmo `aprender`); só falta o leitor do Diário (calamine), a conversão classificação → reduzido e a IA em lotes para históricos sem “ - ” (ex.: “PAGTO SABESP REF CONTA AGUA”). Depois da 1.7: **Fase 2** (extratos — os PDFs do BB já estão em AMOSTRAS).
+**Etapa 1.7b — IA no histórico** (§6.1 item 3; a 1.7a — leitura do Diário — está pronta).
+1. **IA em lotes** (modelo rápido; `PedidoIA` com `contexto` = plano analítico resumido + perfil; lotes de 40) para dois casos, só quando a IA está ligada (sem IA segue como está):
+   a) lançamento **OUTRO com um lado só** fora do banco (Diário filtrado): a IA diz se é pagamento/recebimento pelo banco (`bancario: bool`) — ex.: “REPASSE MUNICIPAL” (crédito 2.2.2.01.000005) e “RENDIMENTO APLICAÇÃO FINANCEIRA” (crédito 2.2.2.01.000006) são recebimentos; “AQUISICAO CONFORME NOTA FISCAL”, provisões da folha e “RECONHECIMENTO DA RECEITA” não;
+   b) SAIDA/ENTRADA cujo histórico **não tem “ - ”** (ex.: “PAGTO SABESP REF CONTA AGUA”) → `{favorecido, cnpj_cpf, natureza}`.
+   Esquema `{"itens": [{"id", "bancario", "favorecido", "cnpj_cpf", "natureza"}]}` com `additionalProperties: false`; **validar** (id existe, CNPJ só com dígito válido por `documentos.py`); gravar sentido/favorecido/natureza e marcar no lançamento que veio da IA (coluna nova `origem_ia` bool, migração 0008) para não perguntar de novo; depois `aprender()`. Rodar sozinho no fim de `enviar_historico` (como o perfil) e um botão “Completar com a IA” na aba. Testes com `ia_falsa`.
+2. **Contas-chave com evidência do histórico:** RENDIMENTO = conta onde os rendimentos da aplicação são lançados no histórico (Casa Criança: **2.2.2.01.000006 RENDIMENTO A APLICAR**, não receita — terceiro setor); idem TARIFA/IOF/IR quando houver. Só troca sugestão de origem REGRA/IA com confiança menor; nunca a do USUARIO.
+3. Depois: **Fase 2** (extratos — os PDFs do BB já estão em AMOSTRAS).
 
 ## Pendências com o usuário
 | # | Pergunta | Precisa até |
@@ -14,7 +18,8 @@ Detalhes da 1.7 (§3.3, §6.1, §11.3): Ler com `python-calamine` (localizar col
 | 2 | ~~Chave da API~~ — colada no `.env` em 07/10 (lida do arquivo do usuário no Z:\, sem passar pelo chat); `pytest -m ia_real` ok nos dois modelos. Nunca pedir nem mostrar a chave. | — |
 | 3 | Limite mensal de IA: adotado o padrão **US$ 20** (`IA_LIMITE_MENSAL_USD`) até o usuário dizer outro valor | — |
 | 4 | ~~Diário.xls~~ — chegou em 07/10 (jan–jun/2026), copiado para `AMOSTRAS\historicos` | — |
-| 5 | Como a poupança BB 72637-0 é lançada hoje (conta própria ou tudo na conta 8)? Talvez o Diário responda. | Etapa 1.6 |
+| 5 | Como a poupança BB 72637-0 é lançada hoje (conta própria ou tudo na conta 8)? O Diário enviado não responde (só tem o Passivo); os rendimentos vão a crédito de 2.2.2.01.000006 RENDIMENTO A APLICAR. | Fase 2 |
+| 6 | **Diário completo** (todas as contas) da Casa Criança — o enviado em 07/10 foi impresso só com o Passivo. Com ele o sistema aprende também as contas de banco, despesas e receitas. Não bloqueia. | Etapa 1.7b |
 
 ## Plano (Fase 0 aprovada em 06/10/2026)
 
@@ -25,7 +30,8 @@ Detalhes da 1.7 (§3.3, §6.1, §11.3): Ler com `python-calamine` (localizar col
 - [x] 1.4 Importação do plano de contas (TXT/Excel/CSV), avisos, reimportação, copiar de outra empresa
 - [x] 1.5 Módulo de IA: cliente real + falso, limites de gasto, registro de custo
 - [x] 1.6 Auto-configuração das contas-chave + detecção de conta individual por fornecedor
-- [ ] 1.7 Importação do Diário: CNPJ / favorecido / natureza (regras + IA); cadastro preenchido sozinho — **Diário chegou: é a próxima**
+- [x] 1.7a Importação do Diário (Excel do Domínio): partidas, Diário filtrado, classificação → conta, cadastro preenchido sozinho, sem contar em dobro com o lanctos.txt
+- [ ] 1.7b IA no histórico: o que as regras não separam (favorecido/natureza) e lançamentos com um lado só; contas-chave pela evidência do histórico
 - [x] 1.8 Listas de fornecedores, clientes e palavras-chave; perfil da empresa; aprendizado inicial com os lanctos.txt de 2025 e 2026
 - [x] 1.9 Backup automático (computador + Google Drive) + RESTAURAR.bat
 
@@ -48,6 +54,16 @@ Detalhes da 1.7 (§3.3, §6.1, §11.3): Ler com `python-calamine` (localizar col
 ### Fase 4 — Extras (um por vez, quando pedido)
 
 ## Histórico
+
+### 07/10/2026 — Etapa 1.7a concluída (Diário)
+- `app/servicos/diario.py`: lê o Diário do Domínio em Excel (.xls/.xlsx, calamine) achando as colunas pelo título; cabeçalho Empresa / C.N.P.J. / Período; ignora TOTAL DO DIA / TOTAL DO MÊS / rodapé. **Monta as partidas:** Diário completo → soma as linhas seguidas até débito = crédito (1 × N); Diário filtrado (dia não fecha) → só junta duas linhas seguidas de lados opostos, mesmo valor e mesmo histórico; o resto fica com **um lado só** (migração 0007: conta de débito ou crédito pode ser nula) e o aviso pede o Diário com TODAS as contas.
+- `importar_historico` aceita os dois formatos (`Movimento` comum); classificação → conta pelo plano (classificação repetida decide pela descrição, que no plano vem cortada em 40 letras); CNPJ do Diário diferente do da empresa → recusa; vazio → preenche **CNPJ e razão social com 🤖** e dispara a consulta pública.
+- Lançamento com um lado só e histórico no modelo do extrato (“FAVORECIDO - NATUREZA - DOC”) = pagamento/recebimento pelo banco (aprende); o resto (provisão, nota fiscal a pagar) fica OUTRO, guardado para a IA (1.7b).
+- **Sem contar em dobro:** o mesmo lançamento no lanctos.txt e no Diário é achado por lado (data, valor, histórico, D/C, conta); se o que já estava tinha um lado só, o novo **completa** o lado do banco.
+- Consulta pública do CNPJ movida para `servicos/empresas.completar_pelo_cnpj` + `rotas/comum.avisar_consulta` (usada no cadastro e no Diário).
+- **Resultado real (Casa Criança):** Diário filtrado (só Passivo) — 273 linhas, 251 partidas (229 com um lado só); junto com o lanctos 2026: **129 repetidos** (todos os pagamentos já estavam no lanctos), 122 novos (OUTRO); CNPJ 06.101.084/0001-36 e razão social preenchidos; ZERA ASSESSORIA continua com 6 ocorrências (não dobrou).
+- Testes (9): Diários fictícios montados em `tests/diarios.py`; 203 testes passando, ruff ok.
+
 
 ### 07/10/2026 — Etapa 1.9 concluída (backup) + chave da IA ligada
 - `app/servicos/backup.py`: `pg_dump -Fc` pelo contêiner + **conferência** (`pg_restore -l`, conta as tabelas); arquivos originais espelhados em `<pasta>/arquivos` (só copia os novos, nunca apaga). Nome `zera_AAAA-MM-DD_HH-MM-SS_<motivo>.dump` (automatico / manual / antes-de-restaurar); **30** por pasta.

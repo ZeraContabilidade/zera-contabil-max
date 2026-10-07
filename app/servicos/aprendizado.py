@@ -1,7 +1,8 @@
 """Aprendizado com os lançamentos que o escritório já fez (§3.3, §6.1).
 
-Fonte hoje: lanctos.txt antigos (§11.5). O Diário/Razão (etapa 1.7) entra pelo mesmo caminho:
-cada linha vira um LancamentoHistorico e `aprender` recalcula os padrões da empresa.
+Fontes: lanctos.txt antigos (§11.5) e o Diário do Domínio em Excel (§11.3). Cada lançamento vira um
+LancamentoHistorico (o mesmo lançamento vindo dos dois arquivos conta uma vez só) e `aprender`
+recalcula os padrões da empresa.
 
 - Favorecido → conta: vale o uso MAIS RECENTE (em 2025 os salários iam para a 331; em 2026, para a 187).
 - Mesmo favorecido em contas diferentes explicadas pela natureza (sindicato: contribuição, mensalidade,
@@ -14,7 +15,7 @@ import hashlib
 import re
 from collections import Counter, defaultdict
 from dataclasses import asdict, dataclass
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from decimal import Decimal
 from typing import Any
 
@@ -43,6 +44,7 @@ from app.servicos.contas_chave import (
     normalizar,
     referencia_bancaria,
 )
+from app.servicos.diario import DiarioLido, eh_planilha, ler_diario
 from app.servicos.documentos import formatar_documento, normalizar_documento, tipo_documento
 from app.servicos.lanctos import ler_lanctos, parece_lanctos
 from app.servicos.plano import Aviso, ErroLeitura, decodificar
@@ -134,19 +136,34 @@ def contas_de_banco(contas: list[ContaContabil], chaves: list[ContaChave]) -> se
 # ---------------------------------------------------------------- importação do histórico
 
 
-def importar_historico(
-    sessao: Session, empresa: Empresa, nome_arquivo: str, conteudo: bytes, usuario: Usuario | None
-) -> Importacao:
+@dataclass
+class Movimento:
+    """Um lançamento lido de qualquer formato, já com as contas do plano (no Diário filtrado falta um lado)."""
+
+    numero: int  # linha no arquivo, para os avisos
+    data: date
+    debito: ContaContabil | None
+    credito: ContaContabil | None
+    valor: Decimal
+    historico: str
+
+
+@dataclass
+class Leitura:
+    formato: str
+    movimentos: list[Movimento]
+    avisos: list[Aviso]
+    resumo: dict[str, Any]  # o que cada formato conta a mais (linhas, empresa, período...)
+
+
+def _ler_lanctos(empresa: Empresa, conteudo: bytes, contas: list[ContaContabil]) -> Leitura:
     texto = decodificar(conteudo)
     if not parece_lanctos(texto):
         raise ErroLeitura(
-            "Não reconheci o arquivo. Por enquanto o sistema aprende com o lanctos.txt (o arquivo que a "
-            "planilha gera para o Domínio); o Diário e o Razão chegam na próxima etapa."
+            "Não reconheci o arquivo. Envie o lanctos.txt (o arquivo que a planilha gera para o Domínio) "
+            "ou o Diário do Domínio em Excel (.xls ou .xlsx)."
         )
     linhas, avisos = ler_lanctos(texto)
-    contas = list(sessao.scalars(select(ContaContabil).where(ContaContabil.empresa_id == empresa.id)))
-    if not any(c.ativa for c in contas):
-        raise ErroLeitura("Importe o plano de contas da empresa antes do histórico (aba 2 Plano de Contas).")
     codigos = Counter(linha.codigo_empresa for linha in linhas if linha.codigo_empresa)
     if codigos and empresa.codigo_dominio not in codigos:
         outro = codigos.most_common(1)[0][0]
@@ -162,18 +179,214 @@ def importar_historico(
                 [f"Linha {linha.numero}: código {linha.codigo_empresa}" for linha in de_outra],
             )
         )
-        linhas = [linha for linha in linhas if linha not in de_outra]
-
     por_reduzido = {c.reduzido: c for c in contas}
+    movimentos, sem_conta = [], []
+    for linha in linhas:
+        if linha in de_outra:
+            continue
+        debito, credito = por_reduzido.get(linha.debito), por_reduzido.get(linha.credito)
+        if debito is None or credito is None:
+            faltando = linha.debito if debito is None else linha.credito
+            sem_conta.append(f"Linha {linha.numero}: conta {faltando} não existe no plano")
+            continue
+        movimentos.append(Movimento(linha.numero, linha.data, debito, credito, linha.valor, linha.complemento))
+    if sem_conta:
+        avisos.insert(
+            0,
+            Aviso(
+                f"{len(sem_conta)} linha(s) com conta que não existe no plano ficaram de fora. "
+                "Reimporte o plano se criou contas novas no Domínio.",
+                sem_conta,
+            ),
+        )
+    return Leitura("lanctos.txt", movimentos, avisos, {"linhas": len(linhas)})
+
+
+def conta_pela_classificacao(candidatas: list[ContaContabil], descricao: str) -> ContaContabil | None:
+    """Classificação → conta. Quando o plano repete a classificação (492 VALE TRANSPORTE e 10585 DESPESA COM
+    RESCISÃO = 3.2.2.01.000010), decide pela descrição — que no plano do Domínio vem cortada em 40 letras."""
+    analiticas = [c for c in candidatas if c.analitica] or candidatas
+    if len(analiticas) <= 1:
+        return analiticas[0] if analiticas else None
+    texto = normalizar(descricao)
+    iguais = [c for c in analiticas if normalizar(c.descricao) == texto]
+    if len(iguais) == 1:
+        return iguais[0]
+    parecidas = [
+        c for c in analiticas if texto and normalizar(c.descricao) and texto.startswith(normalizar(c.descricao))
+    ]
+    return parecidas[0] if len(parecidas) == 1 else None
+
+
+def _conferir_empresa(sessao: Session, empresa: Empresa, lido: DiarioLido) -> list[str]:
+    """O Diário traz o nome e o CNPJ da empresa: confere (arquivo de outra empresa é recusado)
+    e preenche o que estiver vazio no cadastro, com o selo 🤖."""
+    preenchidos = []
+    if lido.cnpj and empresa.cnpj_cpf and empresa.cnpj_cpf != lido.cnpj:
+        raise ErroLeitura(
+            f"Este Diário é de {lido.empresa or 'outra empresa'} (CNPJ {formatar_documento(lido.cnpj)}), e a "
+            f"empresa escolhida tem o CNPJ {formatar_documento(empresa.cnpj_cpf)}. Confira se escolheu a empresa certa."
+        )
+    if lido.cnpj and not empresa.cnpj_cpf:
+        outra = sessao.scalar(select(Empresa).where(Empresa.cnpj_cpf == lido.cnpj, Empresa.id != empresa.id))
+        if outra:
+            raise ErroLeitura(
+                f"Este Diário é do CNPJ {formatar_documento(lido.cnpj)}, que está cadastrado na empresa "
+                f"{outra.nome} (código {outra.codigo_dominio}). Confira se escolheu a empresa certa."
+            )
+        empresa.cnpj_cpf = lido.cnpj
+        preenchidos.append("cnpj_cpf")
+    if lido.empresa and not empresa.razao_social:
+        empresa.razao_social = lido.empresa[:200]
+        preenchidos.append("razao_social")
+    if preenchidos:
+        automaticos = list(empresa.campos_automaticos or [])
+        empresa.campos_automaticos = automaticos + [c for c in preenchidos if c not in automaticos]
+    return preenchidos
+
+
+def _ler_diario(sessao: Session, empresa: Empresa, conteudo: bytes, contas: list[ContaContabil]) -> Leitura:
+    lido = ler_diario(conteudo)
+    preenchidos = _conferir_empresa(sessao, empresa, lido)
+    por_classificacao: dict[str, list[ContaContabil]] = defaultdict(list)
+    for conta in contas:
+        por_classificacao[conta.classificacao].append(conta)
+    movimentos, sem_conta, duvidas = [], [], []
+    for partida in lido.partidas:
+        lados = []
+        for linha in (partida.debito, partida.credito):
+            if linha is None:
+                lados.append(None)
+                continue
+            candidatas = por_classificacao.get(linha.classificacao, [])
+            conta = conta_pela_classificacao(candidatas, linha.descricao)
+            if conta is None:
+                destino = duvidas if candidatas else sem_conta
+                destino.append(f"Linha {linha.numero}: {linha.classificacao} {linha.descricao}")
+                break
+            lados.append(conta)
+        else:
+            movimentos.append(
+                Movimento(partida.numero, partida.data, lados[0], lados[1], partida.valor, partida.historico)
+            )
+    avisos = list(lido.avisos)
+    if duvidas:
+        avisos.insert(
+            0,
+            Aviso(
+                f"{len(duvidas)} lançamento(s) ficaram de fora: a classificação é de mais de uma conta no plano "
+                "e a descrição não decidiu qual.",
+                duvidas,
+            ),
+        )
+    if sem_conta:
+        avisos.insert(
+            0,
+            Aviso(
+                f"{len(sem_conta)} lançamento(s) com classificação que não existe no plano ficaram de fora. "
+                "Reimporte o plano se criou contas novas no Domínio.",
+                sem_conta,
+            ),
+        )
+    resumo = {
+        "linhas": len(lido.linhas),
+        "completo": lido.completo,
+        "um_lado": lido.um_lado,
+        "empresa": lido.empresa,
+        "periodo": lido.periodo,
+        "preenchidos": preenchidos,
+    }
+    return Leitura("Diário", movimentos, avisos, resumo)
+
+
+def _parece_do_extrato(historico: str) -> bool:
+    """Histórico no modelo do escritório para os lançamentos do extrato: “FAVORECIDO - NATUREZA - DOC”."""
+    partes = separar_complemento(historico)
+    return " - " in historico and bool(partes.favorecido) and bool(partes.natureza or partes.cnpj_cpf)
+
+
+def _sentido(movimento: Movimento, bancos: set[int]) -> tuple[str, ContaContabil | None]:
+    """SAIDA (pagou pelo banco), ENTRADA (recebeu) ou OUTRO, e a contrapartida (o lado que não é banco)."""
+    debito, credito = movimento.debito, movimento.credito
+    if debito and credito:
+        if credito.id in bancos and debito.id not in bancos:
+            return "SAIDA", debito
+        if debito.id in bancos and credito.id not in bancos:
+            return "ENTRADA", credito
+        return "OUTRO", None
+    visivel = debito or credito
+    if visivel.id in bancos:
+        return "OUTRO", None  # só o lado do banco: não dá para saber a contrapartida
+    # o outro lado não veio no arquivo: histórico no modelo do extrato = pagamento ou recebimento pelo banco
+    if _parece_do_extrato(movimento.historico):
+        return ("SAIDA" if debito else "ENTRADA"), visivel
+    return "OUTRO", visivel  # provisão, nota fiscal a pagar... fica guardado, mas não ensina o extrato
+
+
+def _lados(data: date, valor: Decimal, historico: str, debito_id: int | None, credito_id: int | None) -> list[tuple]:
+    texto = normalizar(historico)
+    return [(lado, data, valor, texto, conta) for lado, conta in (("D", debito_id), ("C", credito_id)) if conta]
+
+
+class _JaImportados:
+    """Lançamentos que a empresa já tem, procurados por lado (data, valor, histórico, débito ou crédito, conta):
+    o mesmo pagamento no lanctos.txt e no Diário do mesmo mês conta uma vez só."""
+
+    def __init__(self, existentes: list[LancamentoHistorico]):
+        self.por_lado: dict[tuple, list[LancamentoHistorico]] = defaultdict(list)
+        for lancamento in existentes:
+            for lado in self._lados_de(lancamento):
+                self.por_lado[lado].append(lancamento)
+
+    @staticmethod
+    def _lados_de(lancamento: LancamentoHistorico) -> list[tuple]:
+        return _lados(
+            lancamento.data,
+            lancamento.valor,
+            lancamento.historico,
+            lancamento.conta_debito_id,
+            lancamento.conta_credito_id,
+        )
+
+    def tirar(self, movimento: Movimento) -> LancamentoHistorico | None:
+        debito, credito = movimento.debito, movimento.credito
+        lados = _lados(
+            movimento.data,
+            movimento.valor,
+            movimento.historico,
+            debito.id if debito else None,
+            credito.id if credito else None,
+        )
+        for lado in lados:
+            if self.por_lado.get(lado):
+                achado = self.por_lado[lado][0]
+                for outro in self._lados_de(achado):
+                    self.por_lado[outro].remove(achado)
+                return achado
+        return None
+
+
+def importar_historico(
+    sessao: Session, empresa: Empresa, nome_arquivo: str, conteudo: bytes, usuario: Usuario | None
+) -> Importacao:
+    """lanctos.txt antigo ou Diário do Domínio (Excel) → LancamentoHistorico. Reimportar não duplica."""
+    contas = list(sessao.scalars(select(ContaContabil).where(ContaContabil.empresa_id == empresa.id)))
+    if not any(c.ativa for c in contas):
+        raise ErroLeitura("Importe o plano de contas da empresa antes do histórico (aba 2 Plano de Contas).")
+    if eh_planilha(conteudo):
+        leitura = _ler_diario(sessao, empresa, conteudo, contas)
+    else:
+        leitura = _ler_lanctos(empresa, conteudo, contas)
+
     chaves = list(sessao.scalars(select(ContaChave).where(ContaChave.empresa_id == empresa.id)))
     bancos = contas_de_banco(contas, chaves)
-    # reforço: conta do ATIVO presente em metade das linhas é o banco (ex.: crédito 8 em todas)
-    uso = Counter(r for linha in linhas for r in (linha.debito, linha.credito))
+    # reforço: conta do ATIVO presente em metade dos lançamentos é o banco (ex.: crédito 8 em todas)
+    completos = [m for m in leitura.movimentos if m.debito and m.credito]
+    uso = Counter(conta.id for m in completos for conta in (m.debito, m.credito))
     natureza = naturezas(contas)
-    for reduzido, vezes in uso.items():
-        conta = por_reduzido.get(reduzido)
-        if conta and vezes >= len(linhas) / 2 and natureza.get(conta.id) == "ATIVO":
-            bancos.add(conta.id)
+    for conta_id, vezes in uso.items():
+        if vezes >= len(completos) / 2 and natureza.get(conta_id) == "ATIVO":
+            bancos.add(conta_id)
 
     arquivo = guardar_arquivo(sessao, empresa, "HISTORICO", nome_arquivo, conteudo, usuario)
     importacao = Importacao(
@@ -185,38 +398,54 @@ def importar_historico(
     sessao.add(importacao)
     sessao.flush()
 
+    datas_lidas = [m.data for m in leitura.movimentos]
+    existentes = (
+        list(
+            sessao.scalars(
+                select(LancamentoHistorico).where(
+                    LancamentoHistorico.empresa_id == empresa.id,
+                    LancamentoHistorico.data.between(min(datas_lidas), max(datas_lidas)),
+                )
+            )
+        )
+        if datas_lidas
+        else []
+    )
+    ja_importados = _JaImportados(existentes)
     marcas = set(sessao.scalars(select(LancamentoHistorico.marca).where(LancamentoHistorico.empresa_id == empresa.id)))
-    repeticoes: Counter[str] = Counter()
-    novos, repetidos, sem_conta = [], 0, []
-    for linha in linhas:
-        debito, credito = por_reduzido.get(linha.debito), por_reduzido.get(linha.credito)
-        if debito is None or credito is None:
-            faltando = linha.debito if debito is None else linha.credito
-            sem_conta.append(f"Linha {linha.numero}: conta {faltando} não existe no plano")
+    novos, repetidos, completados = [], 0, 0
+    for movimento in leitura.movimentos:
+        sentido, contrapartida = _sentido(movimento, bancos)
+        if (achado := ja_importados.tirar(movimento)) is not None:
+            faltava_lado = achado.conta_debito_id is None or achado.conta_credito_id is None
+            if movimento.debito and movimento.credito and faltava_lado:
+                # o Diário filtrado trouxe um lado só; o lanctos.txt completa o lançamento
+                achado.conta_debito_id, achado.conta_credito_id = movimento.debito.id, movimento.credito.id
+                achado.sentido = sentido
+                achado.contrapartida_id = contrapartida.id if contrapartida else None
+                completados += 1
+            else:
+                repetidos += 1
             continue
-        base = f"{linha.data.isoformat()}|{linha.debito}|{linha.credito}|{linha.valor}|{normalizar(linha.complemento)}"
-        repeticoes[base] += 1  # duas linhas iguais no mesmo arquivo são dois lançamentos
-        marca = hashlib.sha256(f"{base}#{repeticoes[base]}".encode()).hexdigest()
-        if marca in marcas:
-            repetidos += 1
-            continue
+        debito, credito = movimento.debito, movimento.credito
+        base = (
+            f"{movimento.data.isoformat()}|{debito.reduzido if debito else ''}|{credito.reduzido if credito else ''}"
+            f"|{movimento.valor}|{normalizar(movimento.historico)}"
+        )
+        vez = 1
+        while (marca := hashlib.sha256(f"{base}#{vez}".encode()).hexdigest()) in marcas:
+            vez += 1  # duas linhas iguais no mesmo arquivo são dois lançamentos
         marcas.add(marca)
-        if credito.id in bancos and debito.id not in bancos:
-            sentido, contrapartida = "SAIDA", debito
-        elif debito.id in bancos and credito.id not in bancos:
-            sentido, contrapartida = "ENTRADA", credito
-        else:
-            sentido, contrapartida = "OUTRO", None
-        partes = separar_complemento(linha.complemento)
+        partes = separar_complemento(movimento.historico)
         novos.append(
             LancamentoHistorico(
                 empresa_id=empresa.id,
                 importacao_id=importacao.id,
-                data=linha.data,
-                conta_debito_id=debito.id,
-                conta_credito_id=credito.id,
-                valor=linha.valor,
-                historico=linha.complemento,
+                data=movimento.data,
+                conta_debito_id=debito.id if debito else None,
+                conta_credito_id=credito.id if credito else None,
+                valor=movimento.valor,
+                historico=movimento.historico,
                 favorecido=partes.favorecido[:200] or None,
                 cnpj_cpf=partes.cnpj_cpf,
                 natureza=partes.natureza[:200] or None,
@@ -227,29 +456,22 @@ def importar_historico(
             )
         )
     sessao.add_all(novos)
-    if sem_conta:
-        avisos.insert(
-            0,
-            Aviso(
-                f"{len(sem_conta)} linha(s) com conta que não existe no plano ficaram de fora. "
-                "Reimporte o plano se criou contas novas no Domínio.",
-                sem_conta,
-            ),
-        )
     datas = [lancamento.data for lancamento in novos]
     importacao.resumo = {
-        "formato": "lanctos.txt",
-        "linhas": len(linhas),
+        "formato": leitura.formato,
+        **leitura.resumo,
         "novos": len(novos),
         "repetidos": repetidos,
+        "completados": completados,
         "de": min(datas).isoformat() if datas else None,
         "ate": max(datas).isoformat() if datas else None,
     }
-    importacao.avisos = [asdict(aviso) for aviso in avisos]
+    importacao.avisos = [asdict(aviso) for aviso in leitura.avisos]
     registrar_evento(
         sessao,
         "IMPORTAR_HISTORICO",
-        detalhe=f"{empresa.nome}: {len(novos)} lançamentos novos, {repetidos} repetidos ignorados",
+        detalhe=f"{empresa.nome}: {leitura.formato} — {len(novos)} lançamentos novos, {repetidos} repetidos ignorados"
+        + (f", {completados} completados" if completados else ""),
     )
     sessao.flush()
     _ligar_bancos_do_historico(sessao, empresa, bancos, contas)

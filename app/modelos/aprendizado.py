@@ -23,8 +23,9 @@ class LancamentoHistorico(Base):
     empresa_id: Mapped[int] = mapped_column(ForeignKey("empresa.id"), index=True)
     importacao_id: Mapped[int] = mapped_column(ForeignKey("importacao.id"))
     data: Mapped[date] = mapped_column(Date, index=True)
-    conta_debito_id: Mapped[int] = mapped_column(ForeignKey("conta_contabil.id"))
-    conta_credito_id: Mapped[int] = mapped_column(ForeignKey("conta_contabil.id"))
+    # um dos lados pode faltar: Diário impresso só com algumas contas (ex.: só o Passivo) mostra um lado só
+    conta_debito_id: Mapped[int | None] = mapped_column(ForeignKey("conta_contabil.id"))
+    conta_credito_id: Mapped[int | None] = mapped_column(ForeignKey("conta_contabil.id"))
     valor: Mapped[Decimal] = mapped_column(Numeric(14, 2))
     historico: Mapped[str] = mapped_column(Text)
     favorecido: Mapped[str | None] = mapped_column(String(200))
