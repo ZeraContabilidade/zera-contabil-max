@@ -3,10 +3,11 @@
 Atualizado em: **07/10/2026**
 
 ## Próximo passo exato
-**Etapa 2.5 — Leitor universal com IA + Excel/CSV** (§3.4 regras 3, 4 e 5).
-1. **PDF de banco sem leitor próprio** (`app/leitores/universal_ia.py`, último da lista `LEITORES`, só para PDF com texto): manda o texto do PDF (por página, em lotes se for grande) ao **modelo forte** via `PedidoIA` (esquema `{banco, agencia, conta, tipo, inicio, fim, saldo_inicial, saldo_final, movimentos: [{data, descricao, documento, valor, sentido}]}`, `additionalProperties: false`); valida (datas dentro do período, valores > 0, sentido ENTRADA/SAIDA) e **só aceita se a conferência de saldo bater** — senão recusa com “mande o OFX ou o Excel do banco”. Precisa da sessão/empresa para `chamar_ia` (o leitor hoje não recebe a sessão: passar um contexto opcional em `ler_extrato` ou fazer a etapa da IA no serviço quando nenhum leitor reconhecer). PDF sem texto (foto/escaneado): imagem da página para a IA — deixar para depois, avisar.
-2. **Excel/CSV** (`app/leitores/planilha.py`): a IA identifica as colunas (data, descrição, valor ou débito/crédito, saldo) pelas 15 primeiras linhas; o usuário confirma na 1ª vez e o modelo fica guardado por banco/layout (tabela `modelo_planilha_banco`, migração 0010; §8). Sem IA: tentar pelos títulos comuns (“Data”, “Histórico”, “Valor”, “Débito”, “Crédito”, “Saldo”).
-3. Testes com a IA falsa (respostas gravadas) + 1 teste `ia_real` com o PDF real do BB passando pelo leitor universal (deve dar o mesmo resultado do leitor próprio: 49 movimentos, 149.568,52).
+**Etapa 2.5b — Extrato em Excel/CSV** (§3.4 regras 3 e 5; a 2.5a — PDF pela IA — está pronta).
+- Leitor `app/leitores/planilha.py` (xlsx/xls pelo calamine; csv com `;` ou `,`): acha a linha de títulos pelos nomes comuns (“Data”, “Histórico/Descrição/Lançamento”, “Documento”, “Valor”, “Débito”, “Crédito”, “Saldo”, “C/D”); valor com sinal ou colunas Débito/Crédito ou valor + coluna C/D; datas dd/mm/aaaa ou do Excel; linhas de saldo (“SALDO ANTERIOR”, “SALDO DO DIA”) viram saldo, não movimento.
+- Layout que os títulos não resolvem → **IA (modelo rápido)** olha as 15 primeiras linhas e diz qual coluna é o quê; o usuário **confirma na 1ª vez** numa tela com as primeiras linhas e as colunas escolhidas (pode trocar); o modelo fica guardado (tabela `modelo_planilha_banco`, migração 0010: assinatura dos títulos → colunas, banco, confirmado por, quando; §8) e não pergunta de novo.
+- A planilha quase nunca traz banco/agência/conta → na confirmação o usuário escolhe a conta bancária da empresa (ou cadastra banco + agência + conta). Para isso o arquivo é guardado antes (`guardar_arquivo`) e a tela de confirmação aponta para ele.
+- Conferência de saldo igual à dos outros formatos; reimportar não duplica (mesmo hash). Testes com planilhas montadas no teste (openpyxl/csv) e com a IA falsa.
 Depois: **2.6 classificação** (regras, CNPJ, nome parecido com `rapidfuzz`, palavra-chave, valor recorrente, transferência entre contas próprias CC ↔ poupança).
 
 ## Pendências com o usuário
@@ -39,7 +40,8 @@ Depois: **2.6 classificação** (regras, CNPJ, nome parecido com `rapidfuzz`, pa
 - [x] 2.2 Leitor OFX
 - [x] 2.3 Leitor PDF BB conta corrente
 - [x] 2.4 Leitor PDF BB poupança
-- [ ] 2.5 Leitor universal com IA (PDF) + Excel/CSV com colunas identificadas pela IA
+- [x] 2.5a Leitor universal com IA (PDF de banco sem leitor próprio, só entra se o saldo conferir)
+- [ ] 2.5b Excel/CSV com colunas identificadas pelos títulos ou pela IA (confirmação na 1ª vez)
 - [ ] 2.6 Motor de classificação (regras, CNPJ, nome parecido, palavra-chave, valor) + pareamento de transferências
 - [ ] 2.7 IA em lote + validação + aprovação automática dos verdes
 - [ ] 2.8 Tela de Revisão + fornecedores a cadastrar; medir ≥ 85% nos 2 PDFs
@@ -53,6 +55,11 @@ Depois: **2.6 classificação** (regras, CNPJ, nome parecido com `rapidfuzz`, pa
 ### Fase 4 — Extras (um por vez, quando pedido)
 
 ## Histórico
+
+### 07/10/2026 — Etapa 2.5a concluída (PDF de qualquer banco pela IA)
+- `app/leitores/universal_ia.py`: quando nenhum leitor próprio reconhece um PDF com texto (`NaoReconhecido`), o serviço manda **uma página por chamada** ao modelo forte (resposta pequena e rápida), junta as páginas (cabeçalho da 1ª que mostra, saldo inicial da 1ª, final da última) e confere cada linha (data no período, valor > 0, sentido). `exige_conferencia`: **só entra se o saldo conferir** — senão nada é gravado e a tela pede o OFX ou o Excel. IA desligada → mensagem pedindo o OFX.
+- **Real:** o PDF da conta corrente do BB lido pela IA como se fosse banco desconhecido deu exatamente o mesmo do leitor próprio (49 movimentos, entradas = saídas = 149.568,52, ag. 2180-6, conta 72637-0, favorecidos separados) — **US$ 0,07**, 3 páginas, até 22 s cada.
+- Testes (5 + 1 real).
 
 ### 07/10/2026 — OFX reais do BB (APAE, dez/2025)
 - 36 OFX reais testados: 32 lidos, 4 “vazios do banco” (só cabeçalho) → mensagem clara “veio vazio do banco, baixe de novo”.

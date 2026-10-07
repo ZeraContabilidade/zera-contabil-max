@@ -184,4 +184,5 @@ RESPOSTAS_DEMONSTRACAO: dict[str, Any] = {
         "perfil": "Perfil de demonstração (IA simulada): com a chave da API, a IA escreve aqui o resumo real."
     },
     "historico_ia": {"itens": []},  # no modo simulado a IA não muda o histórico
+    "leitura_pdf": {"e_extrato": False},  # no modo simulado a IA não lê extratos
 }

@@ -13,7 +13,8 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.auditoria import registrar_evento
-from app.leitores import ExtratoLido, ler_extrato
+from app.leitores import ExtratoLido, NaoReconhecido, ler_extrato
+from app.leitores.universal_ia import ler_pdf_com_ia
 from app.modelos import (
     ContaBancaria,
     ContaChave,
@@ -129,7 +130,12 @@ def _marca(conta: ContaBancaria, base: str, vez: int) -> str:
 def importar_extrato(
     sessao: Session, empresa: Empresa, nome_arquivo: str, conteudo: bytes, usuario: Usuario | None
 ) -> Extrato:
-    lido = ler_extrato(nome_arquivo, conteudo)
+    try:
+        lido = ler_extrato(nome_arquivo, conteudo)
+    except NaoReconhecido:
+        if not conteudo.lstrip()[:5] == b"%PDF-":
+            raise
+        lido = ler_pdf_com_ia(sessao, empresa, usuario, nome_arquivo, conteudo)  # banco sem leitor próprio
     conta, aviso_ia = _conta_bancaria(sessao, empresa, lido, usuario)
     arquivo = guardar_arquivo(sessao, empresa, "EXTRATO", nome_arquivo, conteudo, usuario)
     importacao = Importacao(
@@ -163,6 +169,12 @@ def importar_extrato(
                 )
             )
     conferencia, diferenca = conferir_saldo(lido, entradas, saidas)
+    if lido.exige_conferencia and conferencia != "CONFERE":
+        situacao = "não há saldo inicial e final para conferir" if conferencia == "SEM_SALDO" else "o saldo não bate"
+        raise ErroLeitura(
+            f"A IA leu o extrato “{nome_arquivo}”, mas {situacao}. Para não arriscar lançamento errado, o arquivo "
+            "não foi importado: mande o OFX ou o Excel do banco."
+        )
     if lido.saldo_inicial is None and lido.saldo_final is not None and lido.saldo_inicial_visivel:
         lido.saldo_inicial = lido.saldo_final - (entradas - saidas)  # o anterior saiu cortado no PDF
         lido.saldo_cortado = True

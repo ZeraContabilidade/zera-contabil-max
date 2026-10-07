@@ -118,3 +118,37 @@ def test_ia_real_no_diario_da_casa_crianca(cliente_real, sessao, monkeypatch):
     repasse = sessao.scalar(select(LancamentoHistorico).where(LancamentoHistorico.historico == "REPASSE MUNICIPAL"))
     aquisicao = sessao.scalar(select(LancamentoHistorico).where(LancamentoHistorico.historico.like("AQUISICAO%")))
     assert repasse.sentido == "ENTRADA" and aquisicao.sentido == "OUTRO"
+
+
+@pytest.mark.banco
+@pytest.mark.amostras
+def test_ia_real_le_o_pdf_do_bb_como_banco_desconhecido(cliente_real, sessao, monkeypatch):
+    """O PDF real da conta corrente do BB pelo leitor universal (≈ US$ 0,10): tem que dar o mesmo que o
+    leitor próprio — 49 movimentos, entradas = saídas = 149.568,52."""
+    from decimal import Decimal
+
+    from app.leitores.universal_ia import ler_pdf_com_ia
+    from app.modelos import Empresa
+    from tests.conftest import AMOSTRAS
+
+    pdf = AMOSTRAS / "EXTRATOS" / "EXTRATO CONTA CORRENTE.pdf"
+    if not pdf.exists():
+        pytest.skip("AMOSTRAS/ não está neste computador")
+    monkeypatch.setattr("app.ia.servico.obter_cliente", lambda: cliente_real)
+    empresa = Empresa(codigo_dominio=230, nome_curto="Casa Criança")
+    sessao.add(empresa)
+    sessao.commit()
+
+    lido = ler_pdf_com_ia(sessao, empresa, None, pdf.name, pdf.read_bytes())
+    entradas = sum(m.valor for m in lido.movimentos if m.sentido == "ENTRADA")
+    saidas = sum(m.valor for m in lido.movimentos if m.sentido == "SAIDA")
+    print(f"\n{lido.banco} | ag {lido.agencia} | conta {lido.numero} | {lido.inicio} a {lido.fim} | "
+          f"saldo {lido.saldo_inicial} → {lido.saldo_final} | {len(lido.movimentos)} movimentos | "
+          f"entradas {entradas} | saídas {saidas}")  # fmt: skip
+    for m in lido.movimentos[:6]:
+        print(f"  {m.data} {m.sentido:<7} {m.valor:>10} {m.historico} | {m.complemento}")
+    for aviso in lido.avisos:
+        print("  aviso:", aviso.texto)
+    assert len(lido.movimentos) == 49
+    assert entradas == saidas == Decimal("149568.52")
+    assert "72637" in lido.numero

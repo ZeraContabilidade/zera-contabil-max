@@ -45,6 +45,7 @@ class ExtratoLido:
     saldo_final: Decimal | None = None
     saldo_cortado: bool = False  # o PDF cortou os centavos (e o sinal) do saldo
     saldo_inicial_visivel: str = ""  # saldo anterior cortado na impressão (“227.4”): confere pelo começo
+    exige_conferencia: bool = False  # leitura pela IA: só entra se o saldo conferir
     movimentos: list[MovimentoLido] = field(default_factory=list)
     avisos: list[Aviso] = field(default_factory=list)
 
@@ -89,19 +90,23 @@ class Leitor(Protocol):
     def ler(self, arquivo: ArquivoExtrato) -> ExtratoLido: ...
 
 
+class NaoReconhecido(ErroLeitura):
+    """Nenhum leitor próprio entendeu o arquivo (o serviço ainda pode tentar a leitura pela IA, se for PDF)."""
+
+
 def ler_extrato(nome: str, conteudo: bytes) -> ExtratoLido:
     arquivo = ArquivoExtrato(nome, conteudo)
     if arquivo.eh_pdf and not arquivo.texto.strip():
         raise ErroLeitura(
             f"O PDF “{nome}” não tem texto (parece uma foto ou digitalização). Baixe o extrato em PDF pelo "
-            "internet banking ou em OFX. O leitor com IA para estes casos chega numa próxima etapa."
+            "internet banking ou em OFX."
         )
     for leitor in LEITORES:
         if leitor.reconhece(arquivo):
             return leitor.ler(arquivo)
-    raise ErroLeitura(
-        f"Não reconheci o extrato “{nome}”. Por enquanto o sistema lê OFX de qualquer banco e os PDFs do "
-        "Banco do Brasil (conta corrente e poupança); Excel e PDF de outros bancos chegam nas próximas etapas."
+    raise NaoReconhecido(
+        f"Não reconheci o extrato “{nome}”. O sistema lê OFX de qualquer banco, os PDFs do Banco do Brasil e, "
+        "com a IA ligada, PDF de outros bancos; Excel chega na próxima etapa."
     )
 
 
