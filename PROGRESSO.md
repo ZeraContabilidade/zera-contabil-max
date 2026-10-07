@@ -3,13 +3,12 @@
 Atualizado em: **07/10/2026**
 
 ## Próximo passo exato
-**Etapa 1.7b — IA no histórico** (§6.1 item 3; a 1.7a — leitura do Diário — está pronta).
-1. **IA em lotes** (modelo rápido; `PedidoIA` com `contexto` = plano analítico resumido + perfil; lotes de 40) para dois casos, só quando a IA está ligada (sem IA segue como está):
-   a) lançamento **OUTRO com um lado só** fora do banco (Diário filtrado): a IA diz se é pagamento/recebimento pelo banco (`bancario: bool`) — ex.: “REPASSE MUNICIPAL” (crédito 2.2.2.01.000005) e “RENDIMENTO APLICAÇÃO FINANCEIRA” (crédito 2.2.2.01.000006) são recebimentos; “AQUISICAO CONFORME NOTA FISCAL”, provisões da folha e “RECONHECIMENTO DA RECEITA” não;
-   b) SAIDA/ENTRADA cujo histórico **não tem “ - ”** (ex.: “PAGTO SABESP REF CONTA AGUA”) → `{favorecido, cnpj_cpf, natureza}`.
-   Esquema `{"itens": [{"id", "bancario", "favorecido", "cnpj_cpf", "natureza"}]}` com `additionalProperties: false`; **validar** (id existe, CNPJ só com dígito válido por `documentos.py`); gravar sentido/favorecido/natureza e marcar no lançamento que veio da IA (coluna nova `origem_ia` bool, migração 0008) para não perguntar de novo; depois `aprender()`. Rodar sozinho no fim de `enviar_historico` (como o perfil) e um botão “Completar com a IA” na aba. Testes com `ia_falsa`.
-2. **Contas-chave com evidência do histórico:** RENDIMENTO = conta onde os rendimentos da aplicação são lançados no histórico (Casa Criança: **2.2.2.01.000006 RENDIMENTO A APLICAR**, não receita — terceiro setor); idem TARIFA/IOF/IR quando houver. Só troca sugestão de origem REGRA/IA com confiança menor; nunca a do USUARIO.
-3. Depois: **Fase 2** (extratos — os PDFs do BB já estão em AMOSTRAS).
+**Fase 2 — Etapa 2.1 + 2.3: receber extratos e o 1º leitor (PDF do BB, conta corrente)** (§3.4, §11.4).
+- Tabelas (migração 0009): `conta_bancaria` (empresa, banco, agência, número, tipo CC/POUPANÇA/APLICAÇÃO, conta contábil — ligar com `ligar_conta_bancaria()`), `extrato` (importação, conta bancária, período, saldo inicial/final, conferido) e `movimento_extrato` (data, descrição em 1 linha — juntar a 2ª linha do BB com o favorecido —, documento, valor Decimal com sinal, saldo, **hash anti-duplicidade**: conta + data + valor + descrição + documento + ordem no dia).
+- Aba **Extratos** do mês na página da empresa: **arrastar e soltar vários arquivos**; detecção pelo conteúdo (PDF/OFX/Excel/CSV) e leitores como **plug-ins** em `app/leitores/` (um arquivo por banco, registro único); arquivo original guardado (`guardar_arquivo`), importação em bloco (`Importacao` + log).
+- Leitor PDF BB conta corrente com `pdfplumber` **pela posição das palavras** (a coluna Saldo saiu cortada; valor e C/D podem cair em linhas diferentes). Conferência: entradas = saídas = **149.568,52** (saldo 0 → 0). Confirmar se `pdfplumber` já está no `requirements.txt` (não está: acrescentar).
+- Conferência de saldo (inicial + entradas − saídas = final) com aviso da diferença; reimportar/período sobreposto não duplica.
+- Depois: 2.4 poupança BB (saldo 227.494,23 → 239.233,33), 2.2 OFX, 2.5 leitor universal com IA.
 
 ## Pendências com o usuário
 | # | Pergunta | Precisa até |
@@ -19,7 +18,7 @@ Atualizado em: **07/10/2026**
 | 3 | Limite mensal de IA: adotado o padrão **US$ 20** (`IA_LIMITE_MENSAL_USD`) até o usuário dizer outro valor | — |
 | 4 | ~~Diário.xls~~ — chegou em 07/10 (jan–jun/2026), copiado para `AMOSTRAS\historicos` | — |
 | 5 | Como a poupança BB 72637-0 é lançada hoje (conta própria ou tudo na conta 8)? O Diário enviado não responde (só tem o Passivo); os rendimentos vão a crédito de 2.2.2.01.000006 RENDIMENTO A APLICAR. | Fase 2 |
-| 6 | **Diário completo** (todas as contas) da Casa Criança — o enviado em 07/10 foi impresso só com o Passivo. Com ele o sistema aprende também as contas de banco, despesas e receitas. Não bloqueia. | Etapa 1.7b |
+| 6 | **Diário completo** (todas as contas) da Casa Criança — o enviado em 07/10 foi impresso só com o Passivo. Com ele o sistema aprende também as contas de banco, despesas e receitas. Não bloqueia. | quando puder |
 
 ## Plano (Fase 0 aprovada em 06/10/2026)
 
@@ -31,7 +30,7 @@ Atualizado em: **07/10/2026**
 - [x] 1.5 Módulo de IA: cliente real + falso, limites de gasto, registro de custo
 - [x] 1.6 Auto-configuração das contas-chave + detecção de conta individual por fornecedor
 - [x] 1.7a Importação do Diário (Excel do Domínio): partidas, Diário filtrado, classificação → conta, cadastro preenchido sozinho, sem contar em dobro com o lanctos.txt
-- [ ] 1.7b IA no histórico: o que as regras não separam (favorecido/natureza) e lançamentos com um lado só; contas-chave pela evidência do histórico
+- [x] 1.7b IA no histórico: o que as regras não separam (favorecido/natureza) e lançamentos com um lado só; contas-chave pela evidência do histórico
 - [x] 1.8 Listas de fornecedores, clientes e palavras-chave; perfil da empresa; aprendizado inicial com os lanctos.txt de 2025 e 2026
 - [x] 1.9 Backup automático (computador + Google Drive) + RESTAURAR.bat
 
@@ -54,6 +53,13 @@ Atualizado em: **07/10/2026**
 ### Fase 4 — Extras (um por vez, quando pedido)
 
 ## Histórico
+
+### 07/10/2026 — Etapa 1.7b concluída (IA no histórico) — Fase 1 completa
+- `app/servicos/historico_ia.py`: a IA (modelo rápido, lotes de 40, até 10 lotes por vez) revisa o que as regras não resolveram — lançamento com **um lado só** fora do banco (foi pagamento/recebimento pelo banco ou lançamento interno?) e pagamento/recebimento com histórico **sem “ - ”** (separa favorecido, CNPJ/CPF e natureza). Históricos do mesmo modelo + conta + lado = uma pergunta; `revisado_ia` (migração 0008) evita perguntar de novo; CNPJ da IA só vale com dígito certo **e escrito no histórico**. Roda sozinho ao importar (sem IA, nada muda) e pelo botão **“🤖 Completar com a IA”** (mostra quantos estão pendentes).
+- **Contas-chave pela prática da empresa** (`EVIDENCIAS`, no fim de `aprender()`): rendimento (crédito), tarifa, IOF e IR sobre aplicação (débito) — 2+ lançamentos e 70% na mesma conta analítica → a conta-chave passa a ser essa (confiança 90, justificativa “Pelo histórico da empresa…”); a escolha do usuário nunca é trocada.
+- **Real (Casa Criança, IA de verdade, ≈ US$ 0,02):** 100 lançamentos revisados em 24 grupos; “REPASSE MUNICIPAL” → recebimento (10578 VERBA RECEBIDA A APLICAR) e “RENDIMENTO APLICAÇÃO FINANCEIRA” → recebimento (10586); provisões, notas fiscais a pagar e reconhecimento da receita ficaram internos (certo). Conta-chave **RENDIMENTO → 10586 RENDIMENTO A APLICAR** (antes: conta de receita pelo nome). Aprendido: 37 favorecidos, **2 clientes**, 6 palavras-chave.
+- Testes (5 + 1 com IA real): 208 passando, ruff ok.
+
 
 ### 07/10/2026 — Etapa 1.7a concluída (Diário)
 - `app/servicos/diario.py`: lê o Diário do Domínio em Excel (.xls/.xlsx, calamine) achando as colunas pelo título; cabeçalho Empresa / C.N.P.J. / Período; ignora TOTAL DO DIA / TOTAL DO MÊS / rodapé. **Monta as partidas:** Diário completo → soma as linhas seguidas até débito = crédito (1 × N); Diário filtrado (dia não fecha) → só junta duas linhas seguidas de lados opostos, mesmo valor e mesmo histórico; o resto fica com **um lado só** (migração 0007: conta de débito ou crédito pode ser nula) e o aviso pede o Diário com TODAS as contas.

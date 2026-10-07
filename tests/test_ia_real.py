@@ -69,3 +69,52 @@ def test_modelos_respondem_json_no_formato_pedido(cliente_real, modelo):
     assert resposta.dados["mensagem"]
     assert resposta.uso.entrada > 0 and resposta.uso.saida > 0
     print(f"\n{modelo} → {resposta.modelo}: {resposta.dados['mensagem']!r} | {resposta.uso}")
+
+
+@pytest.mark.banco
+@pytest.mark.amostras
+def test_ia_real_no_diario_da_casa_crianca(cliente_real, sessao, monkeypatch):
+    """A IA de verdade revisa o que as regras não separaram no Diário real (≈ US$ 0,02). Mostra as decisões."""
+    from sqlalchemy import select
+
+    from app.modelos import ContaChave, Empresa, LancamentoHistorico
+    from app.servicos.aprendizado import aprender, importar_historico
+    from app.servicos.historico_ia import agrupar, revisar_historico
+    from app.servicos.plano import importar_plano, ler_plano
+    from tests.conftest import AMOSTRAS
+
+    plano = AMOSTRAS / "PLANO DE CONTAS" / "contas crianca.csv"
+    diario = AMOSTRAS / "historicos" / "Diário.xls"
+    lanctos = AMOSTRAS / "PLANILHA EXPORTAÇÃO" / "modelo exemplar da exportacao.txt"
+    if not all(a.exists() for a in (plano, diario, lanctos)):
+        pytest.skip("AMOSTRAS/ não está neste computador")
+    monkeypatch.setattr("app.ia.servico.obter_cliente", lambda: cliente_real)
+    empresa = Empresa(codigo_dominio=230, nome_curto="Casa Criança")
+    sessao.add(empresa)
+    sessao.commit()
+    importar_plano(sessao, empresa, ler_plano(plano.read_bytes(), plano.name), None)
+    for arquivo in (lanctos, diario):
+        importar_historico(sessao, empresa, arquivo.name, arquivo.read_bytes(), None)
+    sessao.commit()
+    pendentes = agrupar(list(sessao.scalars(select(LancamentoHistorico).where(~LancamentoHistorico.revisado_ia))))
+
+    revisao = revisar_historico(sessao, empresa)
+    resultado = aprender(sessao, empresa)
+    sessao.commit()
+    print("\n" + revisao.resumo().replace("🤖 ", "") + " " + revisao.aviso)
+    for grupo in pendentes:
+        exemplo = grupo.exemplo
+        if not exemplo.revisado_ia:
+            continue
+        conta = exemplo.contrapartida.reduzido if exemplo.contrapartida else "-"
+        print(
+            f"{len(grupo.lancamentos):>3}x {exemplo.sentido:<7} {conta:>6} "
+            f"{exemplo.historico[:55]:<55} → {exemplo.favorecido or '-'} | {exemplo.natureza or '-'}"
+        )
+    print(resultado.resumo().replace("🤖 ", ""))
+    rendimento = sessao.scalar(select(ContaChave).where(ContaChave.tipo == "RENDIMENTO"))
+    print(f"RENDIMENTO → {rendimento.conta.rotulo if rendimento else '-'}")
+    assert revisao.revisados > 0 and not revisao.aviso
+    repasse = sessao.scalar(select(LancamentoHistorico).where(LancamentoHistorico.historico == "REPASSE MUNICIPAL"))
+    aquisicao = sessao.scalar(select(LancamentoHistorico).where(LancamentoHistorico.historico.like("AQUISICAO%")))
+    assert repasse.sentido == "ENTRADA" and aquisicao.sentido == "OUTRO"

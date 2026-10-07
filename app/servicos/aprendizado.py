@@ -14,7 +14,7 @@ recalcula os padrões da empresa.
 import hashlib
 import re
 from collections import Counter, defaultdict
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 from datetime import UTC, date, datetime
 from decimal import Decimal
 from typing import Any
@@ -41,6 +41,7 @@ from app.servicos.contas_chave import (
     gravar_sugestao,
     identificar_banco,
     naturezas,
+    nome_do_tipo,
     normalizar,
     referencia_bancaria,
 )
@@ -597,6 +598,7 @@ class ResultadoAprendizado:
     clientes: int = 0
     palavras: int = 0
     ambiguos: int = 0
+    contas_chave: list[str] = field(default_factory=list)  # trocadas pela evidência do histórico
 
     def resumo(self) -> str:
         texto = (
@@ -605,6 +607,8 @@ class ResultadoAprendizado:
         )
         if self.ambiguos:
             texto += f" {self.ambiguos} ficaram ambíguos: escolha a conta na aba Aprendizado."
+        if self.contas_chave:
+            texto += " Conta-chave ajustada pelo histórico: " + "; ".join(self.contas_chave) + "."
         return texto
 
 
@@ -677,8 +681,90 @@ def aprender(sessao: Session, empresa: Empresa) -> ResultadoAprendizado:
         sessao.flush()
     finally:
         sessao.info.pop("auditoria_em_bloco", None)
+    for chave in contas_chave_pelo_historico(sessao, empresa):
+        resultado.contas_chave.append(f"{nome_do_tipo(chave.tipo)} → {chave.conta.rotulo}")
     registrar_evento(sessao, "APRENDER", detalhe=f"{empresa.nome}: {resultado.resumo()}")
     return resultado
+
+
+# ---------------------------------------------------------------- contas-chave pela evidência do histórico
+
+
+def lado_da_contrapartida(lancamento: LancamentoHistorico) -> str:
+    return "D" if lancamento.conta_debito_id == lancamento.contrapartida_id else "C"
+
+
+@dataclass(frozen=True)
+class Evidencia:
+    procura: re.Pattern  # no histórico normalizado
+    lado: str  # lado da conta-chave no lançamento: rendimento é crédito, tarifa é débito
+    exceto: re.Pattern | None = None
+
+
+EVIDENCIAS = {
+    "RENDIMENTO": Evidencia(
+        re.compile(r"RENDIMENT|JUROS (DE |S/ ?|SOBRE )?APLICAC|REMUNERACAO (BASICA|DA POUPANCA)|REAJUSTE MONETARIO"),
+        "C",
+        re.compile(r"IRRF|IMPOSTO|INSS|FOLHA|SALARI|TRABALHO"),
+    ),
+    "TARIFA": Evidencia(re.compile(r"\bTARIFA|CESTA DE SERVICOS|PACOTE DE SERVICOS"), "D"),
+    "IOF": Evidencia(re.compile(r"\bIOF\b"), "D"),
+    "IR_RETIDO": Evidencia(
+        re.compile(
+            r"(IMPOSTO DE RENDA|\bIRRF?\b).*(APLIC|POUP|RENDIMENT)|(APLIC|POUP|RENDIMENT).*(IMPOSTO DE RENDA|\bIRRF?\b)"
+        ),
+        "D",
+        re.compile(r"FOLHA|SALARI|TRABALHO"),
+    ),
+}
+MINIMO_DE_EVIDENCIAS = 2
+
+
+def contas_chave_pelo_historico(sessao: Session, empresa: Empresa) -> list[ContaChave]:
+    """A prática da empresa vale mais que o nome da conta: se o histórico mostra os rendimentos sempre
+    na mesma conta (na Casa Criança, 2.2.2.01.000006 RENDIMENTO A APLICAR — terceiro setor), essa é a
+    conta-chave. Nunca troca a escolha do usuário."""
+    lancamentos = list(
+        sessao.scalars(
+            select(LancamentoHistorico).where(
+                LancamentoHistorico.empresa_id == empresa.id, LancamentoHistorico.contrapartida_id.is_not(None)
+            )
+        )
+    )
+    if not lancamentos:
+        return []
+    atuais = {
+        chave.tipo: chave
+        for chave in sessao.scalars(
+            select(ContaChave).where(ContaChave.empresa_id == empresa.id, ContaChave.referencia == "")
+        )
+    }
+    gravadas = []
+    for tipo, evidencia in EVIDENCIAS.items():
+        achados = []
+        for lancamento in lancamentos:
+            texto = normalizar(lancamento.historico)
+            if lado_da_contrapartida(lancamento) != evidencia.lado or not evidencia.procura.search(texto):
+                continue
+            if evidencia.exceto is None or not evidencia.exceto.search(texto):
+                achados.append(lancamento)
+        if len(achados) < MINIMO_DE_EVIDENCIAS:
+            continue
+        conta_id, vezes = Counter(lancamento.contrapartida_id for lancamento in achados).most_common(1)[0]
+        conta = sessao.get(ContaContabil, conta_id)
+        atual = atuais.get(tipo)
+        if vezes < 0.7 * len(achados) or not conta.analitica:
+            continue  # sem uma prática clara
+        if atual is not None and (atual.origem == "USUARIO" or atual.conta_id == conta_id):
+            continue
+        ultimo = max((lanc for lanc in achados if lanc.contrapartida_id == conta_id), key=lambda lanc: lanc.data)
+        justificativa = (
+            f"Pelo histórico da empresa: {vezes} lançamento(s) como “{natureza_para_exibir(ultimo.historico)}” "
+            f"nesta conta (o último em {ultimo.data:%d/%m/%Y})."
+        )
+        gravadas.append(gravar_sugestao(sessao, empresa, Sugestao(tipo, conta, "REGRA", 90, justificativa)))
+    sessao.flush()
+    return gravadas
 
 
 def _gravar_padrao(sessao, empresa, existentes, tipo: str, chave: str, dados: dict[str, Any]) -> Padrao:

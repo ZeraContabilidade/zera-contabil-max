@@ -40,7 +40,7 @@ app/            sistema web
   templates/      HTML (Jinja2); _entrada.html = moldura com o emblema; _macros.html
   static/         estilo.css (identidade Zera), tema.js, marca/ (logos, emblema, Cinzel), vendor/ (Pico, HTMX)
   ia/             cliente.py (Anthropic + falso), precos.py, servico.py (chamar_ia, limites, registro)
-migracoes/      Alembic (0001 usuario+log; 0002 empresa+unaccent; 0003 conta_contabil+arquivo_original+importacao; 0004 chamada_ia; 0005 conta_chave; 0006 lancamento_historico+padrao+perfil; 0007 lançamento com um lado só)
+migracoes/      Alembic (0001 usuario+log; 0002 empresa+unaccent; 0003 conta_contabil+arquivo_original+importacao; 0004 chamada_ia; 0005 conta_chave; 0006 lancamento_historico+padrao+perfil; 0007 lançamento com um lado só; 0008 revisado_ia)
 scripts/        rotinas dos .bat (instalar, iniciar + backup automático, restaurar, banco_docker, criar_env) + banco_teste e servidor_teste
 docs/           passo a passo para o usuário (restaurar_backup.md)
 tests/          pytest (banco separado <nome>_teste)
@@ -67,6 +67,7 @@ AMOSTRAS/       arquivos reais da Casa Criança (fora do Git)
 - **Contas-chave:** usar `app/servicos/contas_chave.py` — natureza das contas por `naturezas()` (pelo nome do grupo, nunca pelo número); conta bancária por `ligar_conta_bancaria()`; nunca sobrescrever origem `USUARIO`. Parâmetro de teste não pode se chamar `banco` (é o nome da fixture do PostgreSQL).
 - Processo demorado (importação, IA) → `data-aguarde="texto"` no `<form>`.
 - **Aprendizado:** histórico (lanctos.txt ou Diário em Excel — `importar_historico` detecta: planilha = Diário, `app/servicos/diario.py`) → `Movimento` → `LancamentoHistorico`; o mesmo lançamento vindo dos dois arquivos é achado por lado (data, valor, histórico, D/C, conta — `_JaImportados`) e conta uma vez só (o lado que faltava é completado); padrões sempre recalculados por `aprender()` a partir de TODO o histórico (nunca editar padrão aprendido à mão no código; o usuário muda pela tela → origem `USUARIO`). Processo em bloco: `sessao.info["auditoria_em_bloco"] = True` + um `registrar_evento`. Valores monetários nos `detalhes` JSON ficam como texto `"910.00"`; na tela use o filtro `reais`.
+- **IA no histórico:** `app/servicos/historico_ia.py` — `revisar_historico` pergunta em lotes o que as regras não resolveram (um lado só fora do banco → `bancario`; SAIDA/ENTRADA sem “ - ” → favorecido/CNPJ/natureza); agrupa por modelo de histórico + conta + lado; marca `revisado_ia`; CNPJ da IA só vale se estiver escrito no histórico. Roda sozinho ao importar e pelo botão “Completar com a IA”. Contas-chave pela prática da empresa: `EVIDENCIAS` em `aprendizado.py`, no fim de `aprender()` (nunca troca origem `USUARIO`).
 - Plano de contas de teste comum: `tests/planos.py` (`criar_plano`). Histórico de teste anonimizado: `tests/dados/lanctos_exemplo.txt`. Diários de teste: `tests/diarios.py` (`montar_diario`, layout do Domínio, dados fictícios).
 - **Chave da API:** só no `.env` (`ANTHROPIC_API_KEY`). Nunca pedir, mostrar ou registrar a chave no chat/log.
 - Testes com arquivos: cópias anonimizadas em `tests/dados/`; teste com arquivo real de AMOSTRAS usa `@pytest.mark.amostras` e pula se a pasta não existir. Arquivos enviados nos testes vão para uma pasta temporária (`PASTA_ARQUIVOS_TESTE`).

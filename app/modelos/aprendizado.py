@@ -2,7 +2,7 @@ from datetime import date
 from decimal import Decimal
 from typing import Any
 
-from sqlalchemy import Date, ForeignKey, Numeric, String, Text, UniqueConstraint
+from sqlalchemy import Date, ForeignKey, Numeric, String, Text, UniqueConstraint, false
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -35,6 +35,9 @@ class LancamentoHistorico(Base):
     sentido: Mapped[str] = mapped_column(String(8))  # SAIDA (pagou pelo banco), ENTRADA (recebeu) ou OUTRO
     contrapartida_id: Mapped[int | None] = mapped_column(ForeignKey("conta_contabil.id"))  # o lado que não é banco
     marca: Mapped[str] = mapped_column(String(64))  # impressão digital da linha: reimportar não duplica
+    revisado_ia: Mapped[bool] = mapped_column(
+        default=False, server_default=false()
+    )  # a IA já viu: não pergunta de novo
 
     contrapartida: Mapped[ContaContabil | None] = relationship(foreign_keys=[contrapartida_id])
 

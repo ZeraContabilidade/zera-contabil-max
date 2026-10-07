@@ -39,6 +39,14 @@
   {% if loop.first %}{{ lista_avisos(imp.avisos) }}{% endif %}
   {% endfor %}
 
+  {% if pendentes_ia %}
+  <form method="post" action="/empresas/{{ empresa.id }}/historico/ia" data-aguarde="A IA está lendo os históricos… (pode levar um minuto)">
+    <button type="submit" class="secondary">🤖 Completar com a IA</button>
+    <small class="suave">{{ pendentes_ia | milhar }} lançamento(s) que as regras não entenderam: histórico fora do modelo
+      “FAVORECIDO - NATUREZA - DOC” ou com um lado só (Diário com algumas contas).</small>
+  </form>
+  {% endif %}
+
   {% if hist.lancamentos %}
   <form method="post" action="/empresas/{{ empresa.id }}/aprendizado/refazer" data-aguarde="Recalculando…">
     <button type="submit" class="secondary outline">Recalcular o aprendizado</button>

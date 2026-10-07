@@ -21,6 +21,7 @@ from app.servicos.aprendizado import (
 )
 from app.servicos.contas_chave import achar_conta_analitica
 from app.servicos.empresas import completar_pelo_cnpj, descrever_campos
+from app.servicos.historico_ia import contar_pendentes, revisar_historico
 from app.servicos.plano import ErroLeitura, buscar_contas
 from app.web import avisar, pagina, redirecionar
 
@@ -47,6 +48,7 @@ def contexto_aba_aprendizado(sessao: Session, empresa: Empresa, q: str = "", amb
         "q_padroes": q,
         "so_ambiguos": ambiguos,
         "tem_plano": any(c.ativa for c in contas),
+        "pendentes_ia": contar_pendentes(sessao, empresa),
     }
 
 
@@ -89,11 +91,10 @@ def enviar_historico(
         sessao.rollback()
         avisar(request, str(erro), "erro")
         return redirecionar(_destino(empresa))
-    resultado = aprender(sessao, empresa)
     resumo = importacao.resumo
     preenchidos = resumo.get("preenchidos") or []
     consulta = completar_pelo_cnpj(empresa) if "cnpj_cpf" in preenchidos else None
-    sessao.commit()
+    sessao.commit()  # a importação fica gravada antes da IA
 
     texto = f"Histórico importado: {resumo['novos']} lançamento(s) novo(s)"
     if resumo["repetidos"]:
@@ -107,8 +108,43 @@ def enviar_historico(
         avisar_consulta(request, consulta)
     if importacao.avisos:
         avisar(request, f"Há {len(importacao.avisos)} aviso(s) sobre o arquivo. Veja abaixo.", "atencao")
+    _revisar_com_ia(request, sessao, empresa, usuario, avisar_desligada=False)
+    resultado = aprender(sessao, empresa)
+    sessao.commit()
     avisar(request, resultado.resumo(), "atencao" if resultado.ambiguos else "ok")
     _tentar_perfil(request, sessao, empresa, usuario)
+    return redirecionar(_destino(empresa))
+
+
+def _revisar_com_ia(request: Request, sessao: Session, empresa: Empresa, usuario: Usuario, avisar_desligada: bool):
+    """A IA completa o que as regras não separaram. Sem IA, tudo continua como estava."""
+    try:
+        revisao = revisar_historico(sessao, empresa, usuario)
+    except IAIndisponivel as erro:
+        sessao.rollback()
+        if avisar_desligada:
+            avisar(request, str(erro), "atencao")
+        return
+    sessao.commit()
+    if revisao.revisados:
+        avisar(request, revisao.resumo())
+    if revisao.aviso:
+        avisar(request, revisao.aviso, "atencao")
+
+
+@router.post("/empresas/{empresa_id}/historico/ia")
+def completar_historico_com_ia(
+    request: Request,
+    empresa_id: int,
+    usuario: Usuario = Depends(usuario_logado),
+    sessao: Session = Depends(obter_sessao),
+):
+    if (empresa := buscar_empresa(sessao, request, empresa_id)) is None:
+        return redirecionar("/")
+    _revisar_com_ia(request, sessao, empresa, usuario, avisar_desligada=True)
+    resultado = aprender(sessao, empresa)
+    sessao.commit()
+    avisar(request, resultado.resumo(), "atencao" if resultado.ambiguos else "ok")
     return redirecionar(_destino(empresa))
 
 
