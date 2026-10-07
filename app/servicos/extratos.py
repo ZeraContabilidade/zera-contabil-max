@@ -3,9 +3,10 @@ grava os movimentos sem duplicar e confere o saldo (inicial + entradas − saíd
 
 import calendar
 import hashlib
+import re
 from collections import Counter
 from dataclasses import asdict
-from datetime import date
+from datetime import date, timedelta
 from decimal import Decimal
 
 from sqlalchemy import func, select
@@ -23,10 +24,23 @@ from app.modelos import (
     Usuario,
 )
 from app.servicos.armazenamento import guardar_arquivo
-from app.servicos.contas_chave import identificar_banco, ligar_conta_bancaria, normalizar, referencia_bancaria
+from app.servicos.contas_chave import identificar_banco, ligar_conta_bancaria, referencia_bancaria
 from app.servicos.plano import Aviso, ErroLeitura
 
 ZERO = Decimal("0")
+
+
+def _so_digitos(texto: str) -> str:
+    return re.sub(r"\D", "", texto or "")
+
+
+def mesma_conta(conta: ContaBancaria, agencia: str, numero: str) -> bool:
+    """O mesmo número escrito de jeitos diferentes: “72637-0” (PDF) = “726370” = “0000726370” (OFX).
+    A agência só desempata quando os dois lados a têm (muitos OFX vêm sem): “2180-6” = “2180”."""
+    if _so_digitos(conta.numero).lstrip("0") != _so_digitos(numero).lstrip("0"):
+        return False
+    a, b = _so_digitos(conta.agencia)[:4], _so_digitos(agencia)[:4]
+    return not a or not b or a.lstrip("0") == b.lstrip("0")
 
 
 def _conta_bancaria(
@@ -37,29 +51,20 @@ def _conta_bancaria(
     if banco is None:
         raise ErroLeitura(f"Não reconheci o banco “{lido.banco}” do extrato.")
     codigo, _, nome = banco
-    de_outra = sessao.scalar(
-        select(ContaBancaria).where(
-            ContaBancaria.banco_codigo == codigo,
-            ContaBancaria.agencia == lido.agencia,
-            ContaBancaria.numero == lido.numero,
-            ContaBancaria.tipo == lido.tipo,
-            ContaBancaria.empresa_id != empresa.id,
-        )
-    )
+    mesmo_banco = sessao.scalars(
+        select(ContaBancaria).where(ContaBancaria.banco_codigo == codigo, ContaBancaria.tipo == lido.tipo)
+    ).all()
+    iguais = [c for c in mesmo_banco if mesma_conta(c, lido.agencia, lido.numero)]
+    de_outra = next((c for c in iguais if c.empresa_id != empresa.id), None)
     if de_outra is not None:
         dona = sessao.get(Empresa, de_outra.empresa_id)
         raise ErroLeitura(
             f"Este extrato é da conta {de_outra.rotulo}, que é da empresa {dona.nome} "
             f"(código {dona.codigo_dominio}). Confira se escolheu a empresa certa."
         )
-    conta = sessao.scalar(
-        select(ContaBancaria).where(
-            ContaBancaria.empresa_id == empresa.id,
-            ContaBancaria.banco_codigo == codigo,
-            ContaBancaria.numero == lido.numero,
-            ContaBancaria.tipo == lido.tipo,
-        )
-    )
+    conta = next((c for c in iguais if c.empresa_id == empresa.id), None)
+    if conta is not None and not conta.agencia and lido.agencia:
+        conta.agencia = lido.agencia  # o OFX às vezes vem sem agência; o PDF completa
     if conta is None:
         conta = ContaBancaria(
             empresa_id=empresa.id,
@@ -135,6 +140,28 @@ def importar_extrato(
 
     entradas = sum((m.valor for m in lido.movimentos if m.sentido == "ENTRADA"), ZERO)
     saidas = sum((m.valor for m in lido.movimentos if m.sentido == "SAIDA"), ZERO)
+    avisos = list(lido.avisos)
+    if lido.saldo_inicial is None and not lido.saldo_inicial_visivel and lido.inicio:
+        # o OFX não traz saldo inicial: vale o saldo final do extrato anterior desta conta, se ele acabou na véspera
+        anterior = sessao.scalar(
+            select(Extrato)
+            .where(
+                Extrato.conta_bancaria_id == conta.id,
+                Extrato.fim == lido.inicio - timedelta(days=1),
+                Extrato.saldo_final.is_not(None),
+            )
+            .order_by(Extrato.id.desc())
+        )
+        if anterior is not None:
+            lido.saldo_inicial = anterior.saldo_final
+            lido.saldo_cortado = lido.saldo_cortado or anterior.saldo_cortado
+        elif lido.saldo_final is not None:
+            avisos.append(
+                Aviso(
+                    "O arquivo não traz o saldo inicial: a conferência do saldo fica para quando o extrato do "
+                    "mês anterior desta conta estiver no sistema."
+                )
+            )
     conferencia, diferenca = conferir_saldo(lido, entradas, saidas)
     if lido.saldo_inicial is None and lido.saldo_final is not None and lido.saldo_inicial_visivel:
         lido.saldo_inicial = lido.saldo_final - (entradas - saidas)  # o anterior saiu cortado no PDF
@@ -158,18 +185,15 @@ def importar_extrato(
     sessao.add(extrato)
     sessao.flush()
 
-    # anti-duplicidade: o mesmo movimento (mesma conta, dia, valor, histórico e documento) tem a mesma marca;
-    # dois movimentos iguais no mesmo dia são o 1º e o 2º
+    # anti-duplicidade: mesma conta, dia, sentido e valor = o mesmo movimento (o 1º, o 2º... do dia).
+    # O texto fica de fora de propósito: o PDF e o OFX do mesmo mês escrevem o histórico de jeitos diferentes.
     existentes = set(
         sessao.scalars(select(MovimentoExtrato.hash).where(MovimentoExtrato.conta_bancaria_id == conta.id))
     )
     vezes: Counter[str] = Counter()
     novos, repetidos = [], 0
     for ordem, movimento in enumerate(lido.movimentos, start=1):
-        base = (
-            f"{movimento.data.isoformat()}|{movimento.sentido}|{movimento.valor}|{normalizar(movimento.historico)}"
-            f"|{normalizar(movimento.complemento)}|{movimento.documento}"
-        )
+        base = f"{movimento.data.isoformat()}|{movimento.sentido}|{movimento.valor}"
         vezes[base] += 1
         marca = _marca(conta, base, vezes[base])
         if marca in existentes:
@@ -194,7 +218,6 @@ def importar_extrato(
         )
     sessao.add_all(novos)
 
-    avisos = list(lido.avisos)
     if conferencia == "DIFERENCA":
         avisos.insert(
             0,

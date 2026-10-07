@@ -3,7 +3,11 @@
 Atualizado em: **07/10/2026**
 
 ## Próximo passo exato
-**Etapa 2.2 — Leitor OFX** (`app/leitores/ofx.py`, §3.4 regra 1: “OFX de qualquer banco funciona desde o início”). Usar `ofxtools` (acrescentar ao requirements) ou um parser próprio tolerante (OFX 1.x é SGML sem fechamento de tags; bancos brasileiros mandam cp1252/latin-1 e às vezes `CHARSET:1252`). Ler `BANKID` (código do banco → `identificar_banco`, ex.: 001), `BRANCHID` (agência — muitos bancos mandam vazio), `ACCTID` (conta, às vezes com dígito colado), `ACCTTYPE` (CHECKING/SAVINGS → BANCO/POUPANCA), `DTSTART`/`DTEND`, `STMTTRN` (`TRNTYPE`, `DTPOSTED`, `TRNAMT` com sinal, `FITID` — usar no hash anti-duplicidade quando existir —, `CHECKNUM`, `MEMO`/`NAME`), `LEDGERBAL` (saldo final; o inicial = final − movimentos, sem conferência: avisar “OFX não traz saldo inicial”). Sem amostra real em AMOSTRAS: montar um OFX de teste fictício (BB e outro banco) em `tests/dados/`; pedir ao usuário um OFX real quando puder. Depois: 2.5 leitor universal com IA (PDF de outros bancos, conferido pelo saldo) e 2.6 classificação.
+**Etapa 2.5 — Leitor universal com IA + Excel/CSV** (§3.4 regras 3, 4 e 5).
+1. **PDF de banco sem leitor próprio** (`app/leitores/universal_ia.py`, último da lista `LEITORES`, só para PDF com texto): manda o texto do PDF (por página, em lotes se for grande) ao **modelo forte** via `PedidoIA` (esquema `{banco, agencia, conta, tipo, inicio, fim, saldo_inicial, saldo_final, movimentos: [{data, descricao, documento, valor, sentido}]}`, `additionalProperties: false`); valida (datas dentro do período, valores > 0, sentido ENTRADA/SAIDA) e **só aceita se a conferência de saldo bater** — senão recusa com “mande o OFX ou o Excel do banco”. Precisa da sessão/empresa para `chamar_ia` (o leitor hoje não recebe a sessão: passar um contexto opcional em `ler_extrato` ou fazer a etapa da IA no serviço quando nenhum leitor reconhecer). PDF sem texto (foto/escaneado): imagem da página para a IA — deixar para depois, avisar.
+2. **Excel/CSV** (`app/leitores/planilha.py`): a IA identifica as colunas (data, descrição, valor ou débito/crédito, saldo) pelas 15 primeiras linhas; o usuário confirma na 1ª vez e o modelo fica guardado por banco/layout (tabela `modelo_planilha_banco`, migração 0010; §8). Sem IA: tentar pelos títulos comuns (“Data”, “Histórico”, “Valor”, “Débito”, “Crédito”, “Saldo”).
+3. Testes com a IA falsa (respostas gravadas) + 1 teste `ia_real` com o PDF real do BB passando pelo leitor universal (deve dar o mesmo resultado do leitor próprio: 49 movimentos, 149.568,52).
+Depois: **2.6 classificação** (regras, CNPJ, nome parecido com `rapidfuzz`, palavra-chave, valor recorrente, transferência entre contas próprias CC ↔ poupança).
 
 ## Pendências com o usuário
 | # | Pergunta | Precisa até |
@@ -32,7 +36,7 @@ Atualizado em: **07/10/2026**
 
 ### Fase 2 — Extratos e Revisão
 - [x] 2.1 Arrastar e soltar, detecção automática, anti-duplicidade, guarda do original
-- [ ] 2.2 Leitor OFX
+- [x] 2.2 Leitor OFX
 - [x] 2.3 Leitor PDF BB conta corrente
 - [x] 2.4 Leitor PDF BB poupança
 - [ ] 2.5 Leitor universal com IA (PDF) + Excel/CSV com colunas identificadas pela IA
@@ -49,6 +53,14 @@ Atualizado em: **07/10/2026**
 ### Fase 4 — Extras (um por vez, quando pedido)
 
 ## Histórico
+
+### 07/10/2026 — Etapa 2.2 concluída (OFX)
+- `app/leitores/ofx.py`: leitor próprio e tolerante (SGML do OFX 1.x sem fechar tags, XML do 2.x, Windows-1252, vírgula decimal); banco pelo BANKID (001, 0341...), agência (pode faltar), conta, tipo (CHECKING/SAVINGS/MONEYMRKT), período, movimentos (sentido pelo sinal; MEMO/NAME; CHECKNUM/REFNUM) e saldo final (LEDGERBAL). Recusa cartão de crédito e arquivo com várias contas, com mensagem do que fazer.
+- **Mesma conta, escritas diferentes:** `mesma_conta` (“72637-0” = “0000726370”; agência só desempata se os dois lados têm); o OFX sem agência é completado pelo PDF.
+- **PDF e OFX do mesmo mês não duplicam:** o hash do movimento passou a ser conta + dia + sentido + valor + nº da vez no dia (sem o texto, que cada formato escreve de um jeito).
+- **Saldo inicial do OFX** = saldo final do extrato da véspera da mesma conta → conferência funciona mês a mês; sem o mês anterior, aviso.
+- Testes (10, com OFX fictícios montados no teste). Sem OFX real nas amostras (pendência 7).
+
 
 ### 07/10/2026 — Etapa 2.4 concluída (PDF da poupança do BB)
 - `app/leitores/bb_poupanca.py`: junta as até 3 linhas de cada lançamento pela proximidade com a linha da data (histórico e informações quebrados; valor numa linha e C/D em outra); colunas pelo cabeçalho; ignora o calendário de rendimentos do fim.

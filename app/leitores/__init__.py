@@ -100,13 +100,14 @@ def ler_extrato(nome: str, conteudo: bytes) -> ExtratoLido:
         if leitor.reconhece(arquivo):
             return leitor.ler(arquivo)
     raise ErroLeitura(
-        f"Não reconheci o extrato “{nome}”. Por enquanto o sistema lê os PDFs do Banco do Brasil (conta "
-        "corrente e poupança); OFX, Excel e outros bancos chegam nas próximas etapas."
+        f"Não reconheci o extrato “{nome}”. Por enquanto o sistema lê OFX de qualquer banco e os PDFs do "
+        "Banco do Brasil (conta corrente e poupança); Excel e PDF de outros bancos chegam nas próximas etapas."
     )
 
 
 # o registro vem depois dos tipos, que os leitores usam
 from app.leitores.bb_conta_corrente import LeitorBBContaCorrente  # noqa: E402
 from app.leitores.bb_poupanca import LeitorBBPoupanca  # noqa: E402
+from app.leitores.ofx import LeitorOFX  # noqa: E402
 
-LEITORES: list[Leitor] = [LeitorBBContaCorrente(), LeitorBBPoupanca()]
+LEITORES: list[Leitor] = [LeitorBBContaCorrente(), LeitorBBPoupanca(), LeitorOFX()]
