@@ -18,6 +18,9 @@ ROTULOS_ACAO = {
     "IMPORTAR_PLANO": "Importou o plano de contas",
     "IMPORTAR_HISTORICO": "Importou histórico de lançamentos",
     "APRENDER": "Recalculou o aprendizado",
+    "BACKUP": "Fez backup",
+    "BACKUP_FALHOU": "Backup falhou",
+    "RESTAURAR_BACKUP": "Restaurou um backup",
 }
 
 

@@ -23,6 +23,8 @@ USUARIOS_EXEMPLO = [
 
 def main() -> int:
     os.environ["PASTA_ARQUIVOS"] = "dados/arquivos_teste"  # nunca mistura com os arquivos reais
+    os.environ["PASTA_BACKUP"] = "dados/backups_teste"
+    os.environ["PASTA_BACKUP_NUVEM"] = "NAO"  # o backup de teste nunca vai para o Google Drive
     os.environ["IA_SIMULADA"] = "true"  # IA de demonstração: sem custo e nunca com a chave real
     os.environ["ANTHROPIC_API_KEY"] = ""
     url = usar_banco_teste()

@@ -204,6 +204,11 @@ details.aviso summary::after { filter: none; }
 .lista-aviso li { list-style: disc; }
 .tabela-plano tr.sintetica td { font-weight: 600; }
 .etiqueta-ambar { background: var(--ambar-vidro); color: var(--ambar); border-color: transparent; }
+.etiqueta-vermelha { background: var(--vermelho-vidro); color: var(--vermelho); border-color: transparent; }
+.lista-destinos { padding-left: 0; }
+.lista-destinos li { list-style: none; margin-bottom: .35rem; }
+.lista-destinos code { word-break: break-all; }
+.aviso a { color: inherit; font-weight: 600; text-decoration: underline; }
 .tabela-chaves td { vertical-align: top; }
 .tabela-chaves tr.chave-faltando td:first-child { box-shadow: inset 3px 0 0 var(--vermelho); }
 .tabela-chaves tr.chave-conferir td:first-child { box-shadow: inset 3px 0 0 var(--ambar); }

@@ -23,6 +23,7 @@ A especificação completa está em `PROMPT_Claude_Code_ZeraConcilia.md` (citada
 | Qualidade | `.venv\Scripts\python -m ruff check .` e `.venv\Scripts\python -m ruff format .` |
 | Banco | `docker compose up -d banco` · contêiner `zera-contabil-max-banco` · porta `127.0.0.1:5433` |
 | Nova migração | `.venv\Scripts\alembic revision --autogenerate -m "descricao" --rev-id 0002` → revisar o arquivo (Enum gera CHECK em dobro: apagar o explícito) |
+| Backup / restaurar | automático pelo `INICIAR.bat` (1 por dia) ou tela **Backup**; restaurar: `RESTAURAR.bat` (passo a passo em `docs/restaurar_backup.md`) |
 | Ver as telas | `.venv\Scripts\python -m scripts.servidor_teste` → http://127.0.0.1:8001 (banco `_teste`, usuários ana/carla/davi; senha em `scripts/servidor_teste.py`). Também em `.claude/launch.json` (`zera-teste`). Rodar o pytest apaga esses dados: reinicie o servidor. |
 
 ## Estrutura
@@ -34,13 +35,14 @@ app/            sistema web
   auditoria.py    log automático de CRIAR/ALTERAR/EXCLUIR de todo modelo Auditavel
   web.py          templates, avisar(), pagina(), estatico() (CSS/JS com ?v= contra cache velho)
   modelos/        tabelas (SQLAlchemy) — importar tudo por app.modelos
-  servicos/       regras de negócio (sem HTTP)
+  servicos/       regras de negócio (sem HTTP); backup.py = pg_dump pelo Docker + espelho dos arquivos + restauração
   rotas/          telas (FastAPI APIRouter)
   templates/      HTML (Jinja2); _entrada.html = moldura com o emblema; _macros.html
   static/         estilo.css (identidade Zera), tema.js, marca/ (logos, emblema, Cinzel), vendor/ (Pico, HTMX)
   ia/             cliente.py (Anthropic + falso), precos.py, servico.py (chamar_ia, limites, registro)
 migracoes/      Alembic (0001 usuario+log; 0002 empresa+unaccent; 0003 conta_contabil+arquivo_original+importacao; 0004 chamada_ia; 0005 conta_chave; 0006 lancamento_historico+padrao+perfil)
-scripts/        rotinas dos .bat (instalar, iniciar, banco_docker, criar_env) + banco_teste e servidor_teste
+scripts/        rotinas dos .bat (instalar, iniciar + backup automático, restaurar, banco_docker, criar_env) + banco_teste e servidor_teste
+docs/           passo a passo para o usuário (restaurar_backup.md)
 tests/          pytest (banco separado <nome>_teste)
 ferramentas/preparar_computador/   instalador da máquina (Git, Python, Node, Docker, Claude Code)
 AMOSTRAS/       arquivos reais da Casa Criança (fora do Git)
@@ -57,6 +59,7 @@ AMOSTRAS/       arquivos reais da Casa Criança (fora do Git)
 - Mês de trabalho: `competencia_da_tela(request, mes)` (padrão mês passado; guardado na sessão).
 - Barra do mês: cada etapa nova acrescenta sua conferência em `app/servicos/progresso.py::_concluidas`.
 - Testes nunca acessam a internet (fixture autouse `_sem_internet`); para simular a BrasilAPI use `cnpj_responde(resposta)`.
+- **Backup:** só por `app/servicos/backup.py` (`fazer_backup`, `situacao`, `restaurar_backup`). Nos testes `PASTA_BACKUP` é temporária e `PASTA_BACKUP_NUVEM=NAO` (nunca grava no Google Drive real); o servidor de teste usa `dados/backups_teste`. Tabela nova entra sozinha no backup (é o banco inteiro).
 - CNPJ/CPF: sempre por `app/servicos/documentos.py` (aceita CNPJ alfanumérico de jul/2026); gravar normalizado (só letras e números).
 - Importações em bloco (plano, Diário, extrato) **não** usam `Auditavel` linha a linha: gravam `ArquivoOriginal` (`guardar_arquivo`) + `Importacao` (resumo e avisos) + `registrar_evento`.
 - Avisos de importação = `Aviso(texto, itens)`: texto curto com exemplos, lista completa em `itens` (a tela abre ao clicar).
@@ -82,6 +85,8 @@ AMOSTRAS/       arquivos reais da Casa Criança (fora do Git)
 - Não trocar `POSTGRES_PASSWORD` no `.env` depois que o banco foi criado (o volume guarda a senha antiga).
 - TestClient da Starlette: usar `httpx2` (o `httpx` gera aviso de descontinuação).
 - Jinja escapa `'` como `&#39;`: nas mensagens use aspas tipográficas “assim”.
+- Para editar arquivo com `\` (caminhos do Windows) ou `\n` dentro de código, usar a ferramenta Edit — script Python em heredoc transforma `\b` e `\n` em caracteres de controle.
+- O Google Drive para computador ainda **não está instalado** neste computador: o backup acha `<unidade>:\Meu Drive` sozinho quando for instalado.
 - Segurança do login: cookie assinado (`CHAVE_SESSAO`), SameSite=Lax (bloqueia formulário de outro site). Antes de ir para a nuvem (Fase 4), avaliar token CSRF e HTTPS.
 - O Python do computador é o 3.13 (a especificação citava 3.12; tudo é compatível).
 - **Nunca editar arquivo de texto com `Get-Content`/`Set-Content` do PowerShell 5.1**: ele lê UTF-8 sem BOM como ANSI e corrompe os acentos (“Classificação” → “ClassificaÃ§Ã£o”). Usar Edit/Write ou Python com `encoding="utf-8"`.

@@ -1,19 +1,19 @@
 # PROGRESSO — ZERA CONTÁBIL MAX
 
-Atualizado em: **06/10/2026**
+Atualizado em: **07/10/2026**
 
 ## Próximo passo exato
-**Etapa 1.9 — Backup** (§7.2), já que o Diário (1.7) ainda não chegou: `pg_dump` pelo contêiner (`docker exec zera-contabil-max-banco pg_dump -Fc`) + cópia da pasta de arquivos originais para `PASTA_BACKUP` (padrão `dados/backups`; quando o usuário responder a pergunta 1, é só trocar no `.env` — ex.: `G:\Meu Drive\Backups ZeraConcilia` ou uma pasta no Z:\). Backup diário e ao iniciar (o `INICIAR.bat` faz um se o último tiver mais de 24 h), manter as **30** últimas cópias, `RESTAURAR.bat` + passo a passo em `docs/restaurar_backup.md`, aviso na tela se o último backup tiver mais de 2 dias, registro no log. Testes com pasta temporária. Depois: **Fase 2** (extratos — os PDFs do BB já estão em AMOSTRAS) e a 1.7 assim que o Diário chegar.
+**Etapa 1.7 — Importação do Diário** — o arquivo chegou: `AMOSTRAS\historicos\Diário.xls` (e o PDF igual, não usar). O que já se sabe do arquivo: aba “Diário”, 417 linhas, período **01/01/2026–30/06/2026**; cabeçalho `Empresa:` / `C.N.P.J.:` (06.101.084/0001-36, válido) / `Período:`; títulos na linha 8; **cada linha tem só um lado** (Débito **ou** Crédito) e os lançamentos de um dia fecham em “TOTAL DO DIA” → montar as partidas juntando as linhas do mesmo dia/histórico até débito = crédito (lançamento com várias contas = 1 contra N); rodapé com assinaturas e “Sistema licenciado para…” → ignorar. Histórico no padrão “FAVORECIDO - CNPJ - NATUREZA - DOC”.
 
-**Etapa 1.7 — Importação do Diário/Razão** (quando o arquivo chegar) (§3.3, §6.1, §11.3) — **precisa do `Diário.xls` da Casa Criança** (pergunta 4; colocar em `AMOSTRAS\historicos`). Ler com `python-calamine` (aba "Diário"; localizar colunas pelo título `Data | Classificação | Descrição | Histórico | Débito | Crédito`; ignorar "TOTAL DO DIA" e vazias; cabeçalho com "Empresa:" e "C.N.P.J.:" → **preencher razão social e CNPJ da empresa com 🤖** e disparar a consulta pública). Converter classificação → reduzido pelo plano (22 classificações repetidas: desempatar pela descrição). Tabela `lancamento_historico` (empresa, data, conta débito/crédito, valor Decimal, histórico, importação; anti-duplicidade por hash). Separar a contrapartida das contas de banco/caixa (contas-chave BANCO + grupo Disponível); **contas de banco usadas no Diário viram contas-chave BANCO** (a conta 8 aparece sozinha — critério da Fase 1). Extrair do histórico favorecido / CNPJ-CPF (validar dígito; `app/servicos/documentos.py`) / natureza por regras (texto antes do primeiro " - ", regex de CNPJ); o que as regras não separam vai para a **IA em lotes** (modelo rápido) → `{favorecido, cnpj_cpf, natureza}`. Usar as contagens por conta do Diário como evidência para **refazer as contas-chave incertas** (ex.: qual das 5 “ÁGUA E ESGOTO”/tarifas a empresa usa). Arquivo original guardado. **Reaproveitar o que a 1.8 já fez:** cada linha do Diário vira `LancamentoHistorico` (mesma tabela, mesmo `aprender`); só falta o leitor do Diário (calamine), a conversão classificação → reduzido e a IA em lotes para históricos sem “ - ” (ex.: “PAGTO SABESP REF CONTA AGUA”).
+Detalhes da 1.7 (§3.3, §6.1, §11.3): Ler com `python-calamine` (localizar colunas pelo título `Data | Classificação | Descrição | Histórico | Débito | Crédito`; ignorar "TOTAL DO DIA" e vazias; cabeçalho com "Empresa:" e "C.N.P.J.:" → **preencher razão social e CNPJ da empresa com 🤖** e disparar a consulta pública). Converter classificação → reduzido pelo plano (22 classificações repetidas: desempatar pela descrição). Tabela `lancamento_historico` (empresa, data, conta débito/crédito, valor Decimal, histórico, importação; anti-duplicidade por hash). Separar a contrapartida das contas de banco/caixa (contas-chave BANCO + grupo Disponível); **contas de banco usadas no Diário viram contas-chave BANCO** (a conta 8 aparece sozinha — critério da Fase 1). Extrair do histórico favorecido / CNPJ-CPF (validar dígito; `app/servicos/documentos.py`) / natureza por regras (texto antes do primeiro " - ", regex de CNPJ); o que as regras não separam vai para a **IA em lotes** (modelo rápido) → `{favorecido, cnpj_cpf, natureza}`. Usar as contagens por conta do Diário como evidência para **refazer as contas-chave incertas** (ex.: qual das 5 “ÁGUA E ESGOTO”/tarifas a empresa usa). Arquivo original guardado. **Reaproveitar o que a 1.8 já fez:** cada linha do Diário vira `LancamentoHistorico` (mesma tabela, mesmo `aprender`); só falta o leitor do Diário (calamine), a conversão classificação → reduzido e a IA em lotes para históricos sem “ - ” (ex.: “PAGTO SABESP REF CONTA AGUA”). Depois da 1.7: **Fase 2** (extratos — os PDFs do BB já estão em AMOSTRAS).
 
 ## Pendências com o usuário
 | # | Pergunta | Precisa até |
 |---|---|---|
-| 1 | Destino do backup — o Google Drive para computador **não está instalado**; o Z:\ está disponível. Recomendado: os dois. | Etapa 1.9 |
-| 2 | ~~Chave da API~~ — o usuário tem a chave (06/10). **Falta colar** em `ANTHROPIC_API_KEY=` no `.env` e testar em **IA → Testar conexão** (ou `pytest -m ia_real -s`). Nunca pedir a chave no chat. | Etapa 1.6 |
+| 1 | ~~Destino do backup~~ — usuário pediu **Google Drive** (07/10). O Google Drive para computador **não está instalado**: o usuário precisa instalar e entrar na conta do escritório; o sistema acha `Meu Drive\Backups ZERA CONTABIL MAX` sozinho. Até lá, backup só em `dados\backups` (a tela avisa). | — |
+| 2 | ~~Chave da API~~ — colada no `.env` em 07/10 (lida do arquivo do usuário no Z:\, sem passar pelo chat); `pytest -m ia_real` ok nos dois modelos. Nunca pedir nem mostrar a chave. | — |
 | 3 | Limite mensal de IA: adotado o padrão **US$ 20** (`IA_LIMITE_MENSAL_USD`) até o usuário dizer outro valor | — |
-| 4 | **Diário.xls** da Casa Criança (jan–ago/2026) em `AMOSTRAS\historicos` | Etapa 1.7 |
+| 4 | ~~Diário.xls~~ — chegou em 07/10 (jan–jun/2026), copiado para `AMOSTRAS\historicos` | — |
 | 5 | Como a poupança BB 72637-0 é lançada hoje (conta própria ou tudo na conta 8)? Talvez o Diário responda. | Etapa 1.6 |
 
 ## Plano (Fase 0 aprovada em 06/10/2026)
@@ -25,9 +25,9 @@ Atualizado em: **06/10/2026**
 - [x] 1.4 Importação do plano de contas (TXT/Excel/CSV), avisos, reimportação, copiar de outra empresa
 - [x] 1.5 Módulo de IA: cliente real + falso, limites de gasto, registro de custo
 - [x] 1.6 Auto-configuração das contas-chave + detecção de conta individual por fornecedor
-- [ ] 1.7 Importação do Diário: CNPJ / favorecido / natureza (regras + IA); cadastro preenchido sozinho — **aguardando o Diário.xls**
+- [ ] 1.7 Importação do Diário: CNPJ / favorecido / natureza (regras + IA); cadastro preenchido sozinho — **Diário chegou: é a próxima**
 - [x] 1.8 Listas de fornecedores, clientes e palavras-chave; perfil da empresa; aprendizado inicial com os lanctos.txt de 2025 e 2026
-- [ ] 1.9 Backup automático + RESTAURAR.bat
+- [x] 1.9 Backup automático (computador + Google Drive) + RESTAURAR.bat
 
 ### Fase 2 — Extratos e Revisão
 - [ ] 2.1 Arrastar e soltar, detecção automática, anti-duplicidade, guarda do original
@@ -48,6 +48,17 @@ Atualizado em: **06/10/2026**
 ### Fase 4 — Extras (um por vez, quando pedido)
 
 ## Histórico
+
+### 07/10/2026 — Etapa 1.9 concluída (backup) + chave da IA ligada
+- `app/servicos/backup.py`: `pg_dump -Fc` pelo contêiner + **conferência** (`pg_restore -l`, conta as tabelas); arquivos originais espelhados em `<pasta>/arquivos` (só copia os novos, nunca apaga). Nome `zera_AAAA-MM-DD_HH-MM-SS_<motivo>.dump` (automatico / manual / antes-de-restaurar); **30** por pasta.
+- Dois destinos: `PASTA_BACKUP` (computador, padrão `dados/backups`) + `PASTA_BACKUP_NUVEM` (em branco = acha sozinho `<unidade>:\Meu Drive` / `My Drive` / pasta do usuário e cria `Backups ZERA CONTABIL MAX`; `NAO` desliga). Falha no Google Drive não derruba o backup do computador.
+- Automático: o `INICIAR.bat` roda uma rotina em segundo plano que faz backup quando o último tem mais de 20 h (em cada pasta) e confere de novo a cada 30 min; falha aparece na janela e vai para o log (`BACKUP_FALHOU`). Uma trava impede dois backups juntos.
+- **Restauração** (`RESTAURAR.bat` → `scripts/restaurar.py`): recusa se o sistema estiver aberto; lista os backups (computador + Google Drive), Enter = o mais recente, confirmação digitando RESTAURAR; guarda antes uma cópia “antes de restaurar” (só no computador); monta o backup num banco à parte (`<banco>_restaurando`) e só troca se deu certo (backup estragado não apaga nada); devolve os arquivos originais; roda as migrações; registra no log. Aceita um `.dump` como argumento (arrastar o arquivo sobre o .bat). Passo a passo em `docs/restaurar_backup.md` (inclui computador novo).
+- Tela **Backup** (Supervisor): situação, destinos, como instalar o Google Drive, “Fazer backup agora”, lista. Tela inicial do Supervisor avisa backup com mais de 2 dias ou sem cópia no Google Drive.
+- Testes (15): destinos, lista/limpeza, espelho, situação, **backup e restauração de verdade no PostgreSQL** (num banco à parte), backup estragado, tela e botão. Testes usam pastas temporárias e `PASTA_BACKUP_NUVEM=NAO`.
+- Real: 1º backup feito (`dados/backups`, 11 tabelas) e `RESTAURAR.bat` testado de ponta a ponta no banco real (ainda vazio).
+- Chave da API colocada no `.env` direto do arquivo do usuário (sem aparecer no chat); teste real ok com Haiku 4.5 e Sonnet 5.5.
+- 194 testes passando, ruff ok.
 
 ### 07/10/2026 — Etapa 1.8 concluída (antes da 1.7, que espera o Diário)
 - Tabelas `lancamento_historico` e `padrao` + perfil da IA na empresa (migração 0006).

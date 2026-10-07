@@ -13,6 +13,15 @@
   </div>
 </div>
 
+{% if backup and backup.atrasado %}
+<p class="aviso aviso-erro" role="status">
+  {% if backup.ultimo %}O último backup foi há {{ backup.dias_sem_backup }} dias.{% else %}Nenhum backup foi feito ainda.{% endif %}
+  <a href="/backup">Abrir a tela de backup</a></p>
+{% elif backup and not backup.destinos.nuvem %}
+<p class="aviso aviso-atencao" role="status">Os backups estão só neste computador (sem cópia no Google Drive).
+  <a href="/backup">Ver como resolver</a></p>
+{% endif %}
+
 {% if total == 0 %}
 <article class="vazio">
   <h2>Nenhuma empresa cadastrada ainda</h2>

@@ -26,6 +26,7 @@ class Config(BaseSettings):
     # Pastas: relativas à raiz do sistema ou caminho completo
     pasta_arquivos: Path = Path("dados/arquivos")
     pasta_backup: Path = Path("dados/backups")
+    pasta_backup_nuvem: str = ""  # Google Drive; em branco = encontra sozinho; "NAO" = sem cópia na nuvem
 
     # Servidor web
     host: str = "127.0.0.1"

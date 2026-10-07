@@ -12,7 +12,7 @@ from app.modelos import Empresa, Regime, Usuario
 from app.rotas.aprendizado import contexto_aba_aprendizado
 from app.rotas.comum import buscar_empresa
 from app.rotas.plano import contexto_aba_plano
-from app.servicos import cnpj_publico
+from app.servicos import backup, cnpj_publico
 from app.servicos.complemento import EXEMPLO, montar_complemento
 from app.servicos.documentos import tipo_documento
 from app.servicos.empresas import (
@@ -75,6 +75,7 @@ def lista_empresas(
         minhas=bool(minhas),
         competencia=competencia,
         total=total,
+        backup=backup.situacao() if usuario.e_supervisor else None,
     )
 
 

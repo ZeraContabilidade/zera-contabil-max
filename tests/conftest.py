@@ -1,5 +1,5 @@
-"""Os testes usam um banco separado (<nome>_teste) no mesmo PostgreSQL e uma pasta temporária
-para os arquivos enviados: os dados reais nunca são tocados."""
+"""Os testes usam um banco separado (<nome>_teste) no mesmo PostgreSQL e pastas temporárias
+para os arquivos enviados e os backups: os dados reais nunca são tocados."""
 
 import os
 import tempfile
@@ -10,6 +10,9 @@ from scripts.banco_teste import criar_banco_teste, esvaziar_tabelas, usar_banco_
 URL_TESTE = usar_banco_teste()  # antes de importar o sistema
 PASTA_ARQUIVOS_TESTE = Path(tempfile.mkdtemp(prefix="zcm_arquivos_teste_"))
 os.environ["PASTA_ARQUIVOS"] = str(PASTA_ARQUIVOS_TESTE)
+PASTA_BACKUP_TESTE = Path(tempfile.mkdtemp(prefix="zcm_backup_teste_"))
+os.environ["PASTA_BACKUP"] = str(PASTA_BACKUP_TESTE)
+os.environ["PASTA_BACKUP_NUVEM"] = "NAO"  # nunca grava no Google Drive de verdade
 os.environ["ANTHROPIC_API_KEY"] = ""  # testes nunca usam a chave real (ver tests/test_ia_real.py)
 os.environ["IA_SIMULADA"] = "false"
 DADOS = Path(__file__).parent / "dados"

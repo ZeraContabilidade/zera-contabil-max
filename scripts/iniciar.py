@@ -1,4 +1,4 @@
-"""Parte Python do INICIAR.bat: liga o banco, sobe o sistema e abre o navegador."""
+"""Parte Python do INICIAR.bat: liga o banco, sobe o sistema, abre o navegador e faz o backup do dia."""
 
 import argparse
 import threading
@@ -31,6 +31,24 @@ def abrir_navegador_quando_pronto(url_interna: str, url: str, espera_segundos: i
         time.sleep(1)
 
 
+def backup_automatico(parar: threading.Event, checar_a_cada_segundos: int = 30 * 60) -> None:
+    """Um backup por dia: ao abrir o sistema e, se ele ficar aberto, a cada 24 horas."""
+    from app.servicos import backup
+
+    while True:
+        try:
+            if backup.situacao().precisa_backup():
+                print(backup.fazer_backup("automatico").resumo())
+        except backup.ErroBackup as erro:
+            print(f"\n[ATENÇÃO] O backup automático não foi feito: {erro}\n")
+            backup.registrar_falha(erro)
+        except Exception as erro:  # noqa: BLE001 — a rotina nunca pode morrer calada: o backup de amanhã depende dela
+            print(f"\n[ATENÇÃO] O backup automático falhou: {erro}\n")
+            backup.registrar_falha(erro)
+        if parar.wait(checar_a_cada_segundos):
+            return
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Inicia o ZERA CONTÁBIL MAX")
     parser.add_argument("--sem-navegador", action="store_true", help="não abre o navegador")
@@ -50,6 +68,7 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     preparar_banco()
+    threading.Thread(target=backup_automatico, args=(threading.Event(),), daemon=True).start()
     if not args.sem_navegador:
         threading.Thread(target=abrir_navegador_quando_pronto, args=(url_interna, url), daemon=True).start()
     print(f"\nSistema no ar em {url}")

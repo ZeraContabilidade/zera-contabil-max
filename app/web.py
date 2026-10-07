@@ -106,6 +106,9 @@ templates.env.filters["reais"] = lambda v: (
 )
 templates.env.filters["documento"] = formatar_documento
 templates.env.filters["dolar"] = lambda valor, casas=2: dolar(Decimal(valor or 0), casas)
+templates.env.filters["tamanho"] = lambda n: (
+    f"{n / 1024 / 1024:.1f} MB".replace(".", ",") if n >= 1024 * 1024 else f"{max(1, round(n / 1024))} KB"
+)
 templates.env.filters["nome_competencia"] = nome_competencia
 templates.env.filters["valor_campo_mes"] = valor_campo_mes
 templates.env.globals["tirar_avisos"] = _tirar_avisos
