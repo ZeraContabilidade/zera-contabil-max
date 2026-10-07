@@ -170,3 +170,64 @@ def test_saldo_inicial_do_ofx_vem_do_extrato_anterior(empresa, sessao, monkeypat
     errado = importar_extrato(sessao, empresa, "setembro.ofx", montar_ofx(
         [("20260902", "-10.00", "Tarifa", "1")], saldo="1500.00", inicio="20260901", fim="20260930"), None)  # fmt: skip
     assert (errado.conferencia, errado.diferenca) == ("DIFERENCA", Decimal("-90.00"))  # 1.600 − 10 ≠ 1.500
+
+
+# ---------------------------------------------------------------- jeito do Banco do Brasil (OFX reais da APAE)
+
+
+def test_memo_do_bb_separa_historico_e_favorecido():
+    from app.leitores.ofx import _separar_memo
+
+    assert _separar_memo("TRANSFERÊNCIA RECEBIDA - 04/12 12:19 ASSOCIACAO EXEMPLO") == (
+        "TRANSFERÊNCIA RECEBIDA",
+        "ASSOCIACAO EXEMPLO",
+    )
+    assert _separar_memo("PIX - ENVIADO - 03/08 09:43 MERCADO EXEMPLO") == ("PIX - ENVIADO", "MERCADO EXEMPLO")
+    assert _separar_memo("TARIFA PACOTE DE SERVICOS") == ("TARIFA PACOTE DE SERVICOS", "")
+
+
+def test_agencia_pelo_nome_do_arquivo_e_saldo_de_outra_data():
+    conteudo = montar_ofx(
+        [("20251203", "-650.00", "PAGAMENTO DE BOLETO - ESCRITORIO EXEMPLO", "120301")],
+        acctid="1324-2",
+        agencia="",
+        inicio="20251126",  # o BB começa no dia do saldo anterior
+        fim="20251231",
+    ).replace(b"<DTASOF>20251231", b"<DTASOF>20260209")  # saldo do dia em que o arquivo foi baixado
+    lido = ler_extrato("Extrato6882913242 (1).ofx", conteudo)
+    assert (lido.agencia, lido.numero) == ("6882-9", "1324-2")
+    assert (lido.inicio, lido.fim) == (date(2025, 12, 1), date(2025, 12, 31))
+    assert lido.saldo_final is None and "09/02/2026" in lido.avisos[0].texto
+    assert (lido.movimentos[0].historico, lido.movimentos[0].complemento) == (
+        "PAGAMENTO DE BOLETO",
+        "ESCRITORIO EXEMPLO",
+    )
+    assert ler_extrato("outro_nome.ofx", conteudo).agencia == ""  # nome que não termina com a conta: sem agência
+
+
+def test_ofx_vazio_do_banco():
+    vazio = CABECALHO_SGML.encode() + b"<OFX><BANKMSGSRSV1><STMTTRNRS><TRNUID>0<STATUS><CODE>0</STATUS></STMTTRNRS>"
+    with pytest.raises(ErroLeitura, match="veio vazio do banco"):
+        ler_extrato("Extrato2180664885 (1).ofx", vazio + b"</BANKMSGSRSV1></OFX>")
+
+
+@pytest.mark.amostras
+def test_ofx_reais_do_bb_da_apae():
+    """OFX reais (dez/2025, 36 arquivos da APAE): todos lidos ou recusados como “veio vazio do banco”."""
+    from tests.conftest import AMOSTRAS
+
+    pasta = AMOSTRAS / "EXTRATOS" / "OFX APAE 2025-12"
+    arquivos = sorted(pasta.glob("*.ofx"))
+    if not arquivos:
+        pytest.skip("AMOSTRAS/ não está neste computador")
+    lidos, vazios = [], []
+    for arquivo in arquivos:
+        try:
+            lidos.append(ler_extrato(arquivo.name, arquivo.read_bytes()))
+        except ErroLeitura as erro:
+            assert "veio vazio do banco" in str(erro), arquivo.name
+            vazios.append(arquivo.name)
+    assert len(lidos) >= 30 and len(vazios) <= 4
+    assert all(lido.banco == "001" and lido.agencia for lido in lidos)  # agência pelo nome do arquivo
+    zera = [m for lido in lidos for m in lido.movimentos if m.complemento.startswith("ZERA ASSESSORIA")]
+    assert zera and all(m.historico == "PAGAMENTO DE BOLETO" for m in zera)

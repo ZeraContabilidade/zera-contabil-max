@@ -47,6 +47,29 @@ def _valor(texto: str) -> Decimal | None:
         return None
 
 
+_HORA_NO_COMECO = re.compile(r"^\d{2}/\d{2}\s+\d{2}:\d{2}\s+")
+
+
+def _separar_memo(memo: str) -> tuple[str, str]:
+    """'TRANSFERÊNCIA RECEBIDA - 04/12 12:19 APAE A DE P' → ('TRANSFERÊNCIA RECEBIDA', 'APAE A DE P');
+    'PIX - ENVIADO - 03/08 09:43 QUATAI' → ('PIX - ENVIADO', 'QUATAI') — o favorecido vem depois do último “ - ”."""
+    if " - " not in memo:
+        return memo, ""
+    historico, complemento = memo.rsplit(" - ", 1)
+    return historico.strip(), _HORA_NO_COMECO.sub("", complemento).strip()
+
+
+def _agencia_pelo_nome(nome_arquivo: str, numero: str) -> str:
+    """O OFX do BB não traz a agência, mas o nome do arquivo sim: 'Extrato21806112267.ofx' = agência 2180-6 +
+    conta 11226-7. Só vale quando os números do nome terminam com os da conta."""
+    digitos = re.sub(r"\D", "", re.sub(r"\(\d+\)", "", nome_arquivo))
+    conta = re.sub(r"\D", "", numero)
+    if not conta or not digitos.endswith(conta) or len(digitos) - len(conta) not in (4, 5):
+        return ""
+    agencia = digitos[: -len(conta)]
+    return f"{agencia[:4]}-{agencia[4]}" if len(agencia) == 5 else agencia
+
+
 class LeitorOFX:
     nome = "OFX"
 
@@ -61,6 +84,11 @@ class LeitorOFX:
         if not _blocos(texto, "STMTRS"):
             if _blocos(texto, "CCSTMTRS"):
                 raise ErroLeitura("Este OFX é de cartão de crédito. Por enquanto o sistema lê só contas bancárias.")
+            if _blocos(texto, "STMTTRNRS"):
+                raise ErroLeitura(
+                    "O OFX veio vazio do banco: não tem extrato dentro (exportação incompleta ou período sem "
+                    "dados). Baixe de novo no internet banking, escolhendo a conta e o mês."
+                )
             raise ErroLeitura("O OFX não tem extrato de conta bancária (falta o bloco STMTRS).")
         extratos = _blocos(texto, "STMTRS")
         if len(extratos) > 1:
@@ -79,6 +107,8 @@ class LeitorOFX:
         )
         if not lido.numero:
             raise ErroLeitura("O OFX não traz o número da conta (ACCTID). Exporte o arquivo de novo pelo banco.")
+        if not lido.agencia:
+            lido.agencia = _agencia_pelo_nome(arquivo.nome, lido.numero)
 
         ignorados = []
         for transacao in _blocos(bloco, "STMTTRN"):
@@ -87,8 +117,9 @@ class LeitorOFX:
             if dia is None or not valor:
                 ignorados.append(f"{_campo(transacao, 'DTPOSTED')[:8]} {memo or nome} {_campo(transacao, 'TRNAMT')}")
                 continue
-            historico = memo or nome or _campo(transacao, "TRNTYPE").title()
-            complemento = nome if memo and nome and nome.upper() not in memo.upper() else ""
+            historico, complemento = _separar_memo(memo or nome or _campo(transacao, "TRNTYPE").title())
+            if memo and nome and nome.upper() not in memo.upper():
+                complemento = nome
             lido.movimentos.append(
                 MovimentoLido(
                     data=dia,
@@ -105,10 +136,23 @@ class LeitorOFX:
         if lido.movimentos:
             lido.inicio = lido.inicio or min(m.data for m in lido.movimentos)
             lido.fim = lido.fim or max(m.data for m in lido.movimentos)
-        if saldo := _blocos(bloco, "LEDGERBAL"):
-            lido.saldo_final = _valor(_campo(saldo[0], "BALAMT"))
         if lido.inicio is None:
             raise ErroLeitura("O OFX não tem movimentos nem período. Confira se exportou o mês certo.")
+        # o BB começa o período no dia do saldo anterior (26/11 num extrato de dezembro): vale o mês dos movimentos
+        primeiro_dia = lido.fim.replace(day=1)
+        if lido.inicio < primeiro_dia and all(m.data >= primeiro_dia for m in lido.movimentos):
+            lido.inicio = primeiro_dia
+        if saldo := _blocos(bloco, "LEDGERBAL"):
+            quando = _data(_campo(saldo[0], "DTASOF"))
+            if quando is None or quando <= lido.fim:
+                lido.saldo_final = _valor(_campo(saldo[0], "BALAMT"))
+            else:  # o BB manda o saldo do dia em que o arquivo foi baixado, não o do fim do período
+                lido.avisos.append(
+                    Aviso(
+                        f"O saldo que veio no OFX é de {quando:%d/%m/%Y}, depois do fim do extrato "
+                        f"({lido.fim:%d/%m/%Y}): não serve para conferir este período."
+                    )
+                )
         if ignorados:
             lido.avisos.append(
                 Aviso(f"{len(ignorados)} movimento(s) sem data ou sem valor foram ignorados.", ignorados)

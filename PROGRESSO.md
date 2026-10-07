@@ -17,7 +17,7 @@ Depois: **2.6 classificação** (regras, CNPJ, nome parecido com `rapidfuzz`, pa
 | 3 | Limite mensal de IA: adotado o padrão **US$ 20** (`IA_LIMITE_MENSAL_USD`) até o usuário dizer outro valor | — |
 | 4 | ~~Diário.xls~~ — chegou em 07/10 (jan–jun/2026), copiado para `AMOSTRAS\historicos` | — |
 | 5 | Como a poupança BB 72637-0 é lançada hoje (conta própria ou tudo na conta 8)? O Diário enviado não responde (só tem o Passivo); os rendimentos vão a crédito de 2.2.2.01.000006 RENDIMENTO A APLICAR. O extrato da poupança já é lido; falta a conta contábil (o sistema avisa e deixa escolher na aba Plano → contas-chave). | Etapa 2.6 |
-| 7 | Um **OFX real** de algum cliente (qualquer banco) para testar o leitor OFX com dados de verdade. Não bloqueia. | Etapa 2.2 |
+| 7 | ~~OFX real~~ — o usuário indicou os OFX da APAE (228) no Z:\ em 07/10; 36 copiados para `AMOSTRAS\EXTRATOS\OFX APAE 2025-12`. | — |
 | 6 | **Diário completo** (todas as contas) da Casa Criança — o enviado em 07/10 foi impresso só com o Passivo. Com ele o sistema aprende também as contas de banco, despesas e receitas. Não bloqueia. | quando puder |
 
 ## Plano (Fase 0 aprovada em 06/10/2026)
@@ -53,6 +53,11 @@ Depois: **2.6 classificação** (regras, CNPJ, nome parecido com `rapidfuzz`, pa
 ### Fase 4 — Extras (um por vez, quando pedido)
 
 ## Histórico
+
+### 07/10/2026 — OFX reais do BB (APAE, dez/2025)
+- 36 OFX reais testados: 32 lidos, 4 “vazios do banco” (só cabeçalho) → mensagem clara “veio vazio do banco, baixe de novo”.
+- Ajustes pelo jeito do BB: histórico e favorecido separados do MEMO (“TRANSFERÊNCIA RECEBIDA - 04/12 12:19 APAE…”), como no PDF; **agência pelo nome do arquivo** (`Extrato68829…` → 6882-9; o OFX do BB não traz BRANCHID); período começa no 1º dia do mês dos movimentos (o BB começa no dia do saldo anterior); saldo do OFX só vale se for do fim do período (o BB manda o saldo do dia do download → aviso).
+- Teste `amostras` com os 36 arquivos; 242 testes passando.
 
 ### 07/10/2026 — Etapa 2.2 concluída (OFX)
 - `app/leitores/ofx.py`: leitor próprio e tolerante (SGML do OFX 1.x sem fechar tags, XML do 2.x, Windows-1252, vírgula decimal); banco pelo BANKID (001, 0341...), agência (pode faltar), conta, tipo (CHECKING/SAVINGS/MONEYMRKT), período, movimentos (sentido pelo sinal; MEMO/NAME; CHECKNUM/REFNUM) e saldo final (LEDGERBAL). Recusa cartão de crédito e arquivo com várias contas, com mensagem do que fazer.
