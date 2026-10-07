@@ -3,7 +3,7 @@
 Atualizado em: **07/10/2026**
 
 ## Próximo passo exato
-**Etapa 2.4 — Leitor PDF BB poupança** (`app/leitores/bb_poupanca.py`, §11.4). Layout (“Extratos - Poupança”, 51 - POUPANÇA-OURO): cabeçalho `Saldo: 239.233,33 C`, `Agência / Conta 2180-6 / 72637-0`, `Período 01/08/2026 a 31/08/2026`, `Titularidade`; colunas `Dt. lançamento | Dt. base | Dia | Histórico | Documento | Informações | Valor` (+ C/D). O histórico quebra em 2 linhas (“141 Transferencia Para” / “Conta”; “741 Reajuste Monetário -” / “BACEN”) e as Informações também (“03/08 10:44 CASA C E N S” / “MONTE BERIC”); às vezes o **valor fica na linha de cima e o C na de baixo** (80.000,00) → ler pela posição, juntando as linhas entre uma data e a próxima. Saldo anterior aparece cortado (“227.4”) → usar o saldo final do cabeçalho e conferir: 227.494,23 + créditos − débitos = 239.233,33. Conta bancária tipo POUPANCA (mesma agência/conta da CC); o plano da Casa Criança **não tem conta para a poupança** → aviso “conta contábil não encontrada” (pendência 5). Teste com palavras montadas (como `PdfFalso`) + teste `amostras` com o PDF real. Depois: **2.2 OFX** (ofxtools), 2.5 leitor universal com IA, 2.6 classificação (inclui o par CC ↔ poupança como transferência entre contas próprias).
+**Etapa 2.2 — Leitor OFX** (`app/leitores/ofx.py`, §3.4 regra 1: “OFX de qualquer banco funciona desde o início”). Usar `ofxtools` (acrescentar ao requirements) ou um parser próprio tolerante (OFX 1.x é SGML sem fechamento de tags; bancos brasileiros mandam cp1252/latin-1 e às vezes `CHARSET:1252`). Ler `BANKID` (código do banco → `identificar_banco`, ex.: 001), `BRANCHID` (agência — muitos bancos mandam vazio), `ACCTID` (conta, às vezes com dígito colado), `ACCTTYPE` (CHECKING/SAVINGS → BANCO/POUPANCA), `DTSTART`/`DTEND`, `STMTTRN` (`TRNTYPE`, `DTPOSTED`, `TRNAMT` com sinal, `FITID` — usar no hash anti-duplicidade quando existir —, `CHECKNUM`, `MEMO`/`NAME`), `LEDGERBAL` (saldo final; o inicial = final − movimentos, sem conferência: avisar “OFX não traz saldo inicial”). Sem amostra real em AMOSTRAS: montar um OFX de teste fictício (BB e outro banco) em `tests/dados/`; pedir ao usuário um OFX real quando puder. Depois: 2.5 leitor universal com IA (PDF de outros bancos, conferido pelo saldo) e 2.6 classificação.
 
 ## Pendências com o usuário
 | # | Pergunta | Precisa até |
@@ -12,7 +12,8 @@ Atualizado em: **07/10/2026**
 | 2 | ~~Chave da API~~ — colada no `.env` em 07/10 (lida do arquivo do usuário no Z:\, sem passar pelo chat); `pytest -m ia_real` ok nos dois modelos. Nunca pedir nem mostrar a chave. | — |
 | 3 | Limite mensal de IA: adotado o padrão **US$ 20** (`IA_LIMITE_MENSAL_USD`) até o usuário dizer outro valor | — |
 | 4 | ~~Diário.xls~~ — chegou em 07/10 (jan–jun/2026), copiado para `AMOSTRAS\historicos` | — |
-| 5 | Como a poupança BB 72637-0 é lançada hoje (conta própria ou tudo na conta 8)? O Diário enviado não responde (só tem o Passivo); os rendimentos vão a crédito de 2.2.2.01.000006 RENDIMENTO A APLICAR. | Fase 2 |
+| 5 | Como a poupança BB 72637-0 é lançada hoje (conta própria ou tudo na conta 8)? O Diário enviado não responde (só tem o Passivo); os rendimentos vão a crédito de 2.2.2.01.000006 RENDIMENTO A APLICAR. O extrato da poupança já é lido; falta a conta contábil (o sistema avisa e deixa escolher na aba Plano → contas-chave). | Etapa 2.6 |
+| 7 | Um **OFX real** de algum cliente (qualquer banco) para testar o leitor OFX com dados de verdade. Não bloqueia. | Etapa 2.2 |
 | 6 | **Diário completo** (todas as contas) da Casa Criança — o enviado em 07/10 foi impresso só com o Passivo. Com ele o sistema aprende também as contas de banco, despesas e receitas. Não bloqueia. | quando puder |
 
 ## Plano (Fase 0 aprovada em 06/10/2026)
@@ -33,7 +34,7 @@ Atualizado em: **07/10/2026**
 - [x] 2.1 Arrastar e soltar, detecção automática, anti-duplicidade, guarda do original
 - [ ] 2.2 Leitor OFX
 - [x] 2.3 Leitor PDF BB conta corrente
-- [ ] 2.4 Leitor PDF BB poupança
+- [x] 2.4 Leitor PDF BB poupança
 - [ ] 2.5 Leitor universal com IA (PDF) + Excel/CSV com colunas identificadas pela IA
 - [ ] 2.6 Motor de classificação (regras, CNPJ, nome parecido, palavra-chave, valor) + pareamento de transferências
 - [ ] 2.7 IA em lote + validação + aprovação automática dos verdes
@@ -48,6 +49,13 @@ Atualizado em: **07/10/2026**
 ### Fase 4 — Extras (um por vez, quando pedido)
 
 ## Histórico
+
+### 07/10/2026 — Etapa 2.4 concluída (PDF da poupança do BB)
+- `app/leitores/bb_poupanca.py`: junta as até 3 linhas de cada lançamento pela proximidade com a linha da data (histórico e informações quebrados; valor numa linha e C/D em outra); colunas pelo cabeçalho; ignora o calendário de rendimentos do fim.
+- Saldo: o anterior sai cortado (“227.4”) → calculado pelo saldo final do cabeçalho (só aceito se bater com o “Saldo total” do fim, também cortado; senão aviso “saldo de outra data”) e **conferido pelos dígitos visíveis** (`saldo_inicial_visivel`). Tela: “a impressão do PDF cortou parte do saldo”.
+- **Real (ago/2026):** 28 movimentos, saldo 227.494,23 → 239.233,33 **confere**; conta bancária POUPANÇA 72637-0 criada; sem conta contábil no plano → aviso (pendência 5). As transferências batem com a CC: poupança 141 = CC 875 e poupança 601 = CC 475 (base do pareamento da 2.6).
+- Testes (4 + 1 real): extratos 21 testes.
+
 
 ### 07/10/2026 — Etapas 2.1 + 2.3 concluídas (receber extratos + PDF do BB conta corrente)
 - Tabelas (migração 0009): `conta_bancaria` (criada sozinha pelo 1º extrato; ligada à conta-chave bancária — reusa a que já existe, ex.: “BB conta 72637-0” → 8 achada pelo histórico; senão `ligar_conta_bancaria`), `extrato` (período, saldos, entradas/saídas, conferência) e `movimento_extrato` (histórico do banco + 2ª linha com o favorecido, documento, código, **hash anti-duplicidade**).

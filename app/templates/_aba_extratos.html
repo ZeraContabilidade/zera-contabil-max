@@ -9,7 +9,7 @@
              aria-label="Arquivos dos extratos">
       <span class="zona-titulo">Arraste os extratos para cá</span>
       <span class="suave">ou clique para escolher — pode mandar vários de uma vez. O sistema descobre sozinho o banco,
-        a conta e o mês. Hoje lê o <strong>PDF de conta corrente do Banco do Brasil</strong>; poupança, OFX, Excel e
+        a conta e o mês. Hoje lê os <strong>PDFs do Banco do Brasil</strong> (conta corrente e poupança); OFX, Excel e
         outros bancos chegam nas próximas etapas.</span>
     </label>
     <button type="submit">Enviar extratos</button>
@@ -51,10 +51,10 @@
       {{ extrato.inicio.strftime('%d/%m/%Y') }} a {{ extrato.fim.strftime('%d/%m/%Y') }} ·
       entradas R$ {{ extrato.entradas | reais }} · saídas R$ {{ extrato.saidas | reais }}
       {% if extrato.conferencia == 'CONFERE' %}<span class="etiqueta etiqueta-verde">✓ {{ rotulo_conferencia[extrato.conferencia] }}</span>
-      {% elif extrato.conferencia == 'DIFERENCA' %}<span class="etiqueta etiqueta-vermelha">⚠ {{ rotulo_conferencia[extrato.conferencia] }}: R$ {{ extrato.diferenca | reais }}</span>
+      {% elif extrato.conferencia == 'DIFERENCA' %}<span class="etiqueta etiqueta-vermelha">⚠ {{ rotulo_conferencia[extrato.conferencia] }}{% if extrato.diferenca is not none %}: R$ {{ extrato.diferenca | reais }}{% endif %}</span>
       {% else %}<span class="etiqueta etiqueta-apagada">{{ rotulo_conferencia[extrato.conferencia] }}</span>{% endif %}
       <br><small class="suave">
-        {% if extrato.saldo_inicial is not none %}Saldo R$ {{ extrato.saldo_inicial | reais }} → R$ {{ extrato.saldo_final | reais }}{% if extrato.saldo_cortado %} (o PDF cortou os centavos do saldo: conferido até R$ 1,00){% endif %} · {% endif %}
+        {% if extrato.saldo_inicial is not none %}Saldo R$ {{ extrato.saldo_inicial | reais }} → R$ {{ extrato.saldo_final | reais }}{% if extrato.saldo_cortado %} (a impressão do PDF cortou parte do saldo: a conferência usou o que dá para ler){% endif %} · {% endif %}
         {{ extrato.importacao.arquivo.nome_original if extrato.importacao.arquivo else '' }} ·
         enviado em {{ extrato.criado_em | data_hora }}{% if extrato.importacao.usuario %} por {{ extrato.importacao.usuario.nome }}{% endif %}
         · {{ extrato.importacao.resumo.novos }} novo(s){% if extrato.importacao.resumo.repetidos %}, {{ extrato.importacao.resumo.repetidos }} repetido(s){% endif %}

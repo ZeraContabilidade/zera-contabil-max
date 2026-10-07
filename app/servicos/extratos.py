@@ -88,12 +88,23 @@ def _conta_bancaria(
     return conta, aviso_ia
 
 
+def reais_br(valor: Decimal) -> str:
+    """Decimal('227494.23') → '227.494,23'."""
+    return f"{valor:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+
+
 def conferir_saldo(lido: ExtratoLido, entradas: Decimal, saidas: Decimal) -> tuple[str, Decimal | None]:
-    """CONFERE, DIFERENCA (com o valor) ou SEM_SALDO. Saldo cortado na impressão (sem centavos e sem o
-    sinal): confere se bater dentro de R$ 1,00 com o saldo positivo ou negativo."""
+    """CONFERE, DIFERENCA (com o valor, quando dá para calcular) ou SEM_SALDO.
+    - Saldo com os centavos cortados na impressão (e sem o sinal): confere se bater dentro de R$ 1,00.
+    - Saldo anterior cortado no meio (“227.4”): o anterior é calculado pelo final e confere se começar
+      com os dígitos que dá para ler (“227.494,23”)."""
+    movimento = entradas - saidas
+    if lido.saldo_inicial is None and lido.saldo_final is not None and lido.saldo_inicial_visivel:
+        calculado = reais_br(abs(lido.saldo_final - movimento))
+        confere = calculado.startswith(lido.saldo_inicial_visivel.lstrip("-"))
+        return ("CONFERE", ZERO) if confere else ("DIFERENCA", None)
     if lido.saldo_inicial is None or lido.saldo_final is None:
         return "SEM_SALDO", None
-    movimento = entradas - saidas
     if not lido.saldo_cortado:
         diferenca = lido.saldo_final - (lido.saldo_inicial + movimento)
         return ("CONFERE", ZERO) if diferenca == 0 else ("DIFERENCA", diferenca)
@@ -125,6 +136,9 @@ def importar_extrato(
     entradas = sum((m.valor for m in lido.movimentos if m.sentido == "ENTRADA"), ZERO)
     saidas = sum((m.valor for m in lido.movimentos if m.sentido == "SAIDA"), ZERO)
     conferencia, diferenca = conferir_saldo(lido, entradas, saidas)
+    if lido.saldo_inicial is None and lido.saldo_final is not None and lido.saldo_inicial_visivel:
+        lido.saldo_inicial = lido.saldo_final - (entradas - saidas)  # o anterior saiu cortado no PDF
+        lido.saldo_cortado = True
     datas = [m.data for m in lido.movimentos]
     extrato = Extrato(
         empresa_id=empresa.id,
@@ -185,8 +199,13 @@ def importar_extrato(
         avisos.insert(
             0,
             Aviso(
-                f"O saldo não confere: saldo inicial + entradas − saídas difere do saldo final em R$ {diferenca}. "
-                "Pode faltar uma página ou uma linha do extrato — confira o arquivo."
+                (
+                    f"O saldo não confere: saldo inicial + entradas − saídas difere do saldo final em "
+                    f"R$ {reais_br(diferenca)}. "
+                    if diferenca is not None
+                    else "O saldo não confere: o saldo anterior calculado não bate com o que aparece no PDF. "
+                )
+                + "Pode faltar uma página ou uma linha do extrato — confira o arquivo."
             ),
         )
     if conta.conta_chave is None or conta.conta_chave.conta_id is None:

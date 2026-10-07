@@ -44,6 +44,7 @@ class ExtratoLido:
     saldo_inicial: Decimal | None = None
     saldo_final: Decimal | None = None
     saldo_cortado: bool = False  # o PDF cortou os centavos (e o sinal) do saldo
+    saldo_inicial_visivel: str = ""  # saldo anterior cortado na impressão (“227.4”): confere pelo começo
     movimentos: list[MovimentoLido] = field(default_factory=list)
     avisos: list[Aviso] = field(default_factory=list)
 
@@ -99,11 +100,13 @@ def ler_extrato(nome: str, conteudo: bytes) -> ExtratoLido:
         if leitor.reconhece(arquivo):
             return leitor.ler(arquivo)
     raise ErroLeitura(
-        f"Não reconheci o extrato “{nome}”. Por enquanto o sistema lê o PDF de conta corrente do Banco do "
-        "Brasil; poupança, OFX, Excel e outros bancos chegam nas próximas etapas."
+        f"Não reconheci o extrato “{nome}”. Por enquanto o sistema lê os PDFs do Banco do Brasil (conta "
+        "corrente e poupança); OFX, Excel e outros bancos chegam nas próximas etapas."
     )
 
 
-from app.leitores.bb_conta_corrente import LeitorBBContaCorrente  # noqa: E402 — o registro vem depois dos tipos
+# o registro vem depois dos tipos, que os leitores usam
+from app.leitores.bb_conta_corrente import LeitorBBContaCorrente  # noqa: E402
+from app.leitores.bb_poupanca import LeitorBBPoupanca  # noqa: E402
 
-LEITORES: list[Leitor] = [LeitorBBContaCorrente()]
+LEITORES: list[Leitor] = [LeitorBBContaCorrente(), LeitorBBPoupanca()]

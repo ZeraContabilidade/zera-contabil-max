@@ -290,3 +290,112 @@ def test_extrato_real_conta_corrente_bb_casa_crianca(sessao):
     assert extrato.conta_bancaria.conta_chave.conta.reduzido == 8
     sabesp = sessao.scalar(select(MovimentoExtrato).where(MovimentoExtrato.complemento == "SABESP"))
     assert (sabesp.historico, sabesp.valor, sabesp.sentido) == ("Pgto conta água", Decimal("600.35"), "SAIDA")
+
+
+# ---------------------------------------------------------------- poupança do BB
+
+
+def linha_de(top, *palavras_x) -> list[dict]:
+    """linha_de(234.0, ("03/08/2026", 50), ("100,00", 503, 527)) — (texto, x0) ou (texto, x0, x1)."""
+    return [palavra(texto, x0, top, *resto) for texto, x0, *resto in palavras_x]
+
+
+POUPANCA_PAGINA_1 = [
+    *linha_de(187.0, ("Dt.", 102), ("base", 115), ("Dia", 147), ("Histórico", 168, 203),
+              ("DocumentoInformações", 314, 406), ("Valor", 519, 538)),
+    *linha_de(205.7, ("1.00", 547)),  # saldo anterior cortado pela impressão
+    *linha_de(210.5, ("31/07/2026", 50), ("Saldo", 171), ("anterior", 194)),
+    # transferência para a conta corrente: histórico e informações em 3 linhas
+    *linha_de(229.2, ("141", 171), ("Transferencia", 186), ("Para", 237), ("03/08", 361), ("10:44", 383),
+              ("ASSOCIACAO", 406)),
+    *linha_de(234.0, ("03/08/2026", 50), ("03/08/2026", 104), ("1234-5", 279), ("99.999", 317),
+              ("100,00", 503, 527), ("D", 530, 535)),
+    *linha_de(238.3, ("Conta", 171), ("EXEMPLO", 361)),
+    # valor na linha de cima e o C na de baixo
+    *linha_de(252.8, ("601", 171), ("Transferência", 186), ("de", 237), ("12/08", 361), ("08:30", 383),
+              ("ASSOCIACAO", 406), ("200,00", 500, 535)),
+    *linha_de(257.6, ("12/08/2026", 50), ("12/08/2026", 104), ("12/8", 150), ("1234-5", 279), ("99.999", 317)),
+    *linha_de(261.9, ("Crédito", 171), ("EXEMPLO", 361), ("C", 530, 535)),
+    # rendimento numa linha só
+    *linha_de(276.3, ("14/08/2026", 50), ("17/08/2026", 104), ("15/7", 150), ("737", 171), ("Juros", 187),
+              ("1234-5", 279), ("10,00", 507, 527), ("C", 530, 535)),
+]  # fmt: skip
+POUPANCA_PAGINA_2 = [
+    *linha_de(32.3, ("31/08/2026", 50), ("01/09/2026", 104), ("290", 171), ("Imposto", 187), ("De", 217),
+              ("Renda", 230), ("1234-5", 279), ("2,00", 507, 527), ("D", 530, 535)),
+    *linha_de(64.4, ("Saldo", 50), ("atual", 73), ("0", 563)),
+    *linha_de(93.3, ("Saldo", 50), ("total", 73), ("1.11", 539)),
+]  # fmt: skip
+TEXTO_POUPANCA = (
+    "01/09/2026, 08:23 Banco do Brasil\nExtratos - Poupança 01/09/2026 08:\n51 - POUPANÇA-OURO\nDIÁRIA\n"
+    "Saldo: 1.110,00 C\nAgência / Conta 1234-5 / 99999-9\nPeríodo 01/08/2026 a 31/08/2026\n"
+    "Titularidade ASSOCIACAO EXEMPLO\n"
+)
+
+
+def test_leitor_bb_poupanca_junta_as_linhas_de_cada_lancamento():
+    from app.leitores.bb_poupanca import LeitorBBPoupanca
+
+    arquivo = PdfFalso(texto=TEXTO_POUPANCA, paginas=[POUPANCA_PAGINA_1, POUPANCA_PAGINA_2])
+    leitor = LeitorBBPoupanca()
+    assert leitor.reconhece(arquivo) and not LeitorBBContaCorrente().reconhece(arquivo)
+    lido = leitor.ler(arquivo)
+    assert (lido.agencia, lido.numero, lido.tipo, lido.titular) == (
+        "1234-5",
+        "99999-9",
+        "POUPANCA",
+        "ASSOCIACAO EXEMPLO",
+    )
+    assert (lido.inicio, lido.fim) == (date(2026, 8, 1), date(2026, 8, 31))
+    assert (lido.saldo_inicial, lido.saldo_inicial_visivel, lido.saldo_final) == (None, "1.00", Decimal("1110.00"))
+    assert [(m.historico, m.complemento, m.documento, m.valor, m.sentido, m.codigo) for m in lido.movimentos] == [
+        ("Transferencia Para Conta", "ASSOCIACAO EXEMPLO", "99.999", Decimal("100.00"), "SAIDA", "141"),
+        ("Transferência de Crédito", "ASSOCIACAO EXEMPLO", "99.999", Decimal("200.00"), "ENTRADA", "601"),
+        ("Juros", "", "", Decimal("10.00"), "ENTRADA", "737"),
+        ("Imposto De Renda", "", "", Decimal("2.00"), "SAIDA", "290"),
+    ]
+    assert conferir_saldo(lido, Decimal("210"), Decimal("102")) == ("CONFERE", Decimal("0"))  # 1.002,00 começa com 1.00
+
+
+def test_saldo_anterior_cortado_que_nao_bate():
+    lido = ExtratoLido("x", "BB", "1", "2", "POUPANCA", saldo_final=Decimal("1110"), saldo_inicial_visivel="1.10")
+    assert conferir_saldo(lido, Decimal("210"), Decimal("102")) == ("DIFERENCA", None)
+
+
+def test_saldo_do_cabecalho_de_outra_data_nao_vale():
+    from app.leitores.bb_poupanca import LeitorBBPoupanca
+
+    outra_data = TEXTO_POUPANCA.replace("Saldo: 1.110,00 C", "Saldo: 5.000,00 C")
+    lido = LeitorBBPoupanca().ler(PdfFalso(texto=outra_data, paginas=[POUPANCA_PAGINA_1, POUPANCA_PAGINA_2]))
+    assert lido.saldo_final is None and "outra data" in lido.avisos[0].texto
+
+
+@pytest.mark.banco
+@pytest.mark.amostras
+def test_extratos_reais_conta_corrente_e_poupanca_casa_crianca(sessao):
+    """Os dois PDFs reais (ago/2026): poupança 227.494,23 → 239.233,33; as transferências batem com a CC."""
+    plano = AMOSTRAS / "PLANO DE CONTAS" / "contas crianca.csv"
+    pdfs = [AMOSTRAS / "EXTRATOS" / "EXTRATO CONTA CORRENTE.pdf", AMOSTRAS / "EXTRATOS" / "EXTRATO POUPANÇA.pdf"]
+    if not plano.exists() or not all(p.exists() for p in pdfs):
+        pytest.skip("AMOSTRAS/ não está neste computador")
+    empresa = Empresa(codigo_dominio=230)
+    sessao.add(empresa)
+    sessao.commit()
+    importar_plano(sessao, empresa, ler_plano(plano.read_bytes(), plano.name), None)
+    corrente, poupanca = (importar_extrato(sessao, empresa, p.name, p.read_bytes(), None) for p in pdfs)
+    sessao.commit()
+
+    assert poupanca.conferencia == "CONFERE" and poupanca.importacao.resumo["novos"] == 28
+    assert (poupanca.saldo_inicial, poupanca.saldo_final) == (Decimal("227494.23"), Decimal("239233.33"))
+    assert poupanca.conta_bancaria.tipo == "POUPANCA" and poupanca.conta_bancaria.numero == "72637-0"
+    assert any("Não encontrei no plano a conta contábil" in a["texto"] for a in poupanca.importacao.avisos)
+
+    def soma(extrato, codigo):
+        return sum(
+            m.valor
+            for m in sessao.scalars(select(MovimentoExtrato).where(MovimentoExtrato.extrato_id == extrato.id))
+            if m.codigo_banco == codigo
+        )
+
+    assert soma(poupanca, "141") == soma(corrente, "875")  # saiu da poupança = “Transferido da poupança” na CC
+    assert soma(poupanca, "601") == soma(corrente, "475")  # entrou na poupança = “Aplicação Poupança” na CC
