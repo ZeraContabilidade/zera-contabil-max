@@ -3,12 +3,7 @@
 Atualizado em: **07/10/2026**
 
 ## Próximo passo exato
-**Fase 2 — Etapa 2.1 + 2.3: receber extratos e o 1º leitor (PDF do BB, conta corrente)** (§3.4, §11.4).
-- Tabelas (migração 0009): `conta_bancaria` (empresa, banco, agência, número, tipo CC/POUPANÇA/APLICAÇÃO, conta contábil — ligar com `ligar_conta_bancaria()`), `extrato` (importação, conta bancária, período, saldo inicial/final, conferido) e `movimento_extrato` (data, descrição em 1 linha — juntar a 2ª linha do BB com o favorecido —, documento, valor Decimal com sinal, saldo, **hash anti-duplicidade**: conta + data + valor + descrição + documento + ordem no dia).
-- Aba **Extratos** do mês na página da empresa: **arrastar e soltar vários arquivos**; detecção pelo conteúdo (PDF/OFX/Excel/CSV) e leitores como **plug-ins** em `app/leitores/` (um arquivo por banco, registro único); arquivo original guardado (`guardar_arquivo`), importação em bloco (`Importacao` + log).
-- Leitor PDF BB conta corrente com `pdfplumber` **pela posição das palavras** (a coluna Saldo saiu cortada; valor e C/D podem cair em linhas diferentes). Conferência: entradas = saídas = **149.568,52** (saldo 0 → 0). Confirmar se `pdfplumber` já está no `requirements.txt` (não está: acrescentar).
-- Conferência de saldo (inicial + entradas − saídas = final) com aviso da diferença; reimportar/período sobreposto não duplica.
-- Depois: 2.4 poupança BB (saldo 227.494,23 → 239.233,33), 2.2 OFX, 2.5 leitor universal com IA.
+**Etapa 2.4 — Leitor PDF BB poupança** (`app/leitores/bb_poupanca.py`, §11.4). Layout (“Extratos - Poupança”, 51 - POUPANÇA-OURO): cabeçalho `Saldo: 239.233,33 C`, `Agência / Conta 2180-6 / 72637-0`, `Período 01/08/2026 a 31/08/2026`, `Titularidade`; colunas `Dt. lançamento | Dt. base | Dia | Histórico | Documento | Informações | Valor` (+ C/D). O histórico quebra em 2 linhas (“141 Transferencia Para” / “Conta”; “741 Reajuste Monetário -” / “BACEN”) e as Informações também (“03/08 10:44 CASA C E N S” / “MONTE BERIC”); às vezes o **valor fica na linha de cima e o C na de baixo** (80.000,00) → ler pela posição, juntando as linhas entre uma data e a próxima. Saldo anterior aparece cortado (“227.4”) → usar o saldo final do cabeçalho e conferir: 227.494,23 + créditos − débitos = 239.233,33. Conta bancária tipo POUPANCA (mesma agência/conta da CC); o plano da Casa Criança **não tem conta para a poupança** → aviso “conta contábil não encontrada” (pendência 5). Teste com palavras montadas (como `PdfFalso`) + teste `amostras` com o PDF real. Depois: **2.2 OFX** (ofxtools), 2.5 leitor universal com IA, 2.6 classificação (inclui o par CC ↔ poupança como transferência entre contas próprias).
 
 ## Pendências com o usuário
 | # | Pergunta | Precisa até |
@@ -35,9 +30,9 @@ Atualizado em: **07/10/2026**
 - [x] 1.9 Backup automático (computador + Google Drive) + RESTAURAR.bat
 
 ### Fase 2 — Extratos e Revisão
-- [ ] 2.1 Arrastar e soltar, detecção automática, anti-duplicidade, guarda do original
+- [x] 2.1 Arrastar e soltar, detecção automática, anti-duplicidade, guarda do original
 - [ ] 2.2 Leitor OFX
-- [ ] 2.3 Leitor PDF BB conta corrente
+- [x] 2.3 Leitor PDF BB conta corrente
 - [ ] 2.4 Leitor PDF BB poupança
 - [ ] 2.5 Leitor universal com IA (PDF) + Excel/CSV com colunas identificadas pela IA
 - [ ] 2.6 Motor de classificação (regras, CNPJ, nome parecido, palavra-chave, valor) + pareamento de transferências
@@ -53,6 +48,15 @@ Atualizado em: **07/10/2026**
 ### Fase 4 — Extras (um por vez, quando pedido)
 
 ## Histórico
+
+### 07/10/2026 — Etapas 2.1 + 2.3 concluídas (receber extratos + PDF do BB conta corrente)
+- Tabelas (migração 0009): `conta_bancaria` (criada sozinha pelo 1º extrato; ligada à conta-chave bancária — reusa a que já existe, ex.: “BB conta 72637-0” → 8 achada pelo histórico; senão `ligar_conta_bancaria`), `extrato` (período, saldos, entradas/saídas, conferência) e `movimento_extrato` (histórico do banco + 2ª linha com o favorecido, documento, código, **hash anti-duplicidade**).
+- `app/leitores/`: leitores como plug-ins (registro `LEITORES`, detecção pelo conteúdo); `bb_conta_corrente.py` lê **pela posição das palavras** (colunas pelo cabeçalho da 1ª página; valor/C-D que caem para a linha de baixo; saldo cortado “0,”). `pdfplumber` no requirements.
+- `app/servicos/extratos.py`: importa, recusa conta de outra empresa, confere o saldo (cortado → confere até R$ 1,00, com sinal desconhecido), avisa diferença e conta contábil não encontrada; reimportar/período sobreposto não duplica (dois movimentos iguais no mesmo dia contam pela ordem).
+- Aba **4 Extratos**: zona de **arrastar e soltar** (vários arquivos; envia ao soltar), contas bancárias com a conta contábil, extratos do mês com a conferência, movimentos do mês. Um arquivo ruim não atrapalha os outros. Barra do mês: **Extrato ✔ N movimentos**.
+- **Real (PDF ago/2026 da Casa Criança):** 49 movimentos, entradas = saídas = **149.568,52**, saldo 0 → 0 **confere**, conta 72637-0 → **conta 8** pela regra. Tela conferida no servidor de teste (Playwright).
+- Testes (17): 225 passando, ruff ok.
+
 
 ### 07/10/2026 — Etapa 1.7b concluída (IA no histórico) — Fase 1 completa
 - `app/servicos/historico_ia.py`: a IA (modelo rápido, lotes de 40, até 10 lotes por vez) revisa o que as regras não resolveram — lançamento com **um lado só** fora do banco (foi pagamento/recebimento pelo banco ou lançamento interno?) e pagamento/recebimento com histórico **sem “ - ”** (separa favorecido, CNPJ/CPF e natureza). Históricos do mesmo modelo + conta + lado = uma pergunta; `revisado_ia` (migração 0008) evita perguntar de novo; CNPJ da IA só vale com dígito certo **e escrito no histórico**. Roda sozinho ao importar (sem IA, nada muda) e pelo botão **“🤖 Completar com a IA”** (mostra quantos estão pendentes).

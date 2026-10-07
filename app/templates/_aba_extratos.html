@@ -1,0 +1,98 @@
+{# Aba "4 Extratos" — incluída em empresa.html #}
+<article>
+  <header class="cabecalho-pagina"><strong>Enviar extratos</strong>
+    <span class="suave">{{ competencia | nome_competencia }}</span></header>
+  <form method="post" action="/empresas/{{ empresa.id }}/extratos" enctype="multipart/form-data"
+        data-aguarde="Lendo os extratos…" data-arrastar>
+    <label class="zona-arquivos">
+      <input type="file" name="arquivos" multiple required accept=".pdf,.ofx,.xlsx,.xls,.csv,.txt"
+             aria-label="Arquivos dos extratos">
+      <span class="zona-titulo">Arraste os extratos para cá</span>
+      <span class="suave">ou clique para escolher — pode mandar vários de uma vez. O sistema descobre sozinho o banco,
+        a conta e o mês. Hoje lê o <strong>PDF de conta corrente do Banco do Brasil</strong>; poupança, OFX, Excel e
+        outros bancos chegam nas próximas etapas.</span>
+    </label>
+    <button type="submit">Enviar extratos</button>
+  </form>
+</article>
+
+<article>
+  <header><strong>Contas bancárias da empresa</strong></header>
+  {% if contas_bancarias %}
+  <div class="tabela-rolavel">
+    <table class="striped">
+      <thead><tr><th>Conta no banco</th><th>Conta contábil</th><th>Como foi achada</th></tr></thead>
+      <tbody>
+        {% for conta in contas_bancarias %}
+        {% set chave = conta.conta_chave %}
+        <tr>
+          <td>{{ conta.rotulo }}{% if conta.titular %}<br><small class="suave">{{ conta.titular }}</small>{% endif %}</td>
+          <td>{% if chave and chave.conta %}{{ chave.conta.rotulo }}
+            {% else %}<span class="etiqueta etiqueta-vermelha">não encontrada</span>{% endif %}</td>
+          <td>{% if chave %}<small class="suave">{{ chave.justificativa or '' }}</small>{% endif %}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <small class="suave">Para trocar a conta contábil, use as contas-chave na aba Plano de Contas.</small>
+  {% else %}
+  <p class="suave">Nenhuma ainda: cada conta aparece aqui sozinha quando chega o primeiro extrato dela.</p>
+  {% endif %}
+</article>
+
+<article>
+  <header class="cabecalho-pagina"><strong>Extratos de {{ competencia | nome_competencia }}</strong></header>
+  {% if extratos %}
+  {% for extrato in extratos %}
+  <div class="linha-extrato">
+    <p>
+      <strong>{{ extrato.conta_bancaria.rotulo }}</strong> —
+      {{ extrato.inicio.strftime('%d/%m/%Y') }} a {{ extrato.fim.strftime('%d/%m/%Y') }} ·
+      entradas R$ {{ extrato.entradas | reais }} · saídas R$ {{ extrato.saidas | reais }}
+      {% if extrato.conferencia == 'CONFERE' %}<span class="etiqueta etiqueta-verde">✓ {{ rotulo_conferencia[extrato.conferencia] }}</span>
+      {% elif extrato.conferencia == 'DIFERENCA' %}<span class="etiqueta etiqueta-vermelha">⚠ {{ rotulo_conferencia[extrato.conferencia] }}: R$ {{ extrato.diferenca | reais }}</span>
+      {% else %}<span class="etiqueta etiqueta-apagada">{{ rotulo_conferencia[extrato.conferencia] }}</span>{% endif %}
+      <br><small class="suave">
+        {% if extrato.saldo_inicial is not none %}Saldo R$ {{ extrato.saldo_inicial | reais }} → R$ {{ extrato.saldo_final | reais }}{% if extrato.saldo_cortado %} (o PDF cortou os centavos do saldo: conferido até R$ 1,00){% endif %} · {% endif %}
+        {{ extrato.importacao.arquivo.nome_original if extrato.importacao.arquivo else '' }} ·
+        enviado em {{ extrato.criado_em | data_hora }}{% if extrato.importacao.usuario %} por {{ extrato.importacao.usuario.nome }}{% endif %}
+        · {{ extrato.importacao.resumo.novos }} novo(s){% if extrato.importacao.resumo.repetidos %}, {{ extrato.importacao.resumo.repetidos }} repetido(s){% endif %}
+      </small>
+    </p>
+    {% for aviso in extrato.importacao.avisos %}
+    <details class="aviso aviso-atencao">
+      <summary>⚠ {{ aviso.texto }}</summary>
+      {% if aviso.itens %}<ul class="lista-aviso">{% for item in aviso.itens %}<li>{{ item }}</li>{% endfor %}</ul>{% endif %}
+    </details>
+    {% endfor %}
+  </div>
+  {% endfor %}
+  {% else %}
+  <p class="suave">Nenhum extrato deste mês ainda. Troque o mês no alto da página para ver outros meses.</p>
+  {% endif %}
+</article>
+
+{% if movimentos %}
+<article>
+  <header class="cabecalho-pagina"><strong>Movimentos de {{ competencia | nome_competencia }}</strong>
+    <span class="suave">{{ movimentos | length }} movimento(s) · entradas R$ {{ total_entradas | reais }} · saídas R$ {{ total_saidas | reais }}</span></header>
+  <p class="suave">A classificação (débito, crédito e histórico do Domínio) chega na etapa 2.6.</p>
+  <div class="tabela-rolavel">
+    <table class="striped tabela-movimentos">
+      <thead><tr><th>Data</th><th>Descrição</th><th>Documento</th><th class="num">Entrada</th><th class="num">Saída</th></tr></thead>
+      <tbody>
+        {% for m in movimentos %}
+        <tr>
+          <td>{{ m.data.strftime('%d/%m') }}</td>
+          <td>{{ m.historico }}{% if m.complemento %}<br><small class="suave">{{ m.complemento }}</small>{% endif %}</td>
+          <td><small>{{ m.documento or '' }}</small></td>
+          <td class="num">{% if m.sentido == 'ENTRADA' %}{{ m.valor | reais }}{% endif %}</td>
+          <td class="num">{% if m.sentido == 'SAIDA' %}{{ m.valor | reais }}{% endif %}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</article>
+{% endif %}

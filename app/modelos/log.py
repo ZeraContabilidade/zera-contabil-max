@@ -17,6 +17,7 @@ ROTULOS_ACAO = {
     "LOGIN_FALHOU": "Tentativa de entrada com senha errada",
     "IMPORTAR_PLANO": "Importou o plano de contas",
     "IMPORTAR_HISTORICO": "Importou histórico de lançamentos",
+    "IMPORTAR_EXTRATO": "Importou extrato bancário",
     "APRENDER": "Recalculou o aprendizado",
     "BACKUP": "Fez backup",
     "BACKUP_FALHOU": "Backup falhou",

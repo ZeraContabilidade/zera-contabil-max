@@ -197,6 +197,14 @@ tr.inativa td { opacity: .6; }
 .form-envio { display: flex; gap: .8rem; align-items: center; flex-wrap: wrap; margin-bottom: .8rem; }
 .form-envio input[type="file"], .form-envio select { flex: 1 1 280px; margin-bottom: 0; }
 .form-envio button { margin-bottom: 0; }
+.zona-arquivos { display: flex; flex-direction: column; gap: .35rem; align-items: center; text-align: center;
+  padding: 1.6rem 1rem; margin-bottom: .8rem; border: 2px dashed var(--ouro); border-radius: var(--raio-p);
+  cursor: pointer; transition: background .15s; }
+.zona-arquivos input[type="file"] { max-width: 420px; margin-bottom: .2rem; }
+.zona-arquivos.arrastando { background: var(--ambar-vidro); }
+.zona-titulo { font-family: "Cinzel", serif; font-size: 1.15rem; color: var(--ouro); }
+.linha-extrato + .linha-extrato { border-top: 1px solid var(--borda); padding-top: .6rem; }
+.tabela-movimentos td:first-child { white-space: nowrap; }
 details.aviso { padding: .55rem 1rem; }
 details.aviso summary { font-size: .92rem; }
 details.aviso summary::after { filter: none; }

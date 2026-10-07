@@ -4,6 +4,7 @@ from app.modelos.aprendizado import LancamentoHistorico, Padrao
 from app.modelos.base import Auditavel, Base
 from app.modelos.conta_chave import ContaChave
 from app.modelos.empresa import Empresa, Regime
+from app.modelos.extrato import TIPOS_CONTA, ContaBancaria, Extrato, MovimentoExtrato
 from app.modelos.ia import ChamadaIA
 from app.modelos.importacao import ArquivoOriginal, Importacao
 from app.modelos.log import Log
@@ -15,14 +16,18 @@ __all__ = [
     "Auditavel",
     "Base",
     "ChamadaIA",
+    "ContaBancaria",
     "ContaChave",
     "ContaContabil",
     "Empresa",
+    "Extrato",
     "Importacao",
     "LancamentoHistorico",
     "Log",
+    "MovimentoExtrato",
     "Padrao",
     "Papel",
     "Regime",
+    "TIPOS_CONTA",
     "Usuario",
 ]

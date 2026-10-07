@@ -9,6 +9,7 @@ from app.db import obter_sessao
 from app.modelos import Empresa, Regime, Usuario
 from app.rotas.aprendizado import contexto_aba_aprendizado
 from app.rotas.comum import avisar_consulta, buscar_empresa
+from app.rotas.extratos import contexto_aba_extratos
 from app.rotas.plano import contexto_aba_plano
 from app.servicos import backup
 from app.servicos.complemento import EXEMPLO, montar_complemento
@@ -33,7 +34,6 @@ ABAS = (
     ("exportar", "Exportar"),
 )
 CHEGA_NA_ETAPA = {
-    "extratos": "nas etapas 2.1 a 2.5 (leitura dos extratos)",
     "revisao": "na etapa 2.8 (tela de revisão)",
     "exportar": "na etapa 3.1 (geração do lanctos.txt)",
 }
@@ -197,6 +197,8 @@ def tela_empresa(
         extras = contexto_aba_plano(sessao, empresa, q, bool(analiticas))
     elif aba == "aprendizado":
         extras = contexto_aba_aprendizado(sessao, empresa, q, bool(ambiguos))
+    elif aba == "extratos":
+        extras = contexto_aba_extratos(sessao, empresa, competencia_da_tela(request, mes))
     return _tela_empresa(request, sessao, empresa, aba, mes, **extras)
 
 

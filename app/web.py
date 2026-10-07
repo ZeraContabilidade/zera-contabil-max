@@ -67,6 +67,7 @@ ROTULOS_ENTIDADE = {
     "empresa": "Empresa",
     "conta_chave": "Conta-chave",
     "padrao": "Padrão aprendido",
+    "conta_bancaria": "Conta bancária",
 }
 
 

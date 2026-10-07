@@ -7,6 +7,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.modelos import Empresa, Padrao
+from app.servicos.extratos import contar_movimentos_do_mes
 from app.servicos.plano import contar_contas
 
 ETAPAS = (
@@ -38,6 +39,8 @@ def _concluidas(sessao: Session, empresa: Empresa, competencia: date) -> dict[st
     )
     if padroes:
         feitas["aprendizado"] = f"{padroes:,} padrões".replace(",", ".")
+    if movimentos := contar_movimentos_do_mes(sessao, empresa, competencia):
+        feitas["extrato"] = f"{movimentos:,} movimentos".replace(",", ".")
     return feitas
 
 
