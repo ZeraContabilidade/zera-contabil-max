@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+{% from "_macros.html" import lista_erros %}
+{% block titulo %}Confirmar planilha — {{ nome_sistema }}{% endblock %}
+{% block conteudo %}
+<p><a href="/empresas/{{ empresa.id }}?aba=extratos">← {{ empresa.nome }} · Extratos</a></p>
+<h1>Confirmar planilha de extrato</h1>
+<p class="suave"><strong>{{ arquivo.nome_original }}</strong> — é a 1ª vez deste modelo de planilha (ou dela nesta empresa).
+  Confira de qual coluna vem cada informação e de qual conta bancária ela é. O sistema guarda e não pergunta de novo.</p>
+
+{{ lista_erros(erros) }}
+{% if analise.aviso_ia %}<p class="aviso aviso-atencao">{{ analise.aviso_ia }}</p>{% endif %}
+
+<form method="post" action="/empresas/{{ empresa.id }}/extratos/planilha/{{ arquivo.id }}" data-aguarde="Importando…">
+  <article>
+    <header class="cabecalho-pagina"><strong>Primeiras linhas</strong>
+      <span class="suave">{% if analise.origem == 'TITULOS' %}colunas sugeridas pelos títulos{% elif analise.origem == 'IA' %}🤖 colunas sugeridas pela IA{% elif analise.origem == 'MODELO' %}colunas do modelo já visto{% else %}escolha as colunas{% endif %}</span></header>
+    <div class="tabela-rolavel">
+      <table class="striped tabela-amostra">
+        <thead><tr><th>Linha</th>{% for i in range(largura) %}<th>Coluna {{ i + 1 }}</th>{% endfor %}</tr></thead>
+        <tbody>
+          {% for linha in amostra %}
+          <tr {% if loop.index0 == analise.linha_titulos %}class="linha-titulos"{% endif %}>
+            <td>{{ loop.index }}</td>
+            {% for i in range(largura) %}<td>{{ linha[i] if i < linha | length else '' }}</td>{% endfor %}
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </article>
+
+  <article>
+    <header><strong>Colunas</strong></header>
+    <label>Linha dos títulos
+      {% set escolhida = (dados.linha_titulos if dados.linha_titulos is defined and dados.linha_titulos != '' else analise.linha_titulos) | int %}
+      <select name="linha_titulos">
+        <option value="-1" {% if escolhida == -1 %}selected{% endif %}>— a planilha não tem títulos —</option>
+        {% for linha in amostra %}
+        <option value="{{ loop.index0 }}" {% if escolhida == loop.index0 %}selected{% endif %}>Linha {{ loop.index }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <div class="grade-colunas">
+      {% for papel, nome in papeis %}
+      {% set atual = (dados['col_' ~ papel] if ('col_' ~ papel) in dados else analise.colunas[papel]) | int %}
+      <label>{{ nome }}
+        <select name="col_{{ papel }}">
+          <option value="-1">— não tem —</option>
+          {% for i in range(largura) %}
+          <option value="{{ i }}" {% if atual == i %}selected{% endif %}>Coluna {{ i + 1 }}{% if analise.titulos[i] is defined and analise.titulos[i] %} · {{ analise.titulos[i] }}{% endif %}</option>
+          {% endfor %}
+        </select>
+      </label>
+      {% endfor %}
+    </div>
+    <small class="suave">Use “Valor (com sinal)” quando uma coluna só traz entradas positivas e saídas negativas (ou um C/D ao lado);
+      use “Débito” e “Crédito” quando o banco separa em duas colunas.</small>
+  </article>
+
+  <article>
+    <header><strong>Conta bancária</strong></header>
+    {% set conta_marcada = dados.conta if dados.conta is defined else (conta_sugerida | string if conta_sugerida else '') %}
+    {% for conta in contas %}
+    <label><input type="radio" name="conta" value="{{ conta.id }}" {% if conta_marcada == conta.id | string %}checked{% endif %}>
+      {{ conta.rotulo }}{% if conta.conta_chave and conta.conta_chave.conta %} → {{ conta.conta_chave.conta.rotulo }}{% endif %}</label>
+    {% endfor %}
+    <label><input type="radio" name="conta" value="nova" {% if conta_marcada == 'nova' or not contas %}checked{% endif %}> Outra conta:</label>
+    <div class="grid">
+      <label>Banco
+        <select name="nova_banco">
+          <option value="">—</option>
+          {% for codigo, nome in bancos %}<option value="{{ codigo }}" {% if dados.nova_banco == codigo %}selected{% endif %}>{{ codigo }} – {{ nome }}</option>{% endfor %}
+        </select>
+      </label>
+      <label>Agência <input name="nova_agencia" value="{{ dados.nova_agencia or '' }}" placeholder="0000-0"></label>
+      <label>Conta <input name="nova_numero" value="{{ dados.nova_numero or '' }}" placeholder="00000-0"></label>
+      <label>Tipo
+        <select name="nova_tipo">
+          {% for chave, nome in tipos.items() %}<option value="{{ chave }}" {% if dados.nova_tipo == chave %}selected{% endif %}>{{ nome }}</option>{% endfor %}
+        </select>
+      </label>
+    </div>
+  </article>
+
+  <button type="submit">Confirmar e importar</button>
+</form>
+{% endblock %}

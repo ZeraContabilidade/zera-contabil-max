@@ -205,6 +205,10 @@ tr.inativa td { opacity: .6; }
 .zona-titulo { font-family: "Cinzel", serif; font-size: 1.15rem; color: var(--ouro); }
 .linha-extrato + .linha-extrato { border-top: 1px solid var(--borda); padding-top: .6rem; }
 .tabela-movimentos td:first-child { white-space: nowrap; }
+.tabela-amostra { font-size: .82rem; }
+.tabela-amostra td, .tabela-amostra th { white-space: nowrap; }
+.tabela-amostra tr.linha-titulos td { font-weight: 700; color: var(--ouro); }
+.grade-colunas { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 0 1rem; }
 details.aviso { padding: .55rem 1rem; }
 details.aviso summary { font-size: .92rem; }
 details.aviso summary::after { filter: none; }

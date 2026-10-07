@@ -1,19 +1,25 @@
-"""Aba “4 Extratos”: arrastar e soltar os extratos do mês, contas bancárias da empresa e movimentos lidos."""
+"""Aba “4 Extratos”: arrastar e soltar os extratos do mês, contas bancárias da empresa e movimentos lidos.
+Planilha (Excel/CSV) de layout novo: tela para confirmar as colunas e a conta, uma vez por layout."""
 
-from datetime import date
+from datetime import date, timedelta
 from decimal import Decimal
 
-from fastapi import APIRouter, Depends, File, Request, UploadFile
+from fastapi import APIRouter, Depends, File, Form, Request, UploadFile
+from sqlalchemy import exists, select
 from sqlalchemy.orm import Session
 
 from app.auth import usuario_logado
 from app.db import obter_sessao
-from app.modelos import Empresa, Usuario
+from app.leitores.planilha import NOMES_PAPEIS, PAPEIS, texto_celula
+from app.modelos import TIPOS_CONTA, ArquivoOriginal, ContaBancaria, Empresa, Extrato, Importacao, Usuario
 from app.rotas.comum import buscar_empresa
-from app.servicos.competencia import valor_campo_mes
-from app.servicos.extratos import contas_bancarias, extratos_do_mes, importar_extrato, movimentos_do_mes
+from app.servicos.armazenamento import obter_armazenamento
+from app.servicos.competencia import hoje, valor_campo_mes
+from app.servicos.contas_chave import BANCOS
+from app.servicos.extratos import contas_bancarias, extratos_do_mes, importar_extrato, mesma_conta, movimentos_do_mes
+from app.servicos.planilha_extrato import PrecisaConfirmar, analisar, guardar_modelo, problema_nas_colunas
 from app.servicos.plano import ErroLeitura
-from app.web import avisar, redirecionar
+from app.web import avisar, pagina, redirecionar
 
 router = APIRouter()
 TAMANHO_MAXIMO = 30 * 1024 * 1024
@@ -22,6 +28,23 @@ CONFERENCIA = {
     "DIFERENCA": "saldo NÃO confere",
     "SEM_SALDO": "sem saldo para conferir",
 }
+
+
+def planilhas_esperando(sessao: Session, empresa: Empresa) -> list[ArquivoOriginal]:
+    """Planilhas enviadas nos últimos 30 dias que ainda esperam a confirmação das colunas ou da conta."""
+    importado = exists().where(Importacao.arquivo_id == ArquivoOriginal.id)
+    return list(
+        sessao.scalars(
+            select(ArquivoOriginal)
+            .where(
+                ArquivoOriginal.empresa_id == empresa.id,
+                ArquivoOriginal.tipo == "EXTRATO",
+                ArquivoOriginal.enviado_em >= hoje() - timedelta(days=30),
+                ~importado,
+            )
+            .order_by(ArquivoOriginal.id.desc())
+        )
+    )
 
 
 def contexto_aba_extratos(sessao: Session, empresa: Empresa, competencia: date) -> dict:
@@ -33,7 +56,18 @@ def contexto_aba_extratos(sessao: Session, empresa: Empresa, competencia: date) 
         "total_entradas": sum((m.valor for m in movimentos if m.sentido == "ENTRADA"), Decimal("0")),
         "total_saidas": sum((m.valor for m in movimentos if m.sentido == "SAIDA"), Decimal("0")),
         "rotulo_conferencia": CONFERENCIA,
+        "planilhas_esperando": planilhas_esperando(sessao, empresa),
     }
+
+
+def _avisar_importado(request: Request, nome: str, extrato: Extrato) -> None:
+    resumo = extrato.importacao.resumo
+    texto = f"{nome}: {extrato.conta_bancaria.rotulo}, {resumo['novos']} movimento(s) novo(s)"
+    if resumo["repetidos"]:
+        texto += f", {resumo['repetidos']} repetido(s) ignorado(s) (já estavam no sistema)"
+    texto += f" — {CONFERENCIA[extrato.conferencia]}."
+    ok = extrato.conferencia == "CONFERE" and not extrato.importacao.avisos
+    avisar(request, texto, "ok" if ok else "atencao")
 
 
 @router.post("/empresas/{empresa_id}/extratos")
@@ -52,7 +86,7 @@ def enviar_extratos(
         avisar(request, "Escolha (ou arraste) os arquivos dos extratos antes de enviar.", "erro")
         return redirecionar(destino)
 
-    ultimo_mes = None
+    ultimo_mes, confirmar = None, []
     for arquivo in arquivos:
         conteudo = arquivo.file.read(TAMANHO_MAXIMO + 1)
         if len(conteudo) > TAMANHO_MAXIMO:
@@ -60,20 +94,152 @@ def enviar_extratos(
             continue
         try:
             extrato = importar_extrato(sessao, empresa, arquivo.filename, conteudo, usuario)
+        except PrecisaConfirmar as pedido:
+            sessao.commit()  # o arquivo e a sugestão de colunas ficam guardados esperando a confirmação
+            confirmar.append(pedido.arquivo.id)
+            avisar(request, str(pedido), "atencao")
+            continue
         except ErroLeitura as erro:
             sessao.rollback()
             avisar(request, f"{arquivo.filename}: {erro}", "erro")
             continue
         sessao.commit()
-        resumo = extrato.importacao.resumo
-        texto = f"{arquivo.filename}: {extrato.conta_bancaria.rotulo}, {resumo['novos']} movimento(s) novo(s)"
-        if resumo["repetidos"]:
-            texto += f", {resumo['repetidos']} repetido(s) ignorado(s) (já estavam no sistema)"
-        texto += f" — {CONFERENCIA[extrato.conferencia]}."
-        avisar(
-            request, texto, "ok" if extrato.conferencia == "CONFERE" and not extrato.importacao.avisos else "atencao"
-        )
+        _avisar_importado(request, arquivo.filename, extrato)
         ultimo_mes = extrato.fim.replace(day=1)
+    if len(confirmar) == 1 and len(arquivos) == 1:
+        return redirecionar(f"/empresas/{empresa.id}/extratos/planilha/{confirmar[0]}")
     if ultimo_mes:
         destino += f"&mes={valor_campo_mes(ultimo_mes)}"  # mostra o mês do extrato enviado
     return redirecionar(destino)
+
+
+# ---------------------------------------------------------------- confirmação de planilha
+
+
+def _arquivo_esperando(sessao: Session, request: Request, empresa: Empresa, arquivo_id: int) -> ArquivoOriginal | None:
+    arquivo = sessao.get(ArquivoOriginal, arquivo_id)
+    if arquivo is None or arquivo.empresa_id != empresa.id or arquivo.tipo != "EXTRATO":
+        avisar(request, "Planilha não encontrada. Envie o arquivo de novo.", "erro")
+        return None
+    return arquivo
+
+
+def _tela_confirmar(request, sessao, empresa, arquivo, analise, erros=None, dados=None, status_code=200):
+    contas = contas_bancarias(sessao, empresa)
+    sugerida = next((c.id for c in contas if c.assinatura_planilha == analise.assinatura), None)
+    if dados is None and (escrito := analise.banco_no_arquivo):  # banco, agência e conta escritos na planilha
+        dados = {"nova_banco": escrito["banco"], "nova_agencia": escrito["agencia"], "nova_numero": escrito["numero"]}
+        existente = next((c for c in contas if mesma_conta(c, escrito["agencia"], escrito["numero"])), None)
+        if existente:
+            sugerida = existente.id
+        elif sugerida is None:
+            dados["conta"] = "nova"
+    fim_amostra = max(analise.linha_titulos, 0) + 12
+    return pagina(
+        request,
+        "planilha_confirmar.html",
+        status_code=status_code,
+        empresa=empresa,
+        arquivo=arquivo,
+        analise=analise,
+        amostra=[[texto_celula(c) for c in linha] for linha in analise.linhas[:fim_amostra]],
+        largura=max((len(linha) for linha in analise.linhas[:fim_amostra]), default=0),
+        papeis=[(papel, NOMES_PAPEIS[papel]) for papel in PAPEIS],
+        contas=contas,
+        conta_sugerida=sugerida,
+        bancos=[(codigo, nome) for codigo, _, nome, _ in BANCOS],
+        tipos=TIPOS_CONTA,
+        erros=erros or [],
+        dados=dados or {},
+    )
+
+
+@router.get("/empresas/{empresa_id}/extratos/planilha/{arquivo_id}")
+def tela_confirmar_planilha(
+    request: Request,
+    empresa_id: int,
+    arquivo_id: int,
+    usuario: Usuario = Depends(usuario_logado),
+    sessao: Session = Depends(obter_sessao),
+):
+    if (empresa := buscar_empresa(sessao, request, empresa_id)) is None:
+        return redirecionar("/")
+    if (arquivo := _arquivo_esperando(sessao, request, empresa, arquivo_id)) is None:
+        return redirecionar(f"/empresas/{empresa.id}?aba=extratos")
+    conteudo = obter_armazenamento().ler(arquivo.chave)
+    analise = analisar(sessao, empresa, usuario, conteudo)
+    sessao.commit()
+    return _tela_confirmar(request, sessao, empresa, arquivo, analise)
+
+
+@router.post("/empresas/{empresa_id}/extratos/planilha/{arquivo_id}")
+def confirmar_planilha(
+    request: Request,
+    empresa_id: int,
+    arquivo_id: int,
+    linha_titulos: str = Form(""),
+    col_data: str = Form(""),
+    col_historico: str = Form(""),
+    col_complemento: str = Form(""),
+    col_documento: str = Form(""),
+    col_valor: str = Form(""),
+    col_debito: str = Form(""),
+    col_credito: str = Form(""),
+    col_sentido: str = Form(""),
+    col_saldo: str = Form(""),
+    conta: str = Form(""),
+    nova_banco: str = Form(""),
+    nova_agencia: str = Form(""),
+    nova_numero: str = Form(""),
+    nova_tipo: str = Form(""),
+    usuario: Usuario = Depends(usuario_logado),
+    sessao: Session = Depends(obter_sessao),
+):
+    if (empresa := buscar_empresa(sessao, request, empresa_id)) is None:
+        return redirecionar("/")
+    if (arquivo := _arquivo_esperando(sessao, request, empresa, arquivo_id)) is None:
+        return redirecionar(f"/empresas/{empresa.id}?aba=extratos")
+    formulario = {nome: str(valor).strip() for nome, valor in locals().items() if isinstance(valor, str)}
+    conteudo = obter_armazenamento().ler(arquivo.chave)
+    analise = analisar(sessao, empresa, usuario, conteudo)
+
+    def numero(campo: str, padrao: int = -1) -> int:
+        try:
+            return int(formulario.get(campo, padrao))
+        except ValueError:
+            return padrao
+
+    colunas = {papel: numero(f"col_{papel}") for papel in PAPEIS}
+    linha_titulos = numero("linha_titulos", analise.linha_titulos)
+    erros = [problema] if (problema := problema_nas_colunas(colunas)) else []
+    escolha = formulario.get("conta", "")
+    escolhida: ContaBancaria | dict[str, str] | None = None
+    if escolha.isdigit():
+        escolhida = sessao.get(ContaBancaria, int(escolha))
+        if escolhida is None or escolhida.empresa_id != empresa.id:
+            erros.append("Escolha a conta bancária na lista.")
+    elif escolha == "nova":
+        banco, numero_conta = formulario.get("nova_banco", ""), formulario.get("nova_numero", "")
+        if banco not in {codigo for codigo, *_ in BANCOS} or not numero_conta:
+            erros.append("Para uma conta nova, escolha o banco e informe o número da conta.")
+        escolhida = {
+            "banco": banco,
+            "agencia": formulario.get("nova_agencia", ""),
+            "numero": numero_conta,
+            "tipo": formulario.get("nova_tipo") if formulario.get("nova_tipo") in TIPOS_CONTA else "BANCO",
+        }
+    else:
+        erros.append("Escolha de qual conta bancária é a planilha.")
+    if erros:
+        return _tela_confirmar(request, sessao, empresa, arquivo, analise, erros, formulario, 400)
+
+    guardar_modelo(sessao, analise, colunas, linha_titulos, usuario)
+    try:
+        extrato = importar_extrato(sessao, empresa, arquivo.nome_original, conteudo, usuario, escolhida, arquivo)
+    except ErroLeitura as erro:
+        sessao.rollback()
+        analise = analisar(sessao, empresa, usuario, conteudo)
+        return _tela_confirmar(request, sessao, empresa, arquivo, analise, [str(erro)], formulario, 400)
+    sessao.commit()
+    _avisar_importado(request, arquivo.nome_original, extrato)
+    return redirecionar(f"/empresas/{empresa.id}?aba=extratos&mes={valor_campo_mes(extrato.fim.replace(day=1))}")

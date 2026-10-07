@@ -14,8 +14,10 @@ from sqlalchemy.orm import Session
 
 from app.auditoria import registrar_evento
 from app.leitores import ExtratoLido, NaoReconhecido, ler_extrato
+from app.leitores.planilha import parece_planilha
 from app.leitores.universal_ia import ler_pdf_com_ia
 from app.modelos import (
+    ArquivoOriginal,
     ContaBancaria,
     ContaChave,
     Empresa,
@@ -26,6 +28,7 @@ from app.modelos import (
 )
 from app.servicos.armazenamento import guardar_arquivo
 from app.servicos.contas_chave import identificar_banco, ligar_conta_bancaria, referencia_bancaria
+from app.servicos.planilha_extrato import ler_planilha_extrato
 from app.servicos.plano import Aviso, ErroLeitura
 
 ZERO = Decimal("0")
@@ -128,16 +131,28 @@ def _marca(conta: ContaBancaria, base: str, vez: int) -> str:
 
 
 def importar_extrato(
-    sessao: Session, empresa: Empresa, nome_arquivo: str, conteudo: bytes, usuario: Usuario | None
+    sessao: Session,
+    empresa: Empresa,
+    nome_arquivo: str,
+    conteudo: bytes,
+    usuario: Usuario | None,
+    conta_escolhida: ContaBancaria | dict[str, str] | None = None,
+    arquivo: ArquivoOriginal | None = None,
 ) -> Extrato:
+    """`conta_escolhida` e `arquivo`: vindos da tela de confirmação de planilha (o arquivo já estava guardado)."""
     try:
         lido = ler_extrato(nome_arquivo, conteudo)
     except NaoReconhecido:
-        if not conteudo.lstrip()[:5] == b"%PDF-":
+        if conteudo.lstrip()[:5] == b"%PDF-":
+            lido = ler_pdf_com_ia(sessao, empresa, usuario, nome_arquivo, conteudo)  # banco sem leitor próprio
+        elif parece_planilha(nome_arquivo, conteudo):
+            lido = ler_planilha_extrato(sessao, empresa, usuario, nome_arquivo, conteudo, conta_escolhida)
+        else:
             raise
-        lido = ler_pdf_com_ia(sessao, empresa, usuario, nome_arquivo, conteudo)  # banco sem leitor próprio
     conta, aviso_ia = _conta_bancaria(sessao, empresa, lido, usuario)
-    arquivo = guardar_arquivo(sessao, empresa, "EXTRATO", nome_arquivo, conteudo, usuario)
+    if lido.assinatura_planilha:
+        conta.assinatura_planilha = lido.assinatura_planilha  # a próxima planilha igual vai direto para esta conta
+    arquivo = arquivo or guardar_arquivo(sessao, empresa, "EXTRATO", nome_arquivo, conteudo, usuario)
     importacao = Importacao(
         empresa_id=empresa.id, tipo="EXTRATO", arquivo_id=arquivo.id, usuario_id=usuario.id if usuario else None
     )

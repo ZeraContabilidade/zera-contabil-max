@@ -3,12 +3,17 @@
 Atualizado em: **07/10/2026**
 
 ## Próximo passo exato
-**Etapa 2.5b — Extrato em Excel/CSV** (§3.4 regras 3 e 5; a 2.5a — PDF pela IA — está pronta).
-- Leitor `app/leitores/planilha.py` (xlsx/xls pelo calamine; csv com `;` ou `,`): acha a linha de títulos pelos nomes comuns (“Data”, “Histórico/Descrição/Lançamento”, “Documento”, “Valor”, “Débito”, “Crédito”, “Saldo”, “C/D”); valor com sinal ou colunas Débito/Crédito ou valor + coluna C/D; datas dd/mm/aaaa ou do Excel; linhas de saldo (“SALDO ANTERIOR”, “SALDO DO DIA”) viram saldo, não movimento.
-- Layout que os títulos não resolvem → **IA (modelo rápido)** olha as 15 primeiras linhas e diz qual coluna é o quê; o usuário **confirma na 1ª vez** numa tela com as primeiras linhas e as colunas escolhidas (pode trocar); o modelo fica guardado (tabela `modelo_planilha_banco`, migração 0010: assinatura dos títulos → colunas, banco, confirmado por, quando; §8) e não pergunta de novo.
-- A planilha quase nunca traz banco/agência/conta → na confirmação o usuário escolhe a conta bancária da empresa (ou cadastra banco + agência + conta). Para isso o arquivo é guardado antes (`guardar_arquivo`) e a tela de confirmação aponta para ele.
-- Conferência de saldo igual à dos outros formatos; reimportar não duplica (mesmo hash). Testes com planilhas montadas no teste (openpyxl/csv) e com a IA falsa.
-Depois: **2.6 classificação** (regras, CNPJ, nome parecido com `rapidfuzz`, palavra-chave, valor recorrente, transferência entre contas próprias CC ↔ poupança).
+**Etapa 2.6 — Motor de classificação** (§6.2 passos 1–5 e 7; a IA para o que sobrar é a 2.7).
+- Tabela `sugestao` (migração 0011; §8): movimento_extrato (1:1), conta débito, conta crédito, complemento (montado por `empresa.modelo_complemento` com `montar_complemento`), confiança (0–100), origem (REGRA, CNPJ, NOME, PALAVRA, VALOR, IA, USUARIO), justificativa (“Fornecedor SABESP – 6 lançamentos no histórico”), padrão usado, status PENDENTE/APROVADO/IGNORADO/EXPORTADO. Lado do banco = conta contábil da conta bancária (`conta.conta_chave.conta`); SAIDA → débito = contrapartida, crédito = banco; ENTRADA → o contrário.
+- Ordem (`app/servicos/classificacao.py`), parar no 1º que resolver:
+  1. **Regras de banco** com as contas-chave: transferência entre contas próprias (CC ↔ poupança: mesmo dia e valor, sentidos opostos, nas contas bancárias da empresa — códigos BB 875/141 e 475/601; as duas pontas na mesma conta contábil quando a poupança não tem conta própria → avisar), rendimentos (Juros, Reajuste Monetário, RENDIMENTO) → conta-chave RENDIMENTO, IR (Imposto De Renda) → IR_RETIDO, TARIFA, IOF.
+  2. **CNPJ/CPF** escrito no movimento = de um padrão → alta (95).
+  3. **Nome parecido** com `rapidfuzz` (acrescentar ao requirements) entre o complemento do banco (“ZERA ASSESSORIA EMPRESARIAL E”, cortado) e o nome do padrão: ≥ 90 alta, 75–89 média (comparar normalizado, `token_set_ratio`/`partial_ratio` por causa do corte).
+  4. **Palavra-chave** (padrões PALAVRA) → média/alta; 5. **valor recorrente** do padrão → média.
+  7. Fornecedor achado mas sem conta (empresa com conta individual) → PENDENTE + “Fornecedores a cadastrar no Domínio”.
+- Roda sozinho depois de importar o extrato e por um botão “Classificar de novo”; não mexe em sugestão APROVADA/IGNORADA/USUARIO. Verdes (≥ limiar, padrão 90) já vêm APROVADOS (§3.5).
+- Aba Extratos (ou início da aba Revisão): coluna Débito/Crédito/Complemento/Confiança/Origem nos movimentos. Tela de revisão completa é a 2.8.
+- **Medir com os PDFs reais** (Casa Criança: lanctos 2025/2026 aprendidos + extratos de agosto): quantos ficam verdes/amarelos/pendentes — a meta da 2.8 é ≥ 85% certos.
 
 ## Pendências com o usuário
 | # | Pergunta | Precisa até |
@@ -41,7 +46,7 @@ Depois: **2.6 classificação** (regras, CNPJ, nome parecido com `rapidfuzz`, pa
 - [x] 2.3 Leitor PDF BB conta corrente
 - [x] 2.4 Leitor PDF BB poupança
 - [x] 2.5a Leitor universal com IA (PDF de banco sem leitor próprio, só entra se o saldo conferir)
-- [ ] 2.5b Excel/CSV com colunas identificadas pelos títulos ou pela IA (confirmação na 1ª vez)
+- [x] 2.5b Excel/CSV com colunas identificadas pelos títulos ou pela IA (confirmação na 1ª vez)
 - [ ] 2.6 Motor de classificação (regras, CNPJ, nome parecido, palavra-chave, valor) + pareamento de transferências
 - [ ] 2.7 IA em lote + validação + aprovação automática dos verdes
 - [ ] 2.8 Tela de Revisão + fornecedores a cadastrar; medir ≥ 85% nos 2 PDFs
@@ -55,6 +60,11 @@ Depois: **2.6 classificação** (regras, CNPJ, nome parecido com `rapidfuzz`, pa
 ### Fase 4 — Extras (um por vez, quando pedido)
 
 ## Histórico
+
+### 07/10/2026 — Etapa 2.5b concluída (extrato em Excel/CSV)
+- `app/leitores/planilha.py`: lê xlsx/xls (calamine, a aba com mais datas) e CSV (`;`, `,` ou tab); valores do jeito dos bancos (“1.234,56”, “-1.234,56”, “1.234,56 D”, “(10,00)”, número do Excel); datas dd/mm/aaaa, dd/mm/aa ou do Excel; títulos comuns (Data, Histórico/Lançamento, Documento, Valor, Débito, Crédito, C/D, Saldo); linhas “SALDO ANTERIOR/DO DIA” viram saldo; sem saldo anterior, o inicial sai da coluna Saldo da 1ª linha.
+- `app/servicos/planilha_extrato.py`: colunas pelo **modelo já confirmado** (assinatura dos títulos), senão pelos títulos, senão pela **IA** (modelo rápido, 15 primeiras linhas). **1ª vez de cada layout → tela de confirmação** (`/empresas/{id}/extratos/planilha/{arquivo}`): primeiras linhas, colunas sugeridas (pode trocar), conta bancária (lista da empresa ou nova; banco/agência/conta escritos no alto da planilha já vêm preenchidos). O arquivo fica guardado esperando (lista “Planilhas esperando a sua confirmação” na aba). Modelo vale para todas as empresas (`modelo_planilha_banco`, migração 0010); a conta bancária guarda o layout (`assinatura_planilha`) → a próxima planilha igual entra direto.
+- Testes (16): 263 passando. Tela conferida no servidor de teste (Playwright): confirmação → “Itaú · 2 movimentos — saldo confere”.
 
 ### 07/10/2026 — Etapa 2.5a concluída (PDF de qualquer banco pela IA)
 - `app/leitores/universal_ia.py`: quando nenhum leitor próprio reconhece um PDF com texto (`NaoReconhecido`), o serviço manda **uma página por chamada** ao modelo forte (resposta pequena e rápida), junta as páginas (cabeçalho da 1ª que mostra, saldo inicial da 1ª, final da última) e confere cada linha (data no período, valor > 0, sentido). `exige_conferencia`: **só entra se o saldo conferir** — senão nada é gravado e a tela pede o OFX ou o Excel. IA desligada → mensagem pedindo o OFX.

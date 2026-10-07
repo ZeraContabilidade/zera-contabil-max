@@ -46,6 +46,7 @@ class ExtratoLido:
     saldo_cortado: bool = False  # o PDF cortou os centavos (e o sinal) do saldo
     saldo_inicial_visivel: str = ""  # saldo anterior cortado na impressão (“227.4”): confere pelo começo
     exige_conferencia: bool = False  # leitura pela IA: só entra se o saldo conferir
+    assinatura_planilha: str = ""  # planilha: layout usado (a conta bancária guarda para a próxima vez)
     movimentos: list[MovimentoLido] = field(default_factory=list)
     avisos: list[Aviso] = field(default_factory=list)
 

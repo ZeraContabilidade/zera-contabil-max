@@ -2,6 +2,7 @@ from datetime import date, datetime
 from decimal import Decimal
 
 from sqlalchemy import Date, DateTime, ForeignKey, Numeric, String, UniqueConstraint, func
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.modelos.base import Auditavel, Base
@@ -28,6 +29,8 @@ class ContaBancaria(Auditavel, Base):
     titular: Mapped[str | None] = mapped_column(String(200))
     conta_chave_id: Mapped[int | None] = mapped_column(ForeignKey("conta_chave.id"))
     ativa: Mapped[bool] = mapped_column(default=True)
+    # layout de planilha que esta conta usa: a próxima planilha igual vai direto para ela, sem perguntar
+    assinatura_planilha: Mapped[str | None] = mapped_column(String(64))
 
     conta_chave: Mapped[ContaChave | None] = relationship()
 
@@ -86,3 +89,22 @@ class MovimentoExtrato(Base):
     @property
     def descricao(self) -> str:
         return f"{self.historico} {self.complemento or ''}".strip()
+
+
+class ModeloPlanilha(Auditavel, Base):
+    """Colunas de um layout de planilha de extrato (Excel/CSV), confirmadas pelo usuário na 1ª vez (§3.4, §8).
+
+    A assinatura é tirada dos títulos das colunas: a mesma planilha do mesmo banco tem a mesma assinatura,
+    em qualquer empresa. `colunas` = {"data": 0, "historico": 2, "valor": 5, ...} (−1 = não tem)."""
+
+    __tablename__ = "modelo_planilha_banco"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    assinatura: Mapped[str] = mapped_column(String(64), unique=True)
+    titulos: Mapped[list[str]] = mapped_column(JSONB, default=list)
+    linha_titulos: Mapped[int]  # onde ficam os títulos (0 = primeira linha; −1 = planilha sem títulos)
+    colunas: Mapped[dict[str, int]] = mapped_column(JSONB, default=dict)
+    origem: Mapped[str] = mapped_column(String(10))  # TITULOS, IA ou USUARIO (quem achou as colunas)
+    confirmado: Mapped[bool] = mapped_column(default=False)
+    confirmado_por_id: Mapped[int | None] = mapped_column(ForeignKey("usuario.id"))
+    confirmado_em: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
