@@ -284,9 +284,7 @@ def contexto_do_plano(plano: PlanoCarregado, empresa: Empresa) -> str:
     for conta in plano.contas:
         tipo = "analítica" if conta.analitica else "grupo"
         natureza = plano.natureza.get(conta.id, "OUTRA")
-        linhas.append(
-            f"{conta.reduzido} | {conta.classificacao_formatada} | {conta.descricao} | {tipo} | {natureza}"
-        )
+        linhas.append(f"{conta.reduzido} | {conta.classificacao_formatada} | {conta.descricao} | {tipo} | {natureza}")
     return "\n".join(linhas)
 
 
@@ -329,9 +327,7 @@ def conferir_resposta_ia(
         conta = plano.analiticas.get(reduzido) if reduzido else None
         if reduzido and conta is None:
             conta, confianca = None, 0
-            justificativa = (
-                f"A IA sugeriu a conta {reduzido}, que não existe como analítica no plano; não aplicada."
-            )
+            justificativa = f"A IA sugeriu a conta {reduzido}, que não existe como analítica no plano; não aplicada."
         elif conta is not None and plano.natureza.get(conta.id) != naturezas_pedidas[tipo]:
             justificativa = (
                 f"A IA sugeriu {conta.rotulo}, mas ela é do {plano.natureza.get(conta.id)} "
@@ -358,9 +354,7 @@ def _perguntar_ia(
     for tipo, (explicacao, natureza, achados) in pedidos.items():
         linhas.append(f"\n- tipo {tipo}: {explicacao} (natureza {natureza}).")
         if achados:
-            linhas.append(
-                "  Contas parecidas achadas por palavra: " + "; ".join(c.rotulo for c, _ in achados[:8])
-            )
+            linhas.append("  Contas parecidas achadas por palavra: " + "; ".join(c.rotulo for c, _ in achados[:8]))
         else:
             linhas.append("  Nenhuma conta achada por palavra: procure no plano inteiro.")
     pedido = PedidoIA(
@@ -434,7 +428,7 @@ class ResultadoAutoConfig:
         return "🤖 Contas-chave: " + ", ".join(partes) + "."
 
 
-def _gravar(sessao: Session, empresa: Empresa, sugestao: Sugestao) -> ContaChave:
+def gravar_sugestao(sessao: Session, empresa: Empresa, sugestao: Sugestao) -> ContaChave:
     chave = sessao.scalar(
         select(ContaChave).where(
             ContaChave.empresa_id == empresa.id,
@@ -495,7 +489,7 @@ def auto_configurar(sessao: Session, empresa: Empresa, usuario: Usuario | None =
         for chave, achados in incertas.items():
             escolhidas.setdefault(chave, _reserva(chave, achados))
 
-    resultado.chaves = [_gravar(sessao, empresa, escolhidas[chave]) for chave in TIPOS]
+    resultado.chaves = [gravar_sugestao(sessao, empresa, escolhidas[chave]) for chave in TIPOS]
     sessao.flush()
     return resultado
 
@@ -543,9 +537,7 @@ def pontuar_conta_bancaria(texto: str, banco: tuple[str, str, str] | None, numer
     numero_completo = re.sub(r"\D", "", numero)
     sem_digito = re.sub(r"\D", "", re.split(r"[-/]", numero)[0]) if re.search(r"[-/]", numero) else ""
     pontos = 0
-    if numero_completo and (
-        numero_completo in _numeros(texto) or (sem_digito and sem_digito in _numeros(texto))
-    ):
+    if numero_completo and (numero_completo in _numeros(texto) or (sem_digito and sem_digito in _numeros(texto))):
         pontos += 60
     if banco:
         if re.search(_padrao_banco(banco[0]), texto):
@@ -564,9 +556,10 @@ def _padrao_banco(codigo: str) -> str:
     return next(p for c, _, _, p in BANCOS if c == codigo)
 
 
-def referencia_bancaria(banco: tuple[str, str, str] | None, agencia: str, numero: str) -> str:
+def referencia_bancaria(banco: tuple[str, str, str] | None, numero: str) -> str:
+    """Banco + número da conta (sem agência): o histórico e o extrato caem na mesma conta-chave."""
     sigla = banco[1] if banco else "BANCO"
-    return f"{sigla} ag {agencia.strip()} conta {numero.strip()}"[:80]
+    return f"{sigla} conta {numero.strip()}"[:80]
 
 
 def ligar_conta_bancaria(
@@ -581,7 +574,7 @@ def ligar_conta_bancaria(
     """Acha a conta contábil de uma conta bancária (extrato BB 72637-0 → conta 8).
     Devolve (conta-chave gravada, aviso de por que a IA não ajudou, se for o caso)."""
     banco = identificar_banco(banco_texto)
-    referencia = referencia_bancaria(banco, agencia, numero)
+    referencia = referencia_bancaria(banco, numero)
     plano = carregar_plano(sessao, empresa)
     natureza = TIPOS_BANCARIOS[tipo][1]
     achados = sorted(
@@ -626,7 +619,7 @@ def ligar_conta_bancaria(
                 f"o plano, ou escolha uma conta aqui.{motivo}",
                 referencia,
             )
-    chave = _gravar(sessao, empresa, sugestao)
+    chave = gravar_sugestao(sessao, empresa, sugestao)
     sessao.flush()
     return chave, aviso_ia
 
@@ -640,22 +633,30 @@ def contas_chave_da_empresa(sessao: Session, empresa: Empresa) -> list[ContaChav
     return sorted(chaves, key=lambda c: (ordem.get(c.tipo, 99), c.referencia))
 
 
-def escolher_conta(sessao: Session, chave: ContaChave, texto: str, usuario: Usuario) -> str | None:
-    """O usuário troca a conta (“355 – ÁGUA E ESGOTO” ou só “355”). Devolve um erro em português ou None."""
+def achar_conta_analitica(sessao: Session, empresa_id: int, texto: str) -> tuple[ContaContabil | None, str | None]:
+    """Conta digitada pelo usuário (“355 – ÁGUA E ESGOTO” ou só “355”) → (conta, None) ou (None, erro)."""
     numero = re.match(r"\s*(\d+)", texto or "")
     if not numero:
-        return "Digite o código reduzido ou escolha a conta na lista (ex.: 355 – ÁGUA E ESGOTO)."
+        return None, "Digite o código reduzido ou escolha a conta na lista (ex.: 355 – ÁGUA E ESGOTO)."
     conta = sessao.scalar(
         select(ContaContabil).where(
-            ContaContabil.empresa_id == chave.empresa_id,
+            ContaContabil.empresa_id == empresa_id,
             ContaContabil.reduzido == int(numero.group(1)),
             ContaContabil.ativa,
         )
     )
     if conta is None:
-        return f"A conta {numero.group(1)} não existe no plano desta empresa."
+        return None, f"A conta {numero.group(1)} não existe no plano desta empresa."
     if not conta.analitica:
-        return f"A conta {conta.rotulo} é sintética (grupo). Escolha uma conta analítica."
+        return None, f"A conta {conta.rotulo} é sintética (grupo). Escolha uma conta analítica."
+    return conta, None
+
+
+def escolher_conta(sessao: Session, chave: ContaChave, texto: str, usuario: Usuario) -> str | None:
+    """O usuário troca a conta de uma conta-chave. Devolve um erro em português ou None."""
+    conta, erro = achar_conta_analitica(sessao, chave.empresa_id, texto)
+    if erro:
+        return erro
     chave.conta_id, chave.conta = conta.id, conta
     chave.origem, chave.confianca = "USUARIO", 100
     chave.justificativa = f"Escolhida por {usuario.nome}."

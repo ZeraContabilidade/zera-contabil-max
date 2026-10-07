@@ -26,9 +26,7 @@ def problemas_no_cadastro(
         erros.append("Preencha o nome.")
     login_ok = normalizar_login(login)
     if len(login_ok) < 3 or " " in login_ok:
-        erros.append(
-            "O usuário para entrar precisa ter pelo menos 3 letras e nenhum espaço (ex.: maria.silva)."
-        )
+        erros.append("O usuário para entrar precisa ter pelo menos 3 letras e nenhum espaço (ex.: maria.silva).")
     elif _em_uso(sessao, Usuario.login, login_ok, ignorar_id):
         erros.append(f"O usuário “{login_ok}” já está em uso. Escolha outro.")
     email_ok = normalizar_email(email)

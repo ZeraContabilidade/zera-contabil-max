@@ -39,7 +39,7 @@ app/            sistema web
   templates/      HTML (Jinja2); _entrada.html = moldura com o emblema; _macros.html
   static/         estilo.css (identidade Zera), tema.js, marca/ (logos, emblema, Cinzel), vendor/ (Pico, HTMX)
   ia/             cliente.py (Anthropic + falso), precos.py, servico.py (chamar_ia, limites, registro)
-migracoes/      Alembic (0001 usuario+log; 0002 empresa+unaccent; 0003 conta_contabil+arquivo_original+importacao; 0004 chamada_ia + IA na empresa; 0005 conta_chave + conta individual)
+migracoes/      Alembic (0001 usuario+log; 0002 empresa+unaccent; 0003 conta_contabil+arquivo_original+importacao; 0004 chamada_ia; 0005 conta_chave; 0006 lancamento_historico+padrao+perfil)
 scripts/        rotinas dos .bat (instalar, iniciar, banco_docker, criar_env) + banco_teste e servidor_teste
 tests/          pytest (banco separado <nome>_teste)
 ferramentas/preparar_computador/   instalador da máquina (Git, Python, Node, Docker, Claude Code)
@@ -63,6 +63,8 @@ AMOSTRAS/       arquivos reais da Casa Criança (fora do Git)
 - **IA:** nunca chamar o SDK direto — montar `PedidoIA` (instruções fixas, `contexto` grande e estável para o cache, `pergunta` variável, `esquema` JSON com `additionalProperties: false`, `forte=True` só quando precisa) e chamar `app.ia.servico.chamar_ia(sessao, pedido, empresa, usuario)`; capturar `ErroIA` (inclui `IAIndisponivel`) e seguir sem IA. **Validar** a resposta (conta existe e é analítica etc.) antes de gravar. Testes: fixture `ia_falsa` (`ia_falsa.respostas[finalidade] = {...}`). Modelos: Haiku 4.5 não aceita `effort`; Sonnet 5.5 não aceita `tool_choice` forçado nem `thinking` desligado. Ler a skill `claude-api` antes de mudar `app/ia/cliente.py`.
 - **Contas-chave:** usar `app/servicos/contas_chave.py` — natureza das contas por `naturezas()` (pelo nome do grupo, nunca pelo número); conta bancária por `ligar_conta_bancaria()`; nunca sobrescrever origem `USUARIO`. Parâmetro de teste não pode se chamar `banco` (é o nome da fixture do PostgreSQL).
 - Processo demorado (importação, IA) → `data-aguarde="texto"` no `<form>`.
+- **Aprendizado:** histórico (lanctos.txt hoje, Diário amanhã) → `LancamentoHistorico`; padrões sempre recalculados por `aprender()` a partir de TODO o histórico (nunca editar padrão aprendido à mão no código; o usuário muda pela tela → origem `USUARIO`). Processo em bloco: `sessao.info["auditoria_em_bloco"] = True` + um `registrar_evento`. Valores monetários nos `detalhes` JSON ficam como texto `"910.00"`; na tela use o filtro `reais`.
+- Plano de contas de teste comum: `tests/planos.py` (`criar_plano`). Histórico de teste anonimizado: `tests/dados/lanctos_exemplo.txt`.
 - **Chave da API:** só no `.env` (`ANTHROPIC_API_KEY`). Nunca pedir, mostrar ou registrar a chave no chat/log.
 - Testes com arquivos: cópias anonimizadas em `tests/dados/`; teste com arquivo real de AMOSTRAS usa `@pytest.mark.amostras` e pula se a pasta não existir. Arquivos enviados nos testes vão para uma pasta temporária (`PASTA_ARQUIVOS_TESTE`).
 - Ao ver telas, usar o servidor de teste + Playwright (`browser_take_screenshot`); o painel do app não desenha com a janela minimizada.
@@ -82,6 +84,8 @@ AMOSTRAS/       arquivos reais da Casa Criança (fora do Git)
 - Jinja escapa `'` como `&#39;`: nas mensagens use aspas tipográficas “assim”.
 - Segurança do login: cookie assinado (`CHAVE_SESSAO`), SameSite=Lax (bloqueia formulário de outro site). Antes de ir para a nuvem (Fase 4), avaliar token CSRF e HTTPS.
 - O Python do computador é o 3.13 (a especificação citava 3.12; tudo é compatível).
+- **Nunca editar arquivo de texto com `Get-Content`/`Set-Content` do PowerShell 5.1**: ele lê UTF-8 sem BOM como ANSI e corrompe os acentos (“Classificação” → “ClassificaÃ§Ã£o”). Usar Edit/Write ou Python com `encoding="utf-8"`.
+- O navegador embutido do app não recebe cliques com a janela minimizada; para conferir telas sem ele, logar por script (`httpx2`, senha em `scripts/servidor_teste.py`) e ler o HTML.
 - O Claude Code define `ANTHROPIC_BASE_URL` no ambiente desta sessão: por isso o cliente da IA passa `base_url` fixo (`ia_endereco`). Testes de IA real: `pytest -m ia_real -s` (lê a chave direto do `.env`).
 
 ## Fatos das amostras (complementam §11)

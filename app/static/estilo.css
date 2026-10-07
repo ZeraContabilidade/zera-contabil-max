@@ -290,3 +290,6 @@ details.trocar summary::after { display: none; }
 @media (prefers-reduced-motion: reduce) {
   .entrar-brilho, .entrar-form { animation: none; }
 }
+
+.linha-importacao { margin: .2rem 0; font-size: .88rem; }
+.perfil-texto { white-space: pre-line; line-height: 1.55; }

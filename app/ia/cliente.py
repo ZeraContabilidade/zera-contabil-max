@@ -70,23 +70,14 @@ def mensagem_de_erro(erro: anthropic.APIError) -> str:
             "(sem espaços nem aspas) e abra o sistema de novo."
         )
     if isinstance(erro, anthropic.PermissionDeniedError):
-        return (
-            "A chave da API não tem permissão para usar este modelo. "
-            "Confira a conta em console.anthropic.com."
-        )
+        return "A chave da API não tem permissão para usar este modelo. Confira a conta em console.anthropic.com."
     if isinstance(erro, anthropic.NotFoundError):
-        return (
-            "O modelo de IA configurado não foi encontrado. "
-            "Confira IA_MODELO_RAPIDO e IA_MODELO_FORTE no .env."
-        )
+        return "O modelo de IA configurado não foi encontrado. Confira IA_MODELO_RAPIDO e IA_MODELO_FORTE no .env."
     if isinstance(erro, anthropic.RateLimitError):
         return "Muitas chamadas à IA em pouco tempo. Aguarde alguns minutos e tente de novo."
     if isinstance(erro, anthropic.BadRequestError):
         if "credit balance" in str(erro.message).lower():
-            return (
-                "Os créditos da conta da Anthropic acabaram. "
-                "Compre créditos em console.anthropic.com → Billing."
-            )
+            return "Os créditos da conta da Anthropic acabaram. Compre créditos em console.anthropic.com → Billing."
         return f"A API da Anthropic recusou o pedido: {erro.message}"
     if isinstance(erro, anthropic.APIStatusError):
         return (
@@ -114,8 +105,7 @@ def ler_resposta(resposta: Any) -> RespostaIA:
     uso, modelo = _uso(resposta), resposta.model
     if resposta.stop_reason == "refusal":
         raise ErroIA(
-            "A IA se recusou a responder este pedido (filtro de segurança da Anthropic). "
-            "Fica para conferência manual.",
+            "A IA se recusou a responder este pedido (filtro de segurança da Anthropic). Fica para conferência manual.",
             uso,
             modelo,
         )
@@ -157,9 +147,7 @@ class ClienteAnthropic:
         }
         try:
             if modelo.startswith(MODELOS_COM_SUBSTITUTO):
-                resposta = self.sdk.beta.messages.create(
-                    betas=[BETA_SUBSTITUTO], fallbacks="default", **argumentos
-                )
+                resposta = self.sdk.beta.messages.create(betas=[BETA_SUBSTITUTO], fallbacks="default", **argumentos)
             else:
                 resposta = self.sdk.messages.create(**argumentos)
         except anthropic.APIError as erro:
@@ -182,9 +170,7 @@ class ClienteFalso:
 
     def gerar(self, pedido: PedidoIA, modelo: str) -> RespostaIA:
         self.pedidos.append((pedido, modelo))
-        resposta = (
-            self.respostas(pedido) if callable(self.respostas) else self.respostas.get(pedido.finalidade)
-        )
+        resposta = self.respostas(pedido) if callable(self.respostas) else self.respostas.get(pedido.finalidade)
         if isinstance(resposta, Exception):
             raise resposta
         if resposta is None:
@@ -193,5 +179,8 @@ class ClienteFalso:
 
 
 RESPOSTAS_DEMONSTRACAO: dict[str, Any] = {
-    "teste": {"ok": True, "mensagem": "Olá! Esta é uma resposta simulada."}
+    "teste": {"ok": True, "mensagem": "Olá! Esta é uma resposta simulada."},
+    "perfil_empresa": {
+        "perfil": "Perfil de demonstração (IA simulada): com a chave da API, a IA escreve aqui o resumo real."
+    },
 }

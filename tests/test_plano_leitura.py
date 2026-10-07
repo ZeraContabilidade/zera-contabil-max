@@ -61,9 +61,7 @@ def test_avisos_de_classificacao_repetida_e_descricao_cortada():
 
 def test_tipo_invalido_e_deduzido_pela_hierarquia():
     linhas = TXT_EXEMPLO.decode("cp1252").split("\r\n")
-    linhas = [
-        linha[:67] + "X" + linha[68:] if linha[:7] in ("0000007", "0000355") else linha for linha in linhas
-    ]
+    linhas = [linha[:67] + "X" + linha[68:] if linha[:7] in ("0000007", "0000355") else linha for linha in linhas]
     plano = ler_plano("\r\n".join(linhas).encode("cp1252"), "plano.txt")
     assert conta(plano, 7).tipo == "S"  # tem contas embaixo
     assert conta(plano, 355).tipo == "A"
@@ -93,9 +91,7 @@ def test_csv_com_titulos_tipo_por_extenso_e_classificacao_com_pontos():
 
 
 def test_csv_sem_coluna_tipo_deduz_pela_hierarquia():
-    csv = "Código;Classificação;Nome\n1;1;ATIVO\n2;11;CIRCULANTE\n3;111;CAIXA\n4;112;BANCOS\n".encode(
-        "cp1252"
-    )
+    csv = "Código;Classificação;Nome\n1;1;ATIVO\n2;11;CIRCULANTE\n3;111;CAIXA\n4;112;BANCOS\n".encode("cp1252")
     plano = ler_plano(csv, "plano.csv")
     assert [c.tipo for c in plano.contas] == ["S", "S", "A", "A"]
 

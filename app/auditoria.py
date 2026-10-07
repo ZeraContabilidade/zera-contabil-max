@@ -71,6 +71,9 @@ def _linha(sessao: Session, acao: str, obj: Auditavel, antes=None, depois=None) 
 
 @event.listens_for(Session, "after_flush")
 def _auditar(sessao: Session, _contexto) -> None:
+    # processos em bloco (aprendizado) registram um único evento no lugar de uma linha por registro
+    if sessao.info.get("auditoria_em_bloco"):
+        return
     # em after_flush as listas new/dirty/deleted e o histórico ainda mostram o que foi gravado
     linhas = []
     for obj in sessao.new:

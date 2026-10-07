@@ -57,9 +57,7 @@ def consultar_cnpj(cnpj: str) -> DadosPublicos | None:
     dados = _buscar_http(cnpj)
     if not dados or not dados.get("razao_social"):
         return None
-    natureza = " - ".join(
-        str(p) for p in (dados.get("codigo_natureza_juridica"), dados.get("natureza_juridica")) if p
-    )
+    natureza = " - ".join(str(p) for p in (dados.get("codigo_natureza_juridica"), dados.get("natureza_juridica")) if p)
     municipio = "/".join(str(p) for p in (dados.get("municipio"), dados.get("uf")) if p)
     resumo = {
         "natureza_juridica": natureza or None,

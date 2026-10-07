@@ -24,9 +24,7 @@ def ler_formulario(sessao: Session, form: dict[str, str | None], empresa: Empres
     if not codigo.isdigit() or not 0 < int(codigo) < 10_000_000:
         erros.append("Informe o código da empresa no Domínio (só números, ex.: 230).")
     else:
-        outra = sessao.scalar(
-            select(Empresa).where(Empresa.codigo_dominio == int(codigo), Empresa.id != ignorar_id)
-        )
+        outra = sessao.scalar(select(Empresa).where(Empresa.codigo_dominio == int(codigo), Empresa.id != ignorar_id))
         if outra:
             erros.append(f"O código {int(codigo)} já é da empresa {outra.nome}. Confira o código no Domínio.")
         valores["codigo_dominio"] = int(codigo)

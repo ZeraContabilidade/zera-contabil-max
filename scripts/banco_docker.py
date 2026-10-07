@@ -46,9 +46,7 @@ def ligar_docker(espera_segundos: int = 180) -> None:
         time.sleep(3)
         if docker_rodando():
             return
-    raise ErroAmigavel(
-        "O Docker Desktop não terminou de abrir. Espere aparecer 'Engine running' nele e tente de novo."
-    )
+    raise ErroAmigavel("O Docker Desktop não terminou de abrir. Espere aparecer 'Engine running' nele e tente de novo.")
 
 
 def subir_banco() -> None:

@@ -53,6 +53,9 @@ class Empresa(Auditavel, Base):
     # conta individual por fornecedor (descoberta pelo plano): grupo onde ficam as contas dos fornecedores
     usa_conta_individual: Mapped[bool | None] = mapped_column()
     grupo_fornecedores: Mapped[str | None] = mapped_column(String(40))  # ex.: 2.1.3.01
+    # perfil curto escrito pela IA a partir do histórico; vai junto nas classificações (§6.1.6)
+    perfil_ia: Mapped[str | None] = mapped_column(Text)
+    perfil_ia_em: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     ia_ligada: Mapped[bool] = mapped_column(default=True, server_default=true())
     ia_limite_mensal_usd: Mapped[Decimal | None] = mapped_column(Numeric(10, 2))  # vazio = só o limite geral
     # campos preenchidos pelo sistema (selo "🤖 automático"); sai da lista quando o usuário altera
@@ -62,7 +65,7 @@ class Empresa(Auditavel, Base):
 
     responsavel: Mapped[Usuario | None] = relationship()
 
-    campos_nao_auditados = ("campos_automaticos", "dados_publicos")
+    campos_nao_auditados = ("campos_automaticos", "dados_publicos", "perfil_ia_em")
 
     @property
     def nome(self) -> str:

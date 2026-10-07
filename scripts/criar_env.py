@@ -29,9 +29,7 @@ def criar_env(modelo: Path = RAIZ / ".env.example", destino: Path = RAIZ / ".env
 
 def completar_env(modelo: Path = RAIZ / ".env.example", destino: Path = RAIZ / ".env") -> list[str]:
     """Acrescenta ao .env as configurações que o modelo tem e o .env ainda não. Devolve os nomes."""
-    atuais = {
-        m.group(1) for linha in destino.read_text(encoding="utf-8").splitlines() if (m := _CHAVE.match(linha))
-    }
+    atuais = {m.group(1) for linha in destino.read_text(encoding="utf-8").splitlines() if (m := _CHAVE.match(linha))}
     novas, bloco, comentarios = [], [], []
     for linha in modelo.read_text(encoding="utf-8").splitlines():
         if linha.strip().startswith("#"):

@@ -37,8 +37,7 @@ def test_completar_env_acrescenta_so_o_que_falta_com_os_comentarios(tmp_path):
 
     modelo = tmp_path / ".env.example"
     modelo.write_text(
-        f"SENHA={MARCADOR}\nPORTA=8000\n\n# --- IA ---\n"
-        "# cole a chave aqui\nANTHROPIC_API_KEY=\nIA_LIMITE=20\n",
+        f"SENHA={MARCADOR}\nPORTA=8000\n\n# --- IA ---\n# cole a chave aqui\nANTHROPIC_API_KEY=\nIA_LIMITE=20\n",
         encoding="utf-8",
     )
     destino = tmp_path / ".env"

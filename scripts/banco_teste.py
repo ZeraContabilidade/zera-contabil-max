@@ -27,9 +27,7 @@ def criar_banco_teste(url: URL) -> bool:
     )
     try:
         with administrador.connect() as conexao:
-            existe = conexao.scalar(
-                text("SELECT 1 FROM pg_database WHERE datname = :nome"), {"nome": url.database}
-            )
+            existe = conexao.scalar(text("SELECT 1 FROM pg_database WHERE datname = :nome"), {"nome": url.database})
             if not existe:
                 conexao.execute(text(f'CREATE DATABASE "{url.database}"'))
         return True

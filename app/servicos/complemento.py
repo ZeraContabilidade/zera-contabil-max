@@ -24,9 +24,7 @@ def problema_no_modelo(modelo: str) -> str | None:
     if not texto:
         return "Preencha o modelo do complemento (ex.: FAVORECIDO - CNPJ - NATUREZA - DOCUMENTO)."
     if ";" in texto:
-        return (
-            "O modelo do complemento não pode ter ponto e vírgula (;) — o Domínio usa esse sinal no arquivo."
-        )
+        return "O modelo do complemento não pode ter ponto e vírgula (;) — o Domínio usa esse sinal no arquivo."
     if not _DIVIDIR.search(texto):
         return "Use no modelo pelo menos uma destas palavras: " + ", ".join(PARTES) + "."
     return None

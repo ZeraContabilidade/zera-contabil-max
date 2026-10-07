@@ -1,5 +1,6 @@
 """Todos os modelos do banco. Importar daqui garante que o Alembic enxergue todas as tabelas."""
 
+from app.modelos.aprendizado import LancamentoHistorico, Padrao
 from app.modelos.base import Auditavel, Base
 from app.modelos.conta_chave import ContaChave
 from app.modelos.empresa import Empresa, Regime
@@ -18,7 +19,9 @@ __all__ = [
     "ContaContabil",
     "Empresa",
     "Importacao",
+    "LancamentoHistorico",
     "Log",
+    "Padrao",
     "Papel",
     "Regime",
     "Usuario",

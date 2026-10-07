@@ -13,7 +13,7 @@ from starlette.middleware.sessions import SessionMiddleware
 from app.auth import NaoAutenticado, SemPermissao
 from app.config import obter_config
 from app.db import banco_disponivel
-from app.rotas import acesso, contas_chave, empresas, ia, plano, usuarios
+from app.rotas import acesso, aprendizado, contas_chave, empresas, ia, plano, usuarios
 from app.web import pagina, redirecionar
 
 PASTA_APP = Path(__file__).resolve().parent
@@ -32,6 +32,7 @@ app.include_router(acesso.router)
 app.include_router(empresas.router)
 app.include_router(plano.router)
 app.include_router(contas_chave.router)
+app.include_router(aprendizado.router)
 app.include_router(ia.router)
 app.include_router(usuarios.router)
 
@@ -40,7 +41,8 @@ app.include_router(usuarios.router)
 def _ir_para_login(request: Request, _erro: NaoAutenticado):
     destino = "/login"
     if request.url.path not in ("/", "/login"):
-        destino += "?proximo=" + quote(request.url.path)
+        voltar = request.url.path + (f"?{request.url.query}" if request.url.query else "")  # mantém a aba
+        destino += "?proximo=" + quote(voltar)
     if request.headers.get("HX-Request"):
         return Response(headers={"HX-Redirect": destino})
     return redirecionar(destino)

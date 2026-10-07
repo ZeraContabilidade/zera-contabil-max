@@ -73,9 +73,7 @@ def criar_usuario(
     )
     sessao.add(novo)
     sessao.commit()
-    avisar(
-        request, f"Usuário {novo.nome} cadastrado. Passe para a pessoa o usuário “{novo.login}” e a senha."
-    )
+    avisar(request, f"Usuário {novo.nome} cadastrado. Passe para a pessoa o usuário “{novo.login}” e a senha.")
     return redirecionar("/usuarios")
 
 

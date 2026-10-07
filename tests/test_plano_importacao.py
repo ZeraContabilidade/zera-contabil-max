@@ -25,9 +25,7 @@ def empresa(sessao, criar_usuario, cliente):
 
 
 def enviar(cliente, empresa, conteudo=TXT, nome="contas crianca.csv"):
-    return cliente.post(
-        f"/empresas/{empresa.id}/plano", files={"arquivo": (nome, conteudo)}, follow_redirects=True
-    )
+    return cliente.post(f"/empresas/{empresa.id}/plano", files={"arquivo": (nome, conteudo)}, follow_redirects=True)
 
 
 def contas(sessao, empresa, so_ativas=True):
@@ -56,9 +54,7 @@ def test_importar_grava_contas_guarda_o_original_e_registra(cliente, empresa, se
     importacao = sessao.scalar(select(Importacao))
     assert importacao.arquivo_id == arquivo.id
     assert importacao.resumo["mascara"] == "1.1.1.2.6"
-    assert sessao.scalar(select(Log).where(Log.acao == "IMPORTAR_PLANO")).detalhe.startswith(
-        "Creche Teste: 32"
-    )
+    assert sessao.scalar(select(Log).where(Log.acao == "IMPORTAR_PLANO")).detalhe.startswith("Creche Teste: 32")
 
 
 def test_aba_mostra_resumo_avisos_e_barra_com_plano_feito(cliente, empresa):

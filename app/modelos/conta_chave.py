@@ -20,7 +20,7 @@ class ContaChave(Auditavel, Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     empresa_id: Mapped[int] = mapped_column(ForeignKey("empresa.id"), index=True)
     tipo: Mapped[str] = mapped_column(String(30))  # ver app/servicos/contas_chave.py
-    # só nas contas bancárias, ex.: "BB ag 2180-6 conta 72637-0"
+    # só nas contas bancárias: banco + número, ex.: "BB conta 72637-0"
     referencia: Mapped[str] = mapped_column(String(80), default="")
     conta_id: Mapped[int | None] = mapped_column(ForeignKey("conta_contabil.id"))  # vazio = não encontrada
     origem: Mapped[str] = mapped_column(String(10))  # REGRA, IA ou USUARIO

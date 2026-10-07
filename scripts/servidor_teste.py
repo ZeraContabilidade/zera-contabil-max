@@ -38,9 +38,7 @@ def main() -> int:
     with fabrica_sessoes()() as sessao:
         usuarios = {}
         for login, nome, papel in USUARIOS_EXEMPLO:
-            usuarios[login] = Usuario(
-                nome=nome, login=login, senha_hash=gerar_hash(SENHA_EXEMPLO), papel=Papel(papel)
-            )
+            usuarios[login] = Usuario(nome=nome, login=login, senha_hash=gerar_hash(SENHA_EXEMPLO), papel=Papel(papel))
             sessao.add(usuarios[login])
         sessao.flush()
         # empresas fictícias (nunca dados reais de clientes no código)

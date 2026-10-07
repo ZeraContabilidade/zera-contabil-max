@@ -20,9 +20,7 @@ def test_ponto_e_virgula_e_espacos_extras_nao_quebram_o_txt():
 
 def test_modelo_personalizado():
     valores = {"FAVORECIDO": "SABESP", "NATUREZA": "AGUA", "DOCUMENTO": "123"}
-    assert (
-        montar_complemento("PAGTO NATUREZA / FAVORECIDO (DOCUMENTO)", valores) == "PAGTO AGUA / SABESP (123)"
-    )
+    assert montar_complemento("PAGTO NATUREZA / FAVORECIDO (DOCUMENTO)", valores) == "PAGTO AGUA / SABESP (123)"
 
 
 def test_problemas_no_modelo_explicam_o_que_fazer():

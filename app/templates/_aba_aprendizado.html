@@ -1,0 +1,141 @@
+{# Aba "3 Aprendizado" — incluída em empresa.html #}
+{% macro lista_avisos(avisos) %}
+{% for aviso in avisos %}
+<details class="aviso aviso-atencao">
+  <summary>⚠ {{ aviso.texto }}</summary>
+  {% if aviso.itens %}<ul class="lista-aviso">{% for item in aviso.itens %}<li>{{ item }}</li>{% endfor %}</ul>{% endif %}
+</details>
+{% endfor %}
+{% endmacro %}
+
+<article>
+  <header class="cabecalho-pagina">
+    <strong>Histórico de lançamentos</strong>
+    {% if hist.lancamentos %}
+    <span class="suave">{{ hist.lancamentos | milhar }} lançamentos de {{ hist.de.strftime('%d/%m/%Y') }} a {{ hist.ate.strftime('%d/%m/%Y') }}</span>
+    {% endif %}
+  </header>
+  {% if not tem_plano %}
+  <p class="aviso aviso-atencao">Importe primeiro o plano de contas (aba 2): o histórico usa as contas dele.</p>
+  {% endif %}
+  <p>O sistema aprende com os lançamentos que o escritório já fez: quem é cada fornecedor, em que conta vai,
+    qual a natureza e os valores que se repetem. Envie o <strong>lanctos.txt</strong> de meses ou anos anteriores
+    (pode enviar vários; repetidos são ignorados). <span class="suave">Diário e Razão chegam na próxima etapa.</span></p>
+  <form method="post" action="/empresas/{{ empresa.id }}/historico" enctype="multipart/form-data" class="form-envio"
+        data-aguarde="Lendo e aprendendo… (pode levar até um minuto)">
+    <input type="file" name="arquivo" accept=".txt,.csv" required aria-label="Arquivo do histórico (lanctos.txt)">
+    <button type="submit">Importar histórico</button>
+  </form>
+
+  {% for imp in importacoes_hist %}
+  <p class="suave linha-importacao">
+    {{ imp.quando | data_hora }} — {{ imp.arquivo.nome_original if imp.arquivo else '' }}:
+    {{ imp.resumo.novos }} novo(s){% if imp.resumo.repetidos %}, {{ imp.resumo.repetidos }} repetido(s) ignorado(s){% endif %}
+    {% if imp.usuario %}· {{ imp.usuario.nome }}{% endif %}
+  </p>
+  {% if loop.first %}{{ lista_avisos(imp.avisos) }}{% endif %}
+  {% endfor %}
+
+  {% if hist.lancamentos %}
+  <form method="post" action="/empresas/{{ empresa.id }}/aprendizado/refazer" data-aguarde="Recalculando…">
+    <button type="submit" class="secondary outline">Recalcular o aprendizado</button>
+    <small class="suave">Mantém as contas que você escolheu à mão.</small>
+  </form>
+  {% endif %}
+</article>
+
+<article id="perfil">
+  <header class="cabecalho-pagina"><strong>Perfil da empresa</strong> <span class="selo-auto">🤖 escrito pela IA</span></header>
+  {% if empresa.perfil_ia %}
+  <p class="perfil-texto">{{ empresa.perfil_ia }}</p>
+  <small class="suave">Atualizado em {{ empresa.perfil_ia_em | data_hora }}. A IA usa este resumo ao classificar os extratos.</small>
+  {% else %}
+  <p class="suave">Ainda não escrito. Ele é feito sozinho depois de importar o histórico, quando a IA está ligada.</p>
+  {% endif %}
+  {% if hist.lancamentos %}
+  <form method="post" action="/empresas/{{ empresa.id }}/perfil" data-aguarde="Escrevendo o perfil…">
+    <button type="submit" class="secondary outline">{{ 'Escrever de novo' if empresa.perfil_ia else 'Escrever o perfil agora' }}</button>
+  </form>
+  {% endif %}
+</article>
+
+<article id="fornecedores">
+  <header class="cabecalho-pagina">
+    <strong>Fornecedores e favorecidos</strong>
+    <span class="suave">{{ hist.padroes.get('FORNECEDOR', 0) }} aprendidos{% if hist.ambiguos %} · <span class="aviso-inline">{{ hist.ambiguos }} ambíguo(s)</span>{% endif %}</span>
+  </header>
+  <form id="filtro-padroes" method="get" action="/empresas/{{ empresa.id }}" class="filtros">
+    <input type="hidden" name="aba" value="aprendizado">
+    <input type="search" name="q" value="{{ q_padroes }}" placeholder="Buscar por nome ou CNPJ…" aria-label="Buscar fornecedor"
+           hx-get="/empresas/{{ empresa.id }}/aprendizado/padroes" hx-trigger="input changed delay:300ms, search"
+           hx-target="#linhas-padroes" hx-include="#filtro-padroes">
+    <label class="so-minhas">
+      <input type="checkbox" role="switch" name="ambiguos" value="1" {% if so_ambiguos %}checked{% endif %}
+             hx-get="/empresas/{{ empresa.id }}/aprendizado/padroes" hx-trigger="change" hx-target="#linhas-padroes"
+             hx-include="#filtro-padroes">
+      Só os ambíguos
+    </label>
+  </form>
+  <div class="tabela-rolavel">
+    <table class="tabela-chaves">
+      <thead><tr><th>Favorecido</th><th>Conta</th><th>Natureza e valores</th><th class="num">Vezes / total</th></tr></thead>
+      <tbody id="linhas-padroes">{% with padroes = fornecedores %}{% include "_padroes_linhas.html" %}{% endwith %}</tbody>
+    </table>
+  </div>
+</article>
+
+<article id="palavras">
+  <header class="cabecalho-pagina"><strong>Palavras-chave</strong> <span class="suave">texto do histórico → conta</span></header>
+  {% if palavras %}
+  <div class="tabela-rolavel">
+    <table class="tabela-chaves">
+      <thead><tr><th>Palavra-chave</th><th>Conta</th><th>Natureza e valores</th><th class="num">Vezes / total</th></tr></thead>
+      <tbody>{% with padroes = palavras %}{% include "_padroes_linhas.html" %}{% endwith %}</tbody>
+    </table>
+  </div>
+  {% else %}
+  <p class="suave">Nenhuma ainda.</p>
+  {% endif %}
+  <details>
+    <summary>+ Nova palavra-chave</summary>
+    <form method="post" action="/empresas/{{ empresa.id }}/padroes/palavra" class="grid">
+      <label>Palavra-chave <input name="texto" placeholder="ex.: TARIFA PACOTE" required></label>
+      <label>Conta <input name="conta" list="contas-analiticas-aprendizado" placeholder="código ou nome" required></label>
+      <button type="submit">Salvar palavra-chave</button>
+    </form>
+  </details>
+</article>
+
+<article>
+  <header><strong>Clientes e origens de recebimento</strong></header>
+  {% if clientes %}
+  <div class="tabela-rolavel">
+    <table class="tabela-chaves">
+      <thead><tr><th>Origem</th><th>Conta</th><th>Natureza e valores</th><th class="num">Vezes / total</th></tr></thead>
+      <tbody>{% with padroes = clientes %}{% include "_padroes_linhas.html" %}{% endwith %}</tbody>
+    </table>
+  </div>
+  {% else %}
+  <p class="suave">Nenhum recebimento no histórico ainda (o lanctos.txt atual só tem pagamentos).</p>
+  {% endif %}
+</article>
+
+{% if despesas %}
+<article>
+  <header><strong>Pagamentos por conta</strong> <span class="suave">para conferência</span></header>
+  <div class="tabela-rolavel">
+    <table class="striped">
+      <thead><tr><th>Conta</th><th class="num">Lançamentos</th><th class="num">Total (R$)</th></tr></thead>
+      <tbody>
+        {% for conta, vezes, total in despesas %}
+        <tr><td>{{ conta.rotulo }}</td><td class="num">{{ vezes }}</td><td class="num">{{ total | reais }}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</article>
+{% endif %}
+
+<datalist id="contas-analiticas-aprendizado">
+  {% for conta in lista_analiticas %}<option value="{{ conta.rotulo }}"></option>{% endfor %}
+</datalist>

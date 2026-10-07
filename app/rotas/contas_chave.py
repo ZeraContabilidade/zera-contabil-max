@@ -64,9 +64,7 @@ def ligar_banco(
     if (empresa := buscar_empresa(sessao, request, empresa_id)) is None:
         return redirecionar("/")
     if not banco.strip() or not numero.strip() or tipo not in TIPOS_BANCARIOS:
-        avisar(
-            request, "Informe o banco, o número da conta e o tipo (corrente, poupança ou aplicação).", "erro"
-        )
+        avisar(request, "Informe o banco, o número da conta e o tipo (corrente, poupança ou aplicação).", "erro")
         return redirecionar(_destino(empresa))
     chave, aviso_ia = ligar_conta_bancaria(sessao, empresa, banco, agencia, numero, tipo, usuario)
     sessao.commit()

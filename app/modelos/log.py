@@ -16,6 +16,8 @@ ROTULOS_ACAO = {
     "LOGOUT": "Saiu do sistema",
     "LOGIN_FALHOU": "Tentativa de entrada com senha errada",
     "IMPORTAR_PLANO": "Importou o plano de contas",
+    "IMPORTAR_HISTORICO": "Importou histórico de lançamentos",
+    "APRENDER": "Recalculou o aprendizado",
 }
 
 

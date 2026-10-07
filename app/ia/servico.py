@@ -58,9 +58,7 @@ def inicio_do_mes() -> datetime:
 
 
 def gasto_do_mes(sessao: Session, empresa: Empresa | None = None) -> Decimal:
-    consulta = select(func.coalesce(func.sum(ChamadaIA.custo_usd), 0)).where(
-        ChamadaIA.quando >= inicio_do_mes()
-    )
+    consulta = select(func.coalesce(func.sum(ChamadaIA.custo_usd), 0)).where(ChamadaIA.quando >= inicio_do_mes())
     if empresa is not None:
         consulta = consulta.where(ChamadaIA.empresa_id == empresa.id)
     return Decimal(sessao.scalar(consulta))

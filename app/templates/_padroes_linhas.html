@@ -1,0 +1,45 @@
+{# Linhas de padrões aprendidos (fornecedores, clientes ou palavras-chave) #}
+{% for p in padroes %}
+<tr class="{{ 'chave-conferir' if p.ambiguo and p.ativo else '' }} {{ 'inativa' if not p.ativo else '' }}">
+  <td>
+    <strong>{{ p.nome }}</strong>
+    {% if p.cnpj_cpf %}<br><small class="suave">{{ p.cnpj_cpf | documento }}</small>{% endif %}
+    {% if not p.ativo %}<br><span class="etiqueta etiqueta-apagada">Desativado</span>{% endif %}
+  </td>
+  <td>
+    {% if p.conta %}{{ p.conta.rotulo }}{% else %}<span class="aviso-inline">⚠ sem conta</span>{% endif %}
+    {% if p.origem == 'USUARIO' %}<br><span class="etiqueta etiqueta-verde">👤 escolhida</span>
+    {% elif p.ambiguo %}<br><span class="etiqueta etiqueta-ambar">ambíguo — escolha</span>{% endif %}
+    {% if p.detalhes.contas and p.detalhes.contas | length > 1 %}
+    <br><small class="suave">Já usou: {% for c in p.detalhes.contas %}{{ c.conta }} ({{ c.ocorrencias }}×){{ ', ' if not loop.last }}{% endfor %}</small>
+    {% endif %}
+    <details class="trocar">
+      <summary>trocar</summary>
+      <form method="post" action="/empresas/{{ empresa.id }}/padroes/{{ p.id }}/conta" class="form-trocar">
+        <input name="conta" list="contas-analiticas-aprendizado" placeholder="código ou nome" aria-label="Nova conta para {{ p.nome }}" required>
+        <button type="submit" class="secondary outline">Usar</button>
+      </form>
+      <form method="post" action="/empresas/{{ empresa.id }}/padroes/{{ p.id }}/ativo" class="form-trocar">
+        <button type="submit" class="secondary outline">{{ 'Ativar' if not p.ativo else 'Desativar' }}</button>
+      </form>
+    </details>
+  </td>
+  <td>
+    {% if p.detalhes.por_natureza %}
+      <small class="suave">Varia pela natureza:</small>
+      <ul class="mudancas">
+        {% for nat in p.detalhes.por_natureza.values() %}
+        <li>{{ nat.natureza }} → <strong>{{ nat.conta }}</strong>{% if nat.valores %} <span class="suave">(R$ {% for v in nat.valores %}{{ v | reais }}{{ ', ' if not loop.last }}{% endfor %})</span>{% endif %}</li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      {{ p.natureza or '—' }}
+      {% if p.detalhes.valores %}<br><small class="suave">Valores que se repetem: R$ {% for v in p.detalhes.valores %}{{ v | reais }}{{ ', ' if not loop.last }}{% endfor %}</small>{% endif %}
+    {% endif %}
+  </td>
+  <td class="num">{{ p.ocorrencias }}×<br><small class="suave">R$ {{ p.total | reais }}</small>
+    {% if p.ultima_data %}<br><small class="suave">último {{ p.ultima_data.strftime('%d/%m/%Y') }}</small>{% endif %}</td>
+</tr>
+{% else %}
+<tr><td colspan="4" class="suave">Nada aprendido ainda{% if q_padroes %} para “{{ q_padroes }}”{% endif %}.</td></tr>
+{% endfor %}

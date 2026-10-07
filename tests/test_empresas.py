@@ -62,9 +62,7 @@ def test_cnpj_preenche_sozinho_com_selo_automatico(cliente, supervisor_logado, s
     assert empresa.dados_publicos["atividade"] == "Educação infantil - creche"
 
 
-def test_o_que_o_usuario_digitou_nao_e_trocado_pela_consulta(
-    cliente, supervisor_logado, sessao, cnpj_responde
-):
+def test_o_que_o_usuario_digitou_nao_e_trocado_pela_consulta(cliente, supervisor_logado, sessao, cnpj_responde):
     cnpj_responde(RESPOSTA_ASSOCIACAO)
     cadastrar(cliente, codigo_dominio="230", cnpj_cpf="06101084000136", razao_social="NOME DIGITADO")
     empresa = sessao.scalar(select(Empresa))
@@ -215,8 +213,8 @@ def test_pagina_da_empresa_tem_barra_do_mes_e_abas(cliente, supervisor_logado, s
         assert etapa in html
     assert 'aria-current="step"' in html  # a próxima etapa a fazer fica destacada
     assert "SABESP - 43.776.517/0001-80 - CONTA DE AGUA - S/N" in html  # exemplo do complemento
-    aprendizado = cliente.get(f"/empresas/{empresa.id}", params={"aba": "aprendizado"}).text
-    assert "Esta parte chega nas etapas 1.7 e 1.8" in aprendizado
+    extratos = cliente.get(f"/empresas/{empresa.id}", params={"aba": "extratos"}).text
+    assert "Esta parte chega nas etapas 2.1 a 2.5" in extratos
 
 
 def test_empresa_inexistente_volta_para_a_lista(cliente, supervisor_logado):

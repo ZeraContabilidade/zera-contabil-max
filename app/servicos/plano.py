@@ -69,7 +69,7 @@ def ler_plano(conteudo: bytes, nome_arquivo: str) -> PlanoPronto:
     if conteudo[:2] == b"PK" or conteudo[:4] == b"\xd0\xcf\x11\xe0":
         contas, avisos = _ler_tabela(_linhas_excel(conteudo))
         return preparar(contas, "Excel", avisos)
-    texto = _decodificar(conteudo)
+    texto = decodificar(conteudo)
     if _parece_txt_dominio(texto):
         contas, avisos = _ler_txt_dominio(texto)
         return preparar(contas, "TXT do Domínio", avisos)
@@ -77,7 +77,7 @@ def ler_plano(conteudo: bytes, nome_arquivo: str) -> PlanoPronto:
     return preparar(contas, "CSV", avisos)
 
 
-def _decodificar(conteudo: bytes) -> str:
+def decodificar(conteudo: bytes) -> str:
     try:
         return conteudo.decode("utf-8-sig")
     except UnicodeDecodeError:
@@ -114,9 +114,7 @@ def _ler_txt_dominio(texto: str) -> tuple[list[ContaLida], list[Aviso]]:
             cortadas.append(f"{conta.reduzido} – {conta.descricao}")
     avisos = []
     if ignoradas:
-        avisos.append(
-            Aviso(f"{len(ignoradas)} linha(s) fora do formato do Domínio foram ignoradas.", ignoradas)
-        )
+        avisos.append(Aviso(f"{len(ignoradas)} linha(s) fora do formato do Domínio foram ignoradas.", ignoradas))
     if cortadas:
         avisos.append(
             Aviso(
@@ -132,9 +130,7 @@ def _linhas_excel(conteudo: bytes) -> list[list[Any]]:
     try:
         planilha = CalamineWorkbook.from_filelike(io.BytesIO(conteudo))
     except Exception as erro:
-        raise ErroLeitura(
-            "Não consegui abrir a planilha. Salve como .xlsx no Excel e envie de novo."
-        ) from erro
+        raise ErroLeitura("Não consegui abrir a planilha. Salve como .xlsx no Excel e envie de novo.") from erro
     for nome in planilha.sheet_names:
         linhas = planilha.get_sheet_by_name(nome).to_python(skip_empty_area=False)
         if _achar_cabecalho(linhas) is not None:
@@ -222,9 +218,7 @@ def _ler_tabela(linhas: list[list[Any]]) -> tuple[list[ContaLida], list[Aviso]]:
                 linha=numero,
             )
         )
-    avisos = (
-        [Aviso(f"{len(ignoradas)} linha(s) da planilha foram ignoradas.", ignoradas)] if ignoradas else []
-    )
+    avisos = [Aviso(f"{len(ignoradas)} linha(s) da planilha foram ignoradas.", ignoradas)] if ignoradas else []
     return contas, avisos
 
 
@@ -296,9 +290,7 @@ def preparar(contas: list[ContaLida], formato: str, avisos: list[Aviso]) -> Plan
         )
 
     mascara = deduzir_mascara([c.classificacao for c in unicas.values()])
-    tem_filhos = {
-        c.classificacao[:fim] for c in unicas.values() for fim in mascara if fim < len(c.classificacao)
-    }
+    tem_filhos = {c.classificacao[:fim] for c in unicas.values() for fim in mascara if fim < len(c.classificacao)}
 
     prontas, fora_da_mascara, tipo_deduzido = [], [], []
     for conta in unicas.values():
@@ -311,9 +303,7 @@ def preparar(contas: list[ContaLida], formato: str, avisos: list[Aviso]) -> Plan
             )
         if conta.classificacao and not na_mascara:
             fora_da_mascara.append(f"{formatada} – {conta.reduzido} {conta.descricao}")
-        prontas.append(
-            ContaPronta(conta.reduzido, conta.classificacao, formatada or "—", conta.descricao, tipo, nivel)
-        )
+        prontas.append(ContaPronta(conta.reduzido, conta.classificacao, formatada or "—", conta.descricao, tipo, nivel))
 
     por_classificacao: dict[str, list[ContaPronta]] = {}
     for conta in prontas:
@@ -357,9 +347,7 @@ def preparar(contas: list[ContaLida], formato: str, avisos: list[Aviso]) -> Plan
 
 def plano_de_outra_empresa(sessao: Session, origem: Empresa) -> PlanoPronto:
     contas = list(
-        sessao.scalars(
-            select(ContaContabil).where(ContaContabil.empresa_id == origem.id, ContaContabil.ativa)
-        )
+        sessao.scalars(select(ContaContabil).where(ContaContabil.empresa_id == origem.id, ContaContabil.ativa))
     )
     if not contas:
         raise ErroLeitura(f"A empresa {origem.nome} ainda não tem plano de contas para copiar.")
@@ -380,8 +368,7 @@ def importar_plano(
     """Grava o plano. Reimportar casa pelo código reduzido e não apaga nada:
     conta que sumiu do arquivo fica desativada, e o aprendizado ligado a ela é mantido."""
     existentes = {
-        c.reduzido: c
-        for c in sessao.scalars(select(ContaContabil).where(ContaContabil.empresa_id == empresa.id))
+        c.reduzido: c for c in sessao.scalars(select(ContaContabil).where(ContaContabil.empresa_id == empresa.id))
     }
     novas = alteradas = reativadas = 0
     for pronta in plano.contas:
@@ -497,10 +484,7 @@ def buscar_contas(
         filtro.append(or_(*condicoes))
     total = sessao.scalar(select(func.count()).select_from(ContaContabil).where(*filtro))
     contas = sessao.scalars(
-        select(ContaContabil)
-        .where(*filtro)
-        .order_by(ContaContabil.classificacao, ContaContabil.reduzido)
-        .limit(limite)
+        select(ContaContabil).where(*filtro).order_by(ContaContabil.classificacao, ContaContabil.reduzido).limit(limite)
     )
     return list(contas), total
 
@@ -509,8 +493,6 @@ def empresas_com_plano(sessao: Session, exceto: Empresa) -> list[Empresa]:
     com_plano = select(ContaContabil.empresa_id).where(ContaContabil.ativa).distinct()
     return list(
         sessao.scalars(
-            select(Empresa)
-            .where(Empresa.id.in_(com_plano), Empresa.id != exceto.id)
-            .order_by(Empresa.codigo_dominio)
+            select(Empresa).where(Empresa.id.in_(com_plano), Empresa.id != exceto.id).order_by(Empresa.codigo_dominio)
         )
     )

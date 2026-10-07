@@ -39,9 +39,7 @@ def preco_do_modelo(modelo: str) -> Preco:
     return _DESCONHECIDO
 
 
-def estimar_custo(
-    modelo: str, entrada: int, saida: int, cache_escrita: int = 0, cache_leitura: int = 0
-) -> Decimal:
+def estimar_custo(modelo: str, entrada: int, saida: int, cache_escrita: int = 0, cache_leitura: int = 0) -> Decimal:
     preco = preco_do_modelo(modelo)
     total = (
         entrada * preco.entrada

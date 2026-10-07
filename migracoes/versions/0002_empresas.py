@@ -51,9 +51,7 @@ def upgrade() -> None:
         sa.Column("campos_automaticos", postgresql.JSONB(astext_type=sa.Text()), nullable=False),
         sa.Column("dados_publicos", postgresql.JSONB(astext_type=sa.Text()), nullable=True),
         sa.Column("criado_em", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
-        sa.ForeignKeyConstraint(
-            ["responsavel_id"], ["usuario.id"], name=op.f("fk_empresa_responsavel_id_usuario")
-        ),
+        sa.ForeignKeyConstraint(["responsavel_id"], ["usuario.id"], name=op.f("fk_empresa_responsavel_id_usuario")),
         sa.PrimaryKeyConstraint("id", name=op.f("pk_empresa")),
         sa.UniqueConstraint("cnpj_cpf", name=op.f("uq_empresa_cnpj_cpf")),
         sa.UniqueConstraint("codigo_dominio", name=op.f("uq_empresa_codigo_dominio")),

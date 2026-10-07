@@ -31,9 +31,7 @@ def upgrade() -> None:
         sa.Column("enviado_em", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
         sa.Column("enviado_por_id", sa.Integer(), nullable=True),
         sa.Column("expira_em", sa.Date(), nullable=False),
-        sa.ForeignKeyConstraint(
-            ["empresa_id"], ["empresa.id"], name=op.f("fk_arquivo_original_empresa_id_empresa")
-        ),
+        sa.ForeignKeyConstraint(["empresa_id"], ["empresa.id"], name=op.f("fk_arquivo_original_empresa_id_empresa")),
         sa.ForeignKeyConstraint(
             ["enviado_por_id"], ["usuario.id"], name=op.f("fk_arquivo_original_enviado_por_id_usuario")
         ),
@@ -53,9 +51,7 @@ def upgrade() -> None:
         sa.Column("nivel", sa.Integer(), nullable=False),
         sa.Column("ativa", sa.Boolean(), nullable=False),
         sa.CheckConstraint("tipo IN ('S', 'A')", name=op.f("ck_conta_contabil_tipo")),
-        sa.ForeignKeyConstraint(
-            ["empresa_id"], ["empresa.id"], name=op.f("fk_conta_contabil_empresa_id_empresa")
-        ),
+        sa.ForeignKeyConstraint(["empresa_id"], ["empresa.id"], name=op.f("fk_conta_contabil_empresa_id_empresa")),
         sa.PrimaryKeyConstraint("id", name=op.f("pk_conta_contabil")),
         sa.UniqueConstraint("empresa_id", "reduzido", name=op.f("uq_conta_contabil_empresa_id")),
     )
@@ -78,12 +74,8 @@ def upgrade() -> None:
         sa.ForeignKeyConstraint(
             ["arquivo_id"], ["arquivo_original.id"], name=op.f("fk_importacao_arquivo_id_arquivo_original")
         ),
-        sa.ForeignKeyConstraint(
-            ["empresa_id"], ["empresa.id"], name=op.f("fk_importacao_empresa_id_empresa")
-        ),
-        sa.ForeignKeyConstraint(
-            ["usuario_id"], ["usuario.id"], name=op.f("fk_importacao_usuario_id_usuario")
-        ),
+        sa.ForeignKeyConstraint(["empresa_id"], ["empresa.id"], name=op.f("fk_importacao_empresa_id_empresa")),
+        sa.ForeignKeyConstraint(["usuario_id"], ["usuario.id"], name=op.f("fk_importacao_usuario_id_usuario")),
         sa.PrimaryKeyConstraint("id", name=op.f("pk_importacao")),
     )
     op.create_index(op.f("ix_importacao_empresa_id"), "importacao", ["empresa_id"], unique=False)

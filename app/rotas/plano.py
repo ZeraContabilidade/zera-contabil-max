@@ -79,9 +79,7 @@ def enviar_plano(
         return redirecionar(_destino(empresa))
     conteudo = arquivo.file.read(TAMANHO_MAXIMO + 1)
     if len(conteudo) > TAMANHO_MAXIMO:
-        avisar(
-            request, "O arquivo passa de 20 MB e não parece um plano de contas. Confira o arquivo.", "erro"
-        )
+        avisar(request, "O arquivo passa de 20 MB e não parece um plano de contas. Confira o arquivo.", "erro")
         return redirecionar(_destino(empresa))
     try:
         plano = ler_plano(conteudo, arquivo.filename)
@@ -142,6 +140,4 @@ def linhas_do_plano(
     """Pedaço da tabela para a busca instantânea (HTMX)."""
     empresa = sessao.get(Empresa, empresa_id)
     contas, encontradas = buscar_contas(sessao, empresa, q, bool(analiticas)) if empresa else ([], 0)
-    return pagina(
-        request, "_plano_linhas.html", plano_contas=contas, plano_encontradas=encontradas, plano_q=q
-    )
+    return pagina(request, "_plano_linhas.html", plano_contas=contas, plano_encontradas=encontradas, plano_q=q)

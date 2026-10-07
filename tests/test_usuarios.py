@@ -94,9 +94,7 @@ def test_auditoria_registra_quem_alterou_antes_e_depois_sem_mostrar_senha(client
     entrar(cliente, "ana")
     cliente.post("/usuarios", data=NOVO)
     carla = sessao.scalar(select(Usuario).where(Usuario.login == "carla"))
-    cliente.post(
-        f"/usuarios/{carla.id}", data={"nome": "Carla Souza", "email": "", "papel": "CONTADOR", "ativo": "on"}
-    )
+    cliente.post(f"/usuarios/{carla.id}", data={"nome": "Carla Souza", "email": "", "papel": "CONTADOR", "ativo": "on"})
 
     criacao = sessao.scalar(select(Log).where(Log.acao == "CRIAR", Log.entidade_id == str(carla.id)))
     assert criacao.usuario_id == ana.id

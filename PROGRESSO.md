@@ -3,7 +3,9 @@
 Atualizado em: **06/10/2026**
 
 ## Próximo passo exato
-**Etapa 1.7 — Importação do Diário/Razão** (§3.3, §6.1, §11.3) — **precisa do `Diário.xls` da Casa Criança** (pergunta 4; colocar em `AMOSTRAS\historicos`). Ler com `python-calamine` (aba "Diário"; localizar colunas pelo título `Data | Classificação | Descrição | Histórico | Débito | Crédito`; ignorar "TOTAL DO DIA" e vazias; cabeçalho com "Empresa:" e "C.N.P.J.:" → **preencher razão social e CNPJ da empresa com 🤖** e disparar a consulta pública). Converter classificação → reduzido pelo plano (22 classificações repetidas: desempatar pela descrição). Tabela `lancamento_historico` (empresa, data, conta débito/crédito, valor Decimal, histórico, importação; anti-duplicidade por hash). Separar a contrapartida das contas de banco/caixa (contas-chave BANCO + grupo Disponível); **contas de banco usadas no Diário viram contas-chave BANCO** (a conta 8 aparece sozinha — critério da Fase 1). Extrair do histórico favorecido / CNPJ-CPF (validar dígito; `app/servicos/documentos.py`) / natureza por regras (texto antes do primeiro " - ", regex de CNPJ); o que as regras não separam vai para a **IA em lotes** (modelo rápido) → `{favorecido, cnpj_cpf, natureza}`. Usar as contagens por conta do Diário como evidência para **refazer as contas-chave incertas** (ex.: qual das 5 “ÁGUA E ESGOTO”/tarifas a empresa usa). Arquivo original guardado; etapa "Aprendizado" da barra ✔. Enquanto o Diário não chega, dá para adiantar com o `lanctos.txt` de 2025/2026 (formato §11.1) como fonte de aprendizado (§11.5) — é a etapa 1.8.
+**Etapa 1.9 — Backup** (§7.2), já que o Diário (1.7) ainda não chegou: `pg_dump` pelo contêiner (`docker exec zera-contabil-max-banco pg_dump -Fc`) + cópia da pasta de arquivos originais para `PASTA_BACKUP` (padrão `dados/backups`; quando o usuário responder a pergunta 1, é só trocar no `.env` — ex.: `G:\Meu Drive\Backups ZeraConcilia` ou uma pasta no Z:\). Backup diário e ao iniciar (o `INICIAR.bat` faz um se o último tiver mais de 24 h), manter as **30** últimas cópias, `RESTAURAR.bat` + passo a passo em `docs/restaurar_backup.md`, aviso na tela se o último backup tiver mais de 2 dias, registro no log. Testes com pasta temporária. Depois: **Fase 2** (extratos — os PDFs do BB já estão em AMOSTRAS) e a 1.7 assim que o Diário chegar.
+
+**Etapa 1.7 — Importação do Diário/Razão** (quando o arquivo chegar) (§3.3, §6.1, §11.3) — **precisa do `Diário.xls` da Casa Criança** (pergunta 4; colocar em `AMOSTRAS\historicos`). Ler com `python-calamine` (aba "Diário"; localizar colunas pelo título `Data | Classificação | Descrição | Histórico | Débito | Crédito`; ignorar "TOTAL DO DIA" e vazias; cabeçalho com "Empresa:" e "C.N.P.J.:" → **preencher razão social e CNPJ da empresa com 🤖** e disparar a consulta pública). Converter classificação → reduzido pelo plano (22 classificações repetidas: desempatar pela descrição). Tabela `lancamento_historico` (empresa, data, conta débito/crédito, valor Decimal, histórico, importação; anti-duplicidade por hash). Separar a contrapartida das contas de banco/caixa (contas-chave BANCO + grupo Disponível); **contas de banco usadas no Diário viram contas-chave BANCO** (a conta 8 aparece sozinha — critério da Fase 1). Extrair do histórico favorecido / CNPJ-CPF (validar dígito; `app/servicos/documentos.py`) / natureza por regras (texto antes do primeiro " - ", regex de CNPJ); o que as regras não separam vai para a **IA em lotes** (modelo rápido) → `{favorecido, cnpj_cpf, natureza}`. Usar as contagens por conta do Diário como evidência para **refazer as contas-chave incertas** (ex.: qual das 5 “ÁGUA E ESGOTO”/tarifas a empresa usa). Arquivo original guardado. **Reaproveitar o que a 1.8 já fez:** cada linha do Diário vira `LancamentoHistorico` (mesma tabela, mesmo `aprender`); só falta o leitor do Diário (calamine), a conversão classificação → reduzido e a IA em lotes para históricos sem “ - ” (ex.: “PAGTO SABESP REF CONTA AGUA”).
 
 ## Pendências com o usuário
 | # | Pergunta | Precisa até |
@@ -23,8 +25,8 @@ Atualizado em: **06/10/2026**
 - [x] 1.4 Importação do plano de contas (TXT/Excel/CSV), avisos, reimportação, copiar de outra empresa
 - [x] 1.5 Módulo de IA: cliente real + falso, limites de gasto, registro de custo
 - [x] 1.6 Auto-configuração das contas-chave + detecção de conta individual por fornecedor
-- [ ] 1.7 Importação do Diário: CNPJ / favorecido / natureza (regras + IA); cadastro preenchido sozinho
-- [ ] 1.8 Listas de fornecedores, clientes e palavras-chave; perfil da empresa; aprendizado inicial com os lanctos.txt de 2025 e 2026
+- [ ] 1.7 Importação do Diário: CNPJ / favorecido / natureza (regras + IA); cadastro preenchido sozinho — **aguardando o Diário.xls**
+- [x] 1.8 Listas de fornecedores, clientes e palavras-chave; perfil da empresa; aprendizado inicial com os lanctos.txt de 2025 e 2026
 - [ ] 1.9 Backup automático + RESTAURAR.bat
 
 ### Fase 2 — Extratos e Revisão
@@ -46,6 +48,19 @@ Atualizado em: **06/10/2026**
 ### Fase 4 — Extras (um por vez, quando pedido)
 
 ## Histórico
+
+### 07/10/2026 — Etapa 1.8 concluída (antes da 1.7, que espera o Diário)
+- Tabelas `lancamento_historico` e `padrao` + perfil da IA na empresa (migração 0006).
+- `app/servicos/lanctos.py`: leitura do lanctos.txt (§11.1) corrigindo os erros conhecidos (`28/01//2026`, `10595.`) com aviso; datas no futuro avisadas; arquivo de outra empresa (campo 8) recusado.
+- `app/servicos/aprendizado.py`: separa favorecido / CNPJ (só com dígito válido) / natureza / documento; nomes normalizados (“DANIELA CORDEIRO **DE** OLIVEIRA” = “DANIELA CORDEIRO OLIVEIRA”); nomes diferentes com o mesmo CNPJ viram um só; lado do banco detectado (grupo Disponível + contas-chave + conta do ativo em metade das linhas); reimportar não duplica (marca por linha).
+- **Regras do aprendizado:** vale o uso mais recente (2 ou mais seguidas na mesma conta = prática atual → Casa Criança: salários 331 → **187**, Quatai 10572 → **492**, PIS 494 → **191**); contas diferentes explicadas pela natureza não são ambíguas (SIEMACO: 10595/10596/10594, com os valores de cada uma — 910,00 = plano odontológico); ambíguo só quando nada explica; palavra-chave = natureza usada por 2+ favorecidos na mesma conta (“SALÁRIO MENSAL” → 187, “FÉRIAS” → 559, “RESCISÃO” → 560...); valores recorrentes com o mais recente primeiro.
+- Conta usada como banco no histórico vira conta-chave (**BB conta 72637-0 → conta 8**, critério da Fase 1). Referência bancária agora sem agência (“BB conta 72637-0”), para o extrato cair na mesma conta-chave.
+- Aprendizado em bloco = 1 evento no log (`sessao.info["auditoria_em_bloco"]`); as escolhas do usuário nos padrões são auditadas. Padrão aprendido que o histórico deixou de sustentar é apagado; o do usuário fica.
+- Aba **3 Aprendizado**: importar histórico, avisos, recalcular, **perfil da empresa (IA, modelo rápido, sozinho após aprender)**, fornecedores/favorecidos (busca, “só os ambíguos”, trocar conta, desativar), palavras-chave (+ nova), clientes, pagamentos por conta. Barra do mês: **Aprendizado ✔**.
+- **Resultado real (lanctos 2025 + 2026 da Casa Criança, 584 linhas):** 52 favorecidos, 12 palavras-chave, **nenhum ambíguo**.
+- Login expirado volta para a mesma aba. `ruff` passou para 120 colunas.
+- 179 testes passando (fixture anonimizada `tests/dados/lanctos_exemplo.txt`; plano de teste comum em `tests/planos.py`); banco real versão 0006, sem dados.
+- **Como testar:** Casa Criança (código 230) com o plano importado → aba **3 Aprendizado** → envie `AMOSTRAS\historicos\lanctos_2025_casa_crianca.txt` e depois `AMOSTRAS\PLANILHA EXPORTAÇÃO\modelo exemplar da exportacao.txt` → veja os favorecidos, as palavras-chave e a aba 2 (Contas-chave: BB conta 72637-0 → 8).
 
 ### 06/10/2026 — Etapa 1.6 concluída
 - Tabela `conta_chave` (Auditavel) + `empresa.usa_conta_individual` / `grupo_fornecedores` (migração 0005).

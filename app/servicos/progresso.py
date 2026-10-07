@@ -3,9 +3,10 @@
 from dataclasses import dataclass
 from datetime import date
 
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from app.modelos import Empresa
+from app.modelos import Empresa, Padrao
 from app.servicos.plano import contar_contas
 
 ETAPAS = (
@@ -32,6 +33,11 @@ def _concluidas(sessao: Session, empresa: Empresa, competencia: date) -> dict[st
     total_contas, _ = contar_contas(sessao, empresa)
     if total_contas:
         feitas["plano"] = f"{total_contas:,} contas".replace(",", ".")
+    padroes = sessao.scalar(
+        select(func.count()).select_from(Padrao).where(Padrao.empresa_id == empresa.id, Padrao.ativo)
+    )
+    if padroes:
+        feitas["aprendizado"] = f"{padroes:,} padrões".replace(",", ".")
     return feitas
 
 

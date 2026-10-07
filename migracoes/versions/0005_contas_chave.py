@@ -28,15 +28,11 @@ def upgrade() -> None:
         sa.Column("origem", sa.String(length=10), nullable=False),
         sa.Column("confianca", sa.Integer(), nullable=False),
         sa.Column("justificativa", sa.Text(), nullable=True),
-        sa.Column(
-            "atualizado_em", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False
-        ),
+        sa.Column("atualizado_em", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
         sa.ForeignKeyConstraint(
             ["conta_id"], ["conta_contabil.id"], name=op.f("fk_conta_chave_conta_id_conta_contabil")
         ),
-        sa.ForeignKeyConstraint(
-            ["empresa_id"], ["empresa.id"], name=op.f("fk_conta_chave_empresa_id_empresa")
-        ),
+        sa.ForeignKeyConstraint(["empresa_id"], ["empresa.id"], name=op.f("fk_conta_chave_empresa_id_empresa")),
         sa.PrimaryKeyConstraint("id", name=op.f("pk_conta_chave")),
         sa.UniqueConstraint("empresa_id", "tipo", "referencia", name=op.f("uq_conta_chave_empresa_id")),
     )

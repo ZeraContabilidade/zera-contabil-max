@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from app.auth import exigir_supervisor, usuario_logado
 from app.db import obter_sessao
 from app.modelos import Empresa, Regime, Usuario
+from app.rotas.aprendizado import contexto_aba_aprendizado
 from app.rotas.comum import buscar_empresa
 from app.rotas.plano import contexto_aba_plano
 from app.servicos import cnpj_publico
@@ -35,7 +36,6 @@ ABAS = (
     ("exportar", "Exportar"),
 )
 CHEGA_NA_ETAPA = {
-    "aprendizado": "nas etapas 1.7 e 1.8 (Diário, fornecedores e palavras-chave)",
     "extratos": "nas etapas 2.1 a 2.5 (leitura dos extratos)",
     "revisao": "na etapa 2.8 (tela de revisão)",
     "exportar": "na etapa 3.1 (geração do lanctos.txt)",
@@ -219,12 +219,17 @@ def tela_empresa(
     mes: str | None = None,
     q: str = "",
     analiticas: str = "",
+    ambiguos: str = "",
     usuario: Usuario = Depends(usuario_logado),
     sessao: Session = Depends(obter_sessao),
 ):
     if (empresa := buscar_empresa(sessao, request, empresa_id)) is None:
         return redirecionar("/")
-    extras = contexto_aba_plano(sessao, empresa, q, bool(analiticas)) if aba == "plano" else {}
+    extras = {}
+    if aba == "plano":
+        extras = contexto_aba_plano(sessao, empresa, q, bool(analiticas))
+    elif aba == "aprendizado":
+        extras = contexto_aba_aprendizado(sessao, empresa, q, bool(ambiguos))
     return _tela_empresa(request, sessao, empresa, aba, mes, **extras)
 
 

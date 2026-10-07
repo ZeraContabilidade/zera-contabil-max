@@ -12,6 +12,7 @@ from fastapi.templating import Jinja2Templates
 from app.config import obter_config
 from app.ia.servico import dolar
 from app.servicos.competencia import ler_competencia, mes_anterior, nome_competencia, valor_campo_mes
+from app.servicos.documentos import formatar_documento
 
 FUSO = ZoneInfo("America/Sao_Paulo")
 PASTA_APP = Path(__file__).resolve().parent
@@ -61,7 +62,12 @@ ROTULOS_CAMPO = {
     "conta_id": "Conta (nº interno)",
     "confianca": "Confiança (%)",
 }
-ROTULOS_ENTIDADE = {"usuario": "Usuário", "empresa": "Empresa", "conta_chave": "Conta-chave"}
+ROTULOS_ENTIDADE = {
+    "usuario": "Usuário",
+    "empresa": "Empresa",
+    "conta_chave": "Conta-chave",
+    "padrao": "Padrão aprendido",
+}
 
 
 def _rotulo_campo(campo: str) -> str:
@@ -95,6 +101,10 @@ templates.env.filters["rotulo_campo"] = _rotulo_campo
 templates.env.filters["rotulo_entidade"] = _rotulo_entidade
 templates.env.filters["valor_log"] = _valor_log
 templates.env.filters["milhar"] = lambda n: f"{n or 0:,}".replace(",", ".")
+templates.env.filters["reais"] = lambda v: (
+    f"{Decimal(v or 0):,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+)
+templates.env.filters["documento"] = formatar_documento
 templates.env.filters["dolar"] = lambda valor, casas=2: dolar(Decimal(valor or 0), casas)
 templates.env.filters["nome_competencia"] = nome_competencia
 templates.env.filters["valor_campo_mes"] = valor_campo_mes
@@ -108,9 +118,7 @@ def avisar(request: Request, texto: str, tipo: str = "ok") -> None:
 
 def competencia_da_tela(request: Request, mes: str | None) -> date:
     """Mês escolhido na tela; fica guardado para as próximas telas. Padrão: mês passado."""
-    competencia = (
-        ler_competencia(mes) or ler_competencia(request.session.get("competencia")) or mes_anterior()
-    )
+    competencia = ler_competencia(mes) or ler_competencia(request.session.get("competencia")) or mes_anterior()
     request.session["competencia"] = valor_campo_mes(competencia)
     return competencia
 

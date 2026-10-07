@@ -38,22 +38,14 @@ def upgrade() -> None:
         sa.Column("request_id", sa.String(length=80), nullable=True),
         sa.Column("entrada_resumo", sa.Text(), nullable=True),
         sa.Column("resposta", postgresql.JSONB(astext_type=sa.Text()), nullable=True),
-        sa.ForeignKeyConstraint(
-            ["empresa_id"], ["empresa.id"], name=op.f("fk_chamada_ia_empresa_id_empresa")
-        ),
-        sa.ForeignKeyConstraint(
-            ["usuario_id"], ["usuario.id"], name=op.f("fk_chamada_ia_usuario_id_usuario")
-        ),
+        sa.ForeignKeyConstraint(["empresa_id"], ["empresa.id"], name=op.f("fk_chamada_ia_empresa_id_empresa")),
+        sa.ForeignKeyConstraint(["usuario_id"], ["usuario.id"], name=op.f("fk_chamada_ia_usuario_id_usuario")),
         sa.PrimaryKeyConstraint("id", name=op.f("pk_chamada_ia")),
     )
     op.create_index(op.f("ix_chamada_ia_empresa_id"), "chamada_ia", ["empresa_id"], unique=False)
     op.create_index(op.f("ix_chamada_ia_quando"), "chamada_ia", ["quando"], unique=False)
-    op.add_column(
-        "empresa", sa.Column("ia_ligada", sa.Boolean(), server_default=sa.text("true"), nullable=False)
-    )
-    op.add_column(
-        "empresa", sa.Column("ia_limite_mensal_usd", sa.Numeric(precision=10, scale=2), nullable=True)
-    )
+    op.add_column("empresa", sa.Column("ia_ligada", sa.Boolean(), server_default=sa.text("true"), nullable=False))
+    op.add_column("empresa", sa.Column("ia_limite_mensal_usd", sa.Numeric(precision=10, scale=2), nullable=True))
     # ### end Alembic commands ###
 
 

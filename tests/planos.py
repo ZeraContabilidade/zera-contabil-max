@@ -1,0 +1,70 @@
+"""Plano de contas de teste no estilo da Casa Criança, usado por vários testes."""
+
+from app.servicos.plano import ContaLida, importar_plano, preparar
+
+# plano de teste no estilo da Casa Criança (grupo 3 = despesas, 4 = receitas)
+PLANO = [
+    (1, "1", "ATIVO", "S"),
+    (2, "11", "ATIVO CIRCULANTE", "S"),
+    (3, "111", "DISPONÍVEL", "S"),
+    (7, "11102", "BANCOS CONTA MOVIMENTO", "S"),
+    (8, "11102000001", "BCO BRASIL CC 12345-6", "A"),
+    (9, "11102000002", "BANCO ITAU CC 5555-1", "A"),
+    (10, "11103", "APLICAÇÕES FINANCEIRAS", "S"),
+    (11, "11103000001", "POUPANÇA BB 12345-6", "A"),
+    (30, "11308", "TRIBUTOS A RECUPERAR", "S"),
+    (31, "11308000003", "IRRF A RECUPERAR", "A"),
+    (100, "2", "PASSIVO", "S"),
+    (101, "21", "PASSIVO CIRCULANTE", "S"),
+    (164, "213", "FORNECEDORES", "S"),
+    (165, "21301", "FORNECEDORES", "S"),
+    (10001, "21301000001", "FORNECEDORES", "A"),
+    (10571, "21301000190", "PADARIA BOM PÃO LTDA", "A"),
+    (10572, "21301000191", "SABESP", "A"),
+    (10573, "21301000192", "MEDTRABALHO MEDICINA", "A"),
+    (10574, "21301000193", "PAPELARIA CENTRAL", "A"),
+    (10575, "21301000194", "ZERA ASSESSORIA", "A"),
+    (185, "215", "OBRIGAÇÕES TRABALHISTAS", "S"),
+    (186, "21501", "OBRIGAÇÕES COM O PESSOAL", "S"),
+    (187, "21501000001", "SALÁRIOS E ORDENADOS A PAGAR", "A"),
+    (560, "21501000005", "RESCISÕES A PAGAR", "A"),
+    (190, "21502", "OBRIGAÇÕES SOCIAIS", "S"),
+    (191, "21502000001", "INSS/PIS/IRRF/RAT A RECOLHER", "A"),
+    (192, "21502000002", "FGTS A RECOLHER", "A"),
+    (269, "3", "CONTAS DE RESULTADOS - CUSTOS E DESPESAS", "S"),
+    (295, "32", "DESPESAS OPERACIONAIS", "S"),
+    (329, "322", "DESPESAS ADMINISTRATIVAS", "S"),
+    (330, "32201", "DESPESAS COM PESSOAL", "S"),
+    (331, "32201000001", "SALÁRIOS E ORDENADOS", "A"),
+    (492, "32201000010", "VALE TRANSPORTE", "A"),
+    (353, "32204", "DESPESAS GERAIS", "S"),
+    (354, "32204000001", "ENERGIA ELÉTRICA", "A"),
+    (355, "32204000002", "ÁGUA E ESGOTO", "A"),
+    (359, "32204000006", "MATERIAL DE ESCRITÓRIO", "A"),
+    (360, "32204000007", "MATERIAL DE HIGIENE E LIMPEZA", "A"),
+    (10594, "32204000017", "PLANO ODONTOLOGICO", "A"),
+    (10595, "32204000017", "CONTRIBUIÇÃO NEGOCIAL", "A"),
+    (10596, "32204000018", "MENSALIDADE SINDICAL", "A"),
+    (367, "32205", "DESPESAS FINANCEIRAS", "S"),
+    (368, "32205000001", "JUROS PASSIVOS", "A"),
+    (535, "32205000011", "TARIFA BANCÁRIA", "A"),
+    (10150, "34", "CUSTOS ASSIST SOCIAL", "S"),
+    (10151, "341", "CUSTOS ASSIST SOCIAL", "S"),
+    (10161, "34109", "DESPESAS BANCÁRIAS", "S"),
+    (10162, "34109000001", "TARIFAS BANCARIAS", "A"),
+    (400, "4", "CONTAS DE RESULTADO - RECEITAS", "S"),
+    (420, "41", "RECEITAS OPERACIONAIS", "S"),
+    (430, "413", "RECEITAS FINANCEIRAS", "S"),
+    (431, "41301", "JUROS E DESCONTOS", "S"),
+    (432, "41301000001", "JUROS DE APLICAÇÕES", "A"),
+    (10100, "46", "RECEITAS DIVERSAS", "S"),
+    (10105, "461", "RECEITAS DIVERSAS OPER PROPRIA", "S"),
+    (10106, "46102", "RECEITAS FINANCEIRAS", "S"),
+    (10107, "46102000001", "RENDIMENTOS C/APLIC FINANC", "A"),
+]
+
+
+def criar_plano(sessao, empresa, linhas=PLANO):
+    lidas = [ContaLida(r, c, d, t, n) for n, (r, c, d, t) in enumerate(linhas, 1)]
+    importar_plano(sessao, empresa, preparar(lidas, "teste", []), None)
+    sessao.commit()

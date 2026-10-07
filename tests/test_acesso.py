@@ -145,3 +145,15 @@ def test_requisicao_htmx_sem_login_recebe_redirecionamento_htmx(cliente, criar_u
     criar_usuario("ana")
     resposta = cliente.get("/usuarios", headers={"HX-Request": "true"}, follow_redirects=False)
     assert resposta.headers["HX-Redirect"] == "/login?proximo=/usuarios"
+
+
+def test_login_volta_para_a_mesma_aba(cliente, criar_usuario):
+    criar_usuario("ana")
+    resposta = cliente.get("/empresas/1", params={"aba": "plano"}, follow_redirects=False)
+    assert resposta.headers["location"] == "/login?proximo=/empresas/1%3Faba%3Dplano"
+    resposta = cliente.post(
+        "/login",
+        data={"login": "ana", "senha": SENHA_TESTE, "proximo": "/empresas/1?aba=plano"},
+        follow_redirects=False,
+    )
+    assert resposta.headers["location"] == "/empresas/1?aba=plano"
