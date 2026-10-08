@@ -3,10 +3,10 @@
 Atualizado em: **08/10/2026**
 
 ## Próximo passo exato
-**Etapa 3.1 — Exportar o `lanctos.txt`** (§3.6, §11.1; aba **6 Exportar**). A Fase 2 está completa.
+**Etapa 3.1b — Tela Exportar** (§3.6, §11.1; aba **6 Exportar**). A 3.1a (gerador + conferência do `lanctos.txt`, `app/servicos/exportacao.py`) está pronta: falta a tela, o registro e o travamento.
 - Escolher o mês e as contas bancárias; mostrar quantas linhas vão (aprovadas), quantas ficam de fora (pendentes, com confirmação para deixá-las de fora) e o total por conta.
 - **Validações que bloqueiam, mostrando a linha:** conta inexistente ou sintética, data inválida ou fora do mês, débito = crédito, valor ≤ 0, `;` no complemento (o modelo tem 3 erros que devem ser pegos: `28/01//2026`, `28/01//2027`, conta `10595.`). **Conta em branco NÃO bloqueia** (o Domínio aceita — confirmado em 08/10).
-- Formato exato do §11.1: `dd/mm/aaaa;débito;crédito;valor com vírgula sem milhar;;complemento;1;código da empresa;;` — CRLF, Windows-1252, sem cabeçalho. Teste “arquivo de ouro”: gerar a partir das linhas do modelo e comparar byte a byte com `modelo exemplar da exportacao.txt` (sem as 3 linhas com erro).
+- Montar as `LinhaLancto` das sugestões aprovadas (conta em branco = `None`), conferir as sugestões (sintética, inativa, débito = crédito, valor, data, `;`) mostrando o movimento, gerar com `gerar_txt` e passar `conferir_txt` no resultado antes de entregar.
 - **Resumo em Excel** por conta (openpyxl). Tabela `exportacao` (quem, quando, quantas linhas, arquivo guardado); linhas exportadas → status EXPORTADO (travadas). Barra do mês: **Exportado ✔**. Reabrir fica para a 3.2 (só Supervisor).
 
 ## Pendências com o usuário
@@ -48,7 +48,8 @@ Atualizado em: **08/10/2026**
 - [x] 2.8c Fornecedores a cadastrar no Domínio (lista + Excel) + medição real: **91% aprovados sozinhos** nos 2 PDFs de agosto
 
 ### Fase 3 — Exportação e Painel
-- [ ] 3.1 lanctos.txt + validações + resumo Excel + teste "arquivo de ouro"
+- [x] 3.1a Gerador do lanctos.txt (formato exato) + conferência linha a linha + teste “arquivo de ouro”
+- [ ] 3.1b Tela Exportar: escolher mês e contas, validações mostrando a linha, resumo Excel, registro e travamento
 - [ ] 3.2 Travamento e reabertura pelo Supervisor
 - [ ] 3.3 Painel do supervisor + painel de uso da IA
 - [ ] 3.4 Guarda de arquivos por 5 anos + acesso pela rede
@@ -56,6 +57,12 @@ Atualizado em: **08/10/2026**
 ### Fase 4 — Extras (um por vez, quando pedido)
 
 ## Histórico
+
+### 08/10/2026 — Etapa 3.1a concluída (gerador e conferência do lanctos.txt)
+- `app/servicos/exportacao.py`: gera o `lanctos.txt` **idêntico, byte a byte**, ao que o Domínio já aceita (10 campos com “;”, valor com vírgula sem zeros sobrando — 346,5 · 120 —, inicia lote 1, código da empresa, CRLF, Windows-1252; letra fora do Windows-1252 perde o acento). Conta em branco sai vazia (o Domínio aceita).
+- Conferência linha a linha (mostra o nº da linha e o que fazer): data inválida ou fora do mês, conta com ponto/letra, conta que não existe ou saiu do plano, conta sintética, débito = crédito, sem nenhuma conta, valor zero ou com milhar, “;” no complemento (campos a mais), código da empresa errado, quebra de linha que não é do Windows.
+- **Real:** no `lanctos.txt` de 2026 da Casa Criança, com o plano real, acha **exatamente os 3 erros** do modelo (conta “10595.”, “28/01//2026”, “28/01//2027”); as outras 192 linhas saem idênticas byte a byte.
+- Testes (14 novos): 314 passando.
 
 ### 08/10/2026 — Etapa 2.8c concluída (fornecedores a cadastrar) — Fase 2 completa
 - **Fornecedores a cadastrar no Domínio** (empresas com conta individual por fornecedor, como a Casa Criança — grupo 2.1.3.01): quando a IA vê pagamento a um fornecedor que deveria ter conta própria e ela não existe, ou o usuário clica **“Fornecedor novo”** na linha (vai junto toda linha pendente do mesmo favorecido), a linha fica pendente “cadastrar “X” no Domínio” e o fornecedor entra na lista no topo da aba Revisão (nome sugerido da conta até 40 letras, CNPJ se estiver no extrato, grupo, linhas e valor). **Baixar Excel** com a lista.
