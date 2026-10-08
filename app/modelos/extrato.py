@@ -146,9 +146,11 @@ class Sugestao(Auditavel, Base):
     padrao_id: Mapped[int | None] = mapped_column(ForeignKey("padrao.id", ondelete="SET NULL"))
     par_id: Mapped[int | None] = mapped_column(ForeignKey("movimento_extrato.id"))  # a outra ponta da transferência
     status: Mapped[str] = mapped_column(String(10), default="PENDENTE")
-    revisado_ia: Mapped[bool] = mapped_column(
-        default=False, server_default=false()
-    )  # a IA já olhou: não pergunta de novo
+    # a IA já olhou: não pergunta de novo
+    revisado_ia: Mapped[bool] = mapped_column(default=False, server_default=false())
+    # o usuário conferiu na Revisão (aprovou, corrigiu ou ignorou): a classificação automática e a IA não mexem mais
+    conferido_por_id: Mapped[int | None] = mapped_column(ForeignKey("usuario.id"))
+    conferido_em: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     atualizado_em: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )

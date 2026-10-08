@@ -428,7 +428,9 @@ def classificar(sessao: Session, empresa: Empresa, inicio: date, fim: date) -> R
     try:
         for movimento in movimentos:
             sugestao = movimento.sugestao
-            if sugestao and (sugestao.origem in PROTEGIDAS or sugestao.status == "EXPORTADO"):
+            if sugestao and (
+                sugestao.origem in PROTEGIDAS or sugestao.status == "EXPORTADO" or sugestao.conferido_por_id
+            ):
                 resultado.contar(sugestao)
                 continue
             proposta = next((p for passo in PASSOS if (p := passo(ctx, movimento)) is not None), None)

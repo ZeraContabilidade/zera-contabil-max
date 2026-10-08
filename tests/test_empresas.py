@@ -215,8 +215,8 @@ def test_pagina_da_empresa_tem_barra_do_mes_e_abas(cliente, supervisor_logado, s
     assert "SABESP - 43.776.517/0001-80 - CONTA DE AGUA - S/N" in html  # exemplo do complemento
     extratos = cliente.get(f"/empresas/{empresa.id}", params={"aba": "extratos"}).text
     assert "Arraste os extratos para cá" in extratos
-    revisao = cliente.get(f"/empresas/{empresa.id}", params={"aba": "revisao"}).text
-    assert "Esta parte chega na etapa 2.8" in revisao  # abas que ainda não existem avisam quando chegam
+    exportar = cliente.get(f"/empresas/{empresa.id}", params={"aba": "exportar"}).text
+    assert "Esta parte chega na etapa 3.1" in exportar  # abas que ainda não existem avisam quando chegam
 
 
 def test_empresa_inexistente_volta_para_a_lista(cliente, supervisor_logado):

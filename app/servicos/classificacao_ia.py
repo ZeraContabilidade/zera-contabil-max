@@ -149,6 +149,7 @@ def candidatas(sessao: Session, empresa: Empresa, movimentos: list[MovimentoExtr
             and sugestao.confianca < LIMIAR_APROVACAO
             and sugestao.origem not in NAO_PERGUNTAR
             and not sugestao.revisado_ia
+            and sugestao.conferido_por_id is None
         ):
             escolhidas.append(sugestao)
     return escolhidas

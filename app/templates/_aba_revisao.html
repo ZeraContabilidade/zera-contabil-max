@@ -1,0 +1,47 @@
+{# Aba "5 Revisão" — incluída em empresa.html #}
+<article>
+  <header class="cabecalho-pagina"><strong>Revisão de {{ competencia | nome_competencia }}</strong>
+    <span class="suave">{{ contagem.total }} movimento(s)</span></header>
+  <div class="resumo-classificacao">
+    <span class="etiqueta etiqueta-verde">✓ {{ contagem.verde }} aprovado(s)</span>
+    <span class="etiqueta etiqueta-ambar">? {{ contagem.amarela }} para conferir</span>
+    <span class="etiqueta etiqueta-vermelha">! {{ contagem.vermelha }} pendente(s)</span>
+    {% if contagem.cinza %}<span class="etiqueta etiqueta-apagada">{{ contagem.cinza }} sem lançamento</span>{% endif %}
+  </div>
+  <nav class="filtros-revisao" aria-label="Filtros da revisão">
+    {% for chave, nome in filtros.items() %}
+    <a href="/empresas/{{ empresa.id }}?aba=revisao&mes={{ competencia | valor_campo_mes }}&filtro={{ chave }}"
+       {% if chave == filtro %}aria-current="page"{% endif %}>{{ nome }}</a>
+    {% endfor %}
+  </nav>
+  <form method="get" action="/empresas/{{ empresa.id }}" class="filtros">
+    <input type="hidden" name="aba" value="revisao">
+    <input type="hidden" name="mes" value="{{ competencia | valor_campo_mes }}">
+    <input type="hidden" name="filtro" value="{{ filtro }}">
+    <input type="search" name="q" value="{{ busca_revisao }}" placeholder="Buscar no histórico, favorecido ou complemento…" aria-label="Buscar">
+    <input name="conta" value="{{ conta_filtro }}" placeholder="Por conta (código)" inputmode="numeric" aria-label="Filtrar pela conta" class="campo-curto">
+    <button type="submit" class="secondary outline">Filtrar</button>
+  </form>
+  <p class="suave">Escolha a conta digitando o código ou parte do nome (ex.: “agua” ou “355”) e clique em <strong>Salvar</strong>
+    — a linha fica aprovada e o sistema aprende para o próximo mês. <strong>Aprovar</strong> aceita a sugestão como está;
+    <strong>Ignorar</strong> deixa a linha sem lançamento. Passe o mouse na situação para ver de onde veio a sugestão.</p>
+</article>
+
+{% if sugestoes %}
+<div class="tabela-rolavel">
+  <table class="striped tabela-revisao">
+    <thead><tr><th>Data</th><th>Descrição do banco</th><th class="num">Valor</th><th>Lançamento</th><th>Situação</th><th>Conferir</th></tr></thead>
+    <tbody>
+      {% for s in sugestoes %}{% include "_revisao_linha.html" %}{% endfor %}
+    </tbody>
+  </table>
+</div>
+<datalist id="contas-revisao">
+  {% for rotulo, sem_acento in contas_lista %}<option value="{{ rotulo }}" label="{{ sem_acento }}"></option>{% endfor %}
+</datalist>
+{% elif contagem.total %}
+<article class="vazio"><p>Nada {{ 'precisa de atenção' if filtro == 'atencao' else 'neste filtro' }} em {{ competencia | nome_competencia }}. 🎉
+  <a href="/empresas/{{ empresa.id }}?aba=revisao&mes={{ competencia | valor_campo_mes }}&filtro=todos">Ver todas as linhas</a></p></article>
+{% else %}
+<article class="vazio"><p>Nenhum extrato em {{ competencia | nome_competencia }}. Envie os extratos na aba Extratos.</p></article>
+{% endif %}

@@ -1,15 +1,13 @@
 # PROGRESSO — ZERA CONTÁBIL MAX
 
-Atualizado em: **07/10/2026**
+Atualizado em: **08/10/2026**
 
 ## Próximo passo exato
-**Etapa 2.8 — Tela de Revisão** (§3.5, §6.3; aba **5 Revisão**; a 2.7 — IA no que sobrou — está pronta).
-- Grade do mês: **Data | Descrição do banco | Valor | Débito | Crédito | Complemento | Confiança | Origem**; cores verde/amarelo/vermelho/cinza; **abre filtrada no que precisa de atenção** (amarelos e vermelhos); filtros Todos / Pendentes / Amarelos / Por conta / Só IA; busca. Justificativa ao passar o mouse.
-- Editar a linha (HTMX, sem recarregar): conta com **autocompletar** só de analíticas (“agua” ou “355” → “355 – ÁGUA E ESGOTO”; reaproveitar `buscar_contas`), complemento, **Aprovar**, **Ignorar** (sem lançamento), desfazer aprovação. Seleção múltipla para aplicar a mesma conta. Edição = origem USUARIO + log (Sugestao é Auditavel; a classificação automática nunca mexe).
-- **Aprendizado contínuo (§6.3):** aprovar/corrigir vira histórico (`LancamentoHistorico` com origem do extrato) e recalcula os padrões (`aprender`) → na próxima vez a mesma linha sai pelas regras, sem IA. Ao corrigir, perguntar “Aplicar às outras X linhas parecidas?” (mesmo favorecido normalizado / mesmo CNPJ no mês).
-- **Fornecedores a cadastrar no Domínio** (§6.2 passo 7; empresas com conta individual): favorecido sem conta → linha pendente + lista (nome + CNPJ + sugestão de conta/grupo `empresa.grupo_fornecedores`), exportável em Excel (openpyxl).
-- Barra do mês: etapa **Revisão ✔** quando não houver pendente/amarelo no mês (`progresso._concluidas`). Limiar de aprovação automática por empresa (padrão 90) no cadastro.
-- **Medir ≥ 85% certos** com os extratos reais de agosto (Casa Criança) depois que a poupança tiver conta (pendência 5).
+**Etapa 2.8b — Revisão: seleção múltipla + fornecedores a cadastrar + medir** (a 2.8a — grade, editar, aprovar/ignorar/reabrir, aprendizado — está pronta).
+- **Seleção múltipla:** caixinha em cada linha + “Aplicar a conta às marcadas” / “Aprovar marcadas” / “Ignorar marcadas” (mesmas funções de `app/servicos/revisao.py`, um `aprender` só no fim).
+- **Fornecedores a cadastrar no Domínio** (§6.2 passo 7; empresas com conta individual por fornecedor): favorecido sem conta → linha pendente + lista na aba (nome + CNPJ + grupo sugerido `empresa.grupo_fornecedores`), exportável em Excel (openpyxl).
+- **Limiar de aprovação automática por empresa** (padrão 90) no cadastro (hoje é `LIMIAR_APROVACAO` fixo em `classificacao.py`).
+- **Medir ≥ 85% certos** com os extratos reais de agosto (Casa Criança: CC + poupança, regras + IA) — teste `amostras`.
 
 ## Pendências com o usuário
 | # | Pergunta | Precisa até |
@@ -45,7 +43,8 @@ Atualizado em: **07/10/2026**
 - [x] 2.5b Excel/CSV com colunas identificadas pelos títulos ou pela IA (confirmação na 1ª vez)
 - [x] 2.6 Motor de classificação (regras, CNPJ, nome parecido, palavra-chave, valor) + pareamento de transferências
 - [x] 2.7 IA em lote + validação + aprovação automática dos verdes
-- [ ] 2.8 Tela de Revisão + fornecedores a cadastrar; medir ≥ 85% nos 2 PDFs
+- [x] 2.8a Tela de Revisão: grade do mês, editar/aprovar/ignorar/reabrir, aplicar às parecidas, aprendizado com cada decisão
+- [ ] 2.8b Seleção múltipla + fornecedores a cadastrar + limiar por empresa; medir ≥ 85% nos 2 PDFs
 
 ### Fase 3 — Exportação e Painel
 - [ ] 3.1 lanctos.txt + validações + resumo Excel + teste "arquivo de ouro"
@@ -56,6 +55,14 @@ Atualizado em: **07/10/2026**
 ### Fase 4 — Extras (um por vez, quando pedido)
 
 ## Histórico
+
+### 08/10/2026 — Etapa 2.8a concluída (tela de Revisão)
+- Aba **5 Revisão** (`app/rotas/revisao.py`, `app/servicos/revisao.py`): o mês abre **filtrado no que precisa de atenção** (amarelas e pendentes); filtros Pendentes / Para conferir / Só IA / Aprovados / Todos; busca no histórico/favorecido/complemento; filtro por conta. Contadores verde/amarelo/vermelho/cinza; de onde veio a sugestão ao passar o mouse.
+- Cada linha muda **sem recarregar a página** (HTMX): conta por código, pela lista (“agua” acha “355 – ÁGUA E ESGOTO”, sem acento) ou por parte do nome (vale quando uma conta só combina; senão a linha mostra as opções); complemento; **Salvar** (aprova como “escolhido à mão”), **Aprovar** (aceita a sugestão), **Ignorar** (sem lançamento), **Reabrir**. Erro aparece na própria linha, com o que foi digitado.
+- Ao trocar a conta, o sistema oferece **“Aplicar às outras X linhas”** do mesmo favorecido (ou CNPJ) no mês.
+- **Aprendizado contínuo (§6.3):** cada aprovação/correção vira um lançamento do histórico (importação “Revisão”) e os padrões são recalculados → no mês seguinte a mesma linha sai sozinha pelo nome (teste: FULANO corrigido para 359 em agosto → setembro aprovado pelo NOME). Reabrir/ignorar desfaz o que tinha ensinado.
+- A linha conferida (`conferido_por_id`, migração 0013) **nunca mais** é mexida pela classificação automática nem pela IA. Toda mudança fica no log com o usuário. Barra do mês: **Revisão ✔** quando não sobra amarela nem pendente.
+- Testes (8): 290 passando.
 
 ### 08/10/2026 — Conta fora do plano fica em branco (resposta da pendência 5)
 - Usuário: “se não tiver a conta no plano de contas deixe em branco”. A classificação agora aprova com o lado do banco **em branco** quando a conta bancária não tem conta contábil (poupança da Casa Criança): rendimentos/IR da poupança (D em branco / C 10586; D 31 / C em branco) e transferências com ela (lançadas uma vez, a outra ponta “sem lançamento”). Transferência cujo outro extrato não chegou também é lançada com a outra conta em branco (90% quando o histórico diz poupança/aplicação/resgate). A IA também olha movimentos de conta sem conta contábil. Tela: “em branco” no lugar de “?”.

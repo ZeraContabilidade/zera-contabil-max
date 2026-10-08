@@ -11,6 +11,7 @@ from app.rotas.aprendizado import contexto_aba_aprendizado
 from app.rotas.comum import avisar_consulta, buscar_empresa
 from app.rotas.extratos import contexto_aba_extratos
 from app.rotas.plano import contexto_aba_plano
+from app.rotas.revisao import contexto_aba_revisao
 from app.servicos import backup
 from app.servicos.complemento import EXEMPLO, montar_complemento
 from app.servicos.empresas import (
@@ -34,7 +35,6 @@ ABAS = (
     ("exportar", "Exportar"),
 )
 CHEGA_NA_ETAPA = {
-    "revisao": "na etapa 2.8 (tela de revisão)",
     "exportar": "na etapa 3.1 (geração do lanctos.txt)",
 }
 
@@ -187,6 +187,8 @@ def tela_empresa(
     q: str = "",
     analiticas: str = "",
     ambiguos: str = "",
+    filtro: str = "atencao",
+    conta: str = "",
     usuario: Usuario = Depends(usuario_logado),
     sessao: Session = Depends(obter_sessao),
 ):
@@ -199,6 +201,8 @@ def tela_empresa(
         extras = contexto_aba_aprendizado(sessao, empresa, q, bool(ambiguos))
     elif aba == "extratos":
         extras = contexto_aba_extratos(sessao, empresa, competencia_da_tela(request, mes))
+    elif aba == "revisao":
+        extras = contexto_aba_revisao(sessao, empresa, competencia_da_tela(request, mes), filtro, q, conta)
     return _tela_empresa(request, sessao, empresa, aba, mes, **extras)
 
 

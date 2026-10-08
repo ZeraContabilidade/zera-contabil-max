@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from app.modelos import Empresa, Padrao
 from app.servicos.extratos import contar_movimentos_do_mes
 from app.servicos.plano import contar_contas
+from app.servicos.revisao import contagem_do_mes
 
 ETAPAS = (
     ("plano", "Plano"),
@@ -41,6 +42,9 @@ def _concluidas(sessao: Session, empresa: Empresa, competencia: date) -> dict[st
         feitas["aprendizado"] = f"{padroes:,} padrões".replace(",", ".")
     if movimentos := contar_movimentos_do_mes(sessao, empresa, competencia):
         feitas["extrato"] = f"{movimentos:,} movimentos".replace(",", ".")
+        contagem = contagem_do_mes(sessao, empresa, competencia)
+        if contagem.total and not (contagem.amarela or contagem.vermelha):
+            feitas["revisao"] = f"{contagem.verde:,} aprovados".replace(",", ".")
     return feitas
 
 

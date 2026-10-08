@@ -612,8 +612,9 @@ class ResultadoAprendizado:
         return texto
 
 
-def aprender(sessao: Session, empresa: Empresa) -> ResultadoAprendizado:
-    """Recalcula os padrões a partir de TODO o histórico da empresa. A escolha do usuário é mantida."""
+def aprender(sessao: Session, empresa: Empresa, registrar: bool = True) -> ResultadoAprendizado:
+    """Recalcula os padrões a partir de TODO o histórico da empresa. A escolha do usuário é mantida.
+    `registrar=False`: sem evento no log (a Revisão aprende a cada clique; o clique já fica no log)."""
     lancamentos = list(
         sessao.scalars(
             select(LancamentoHistorico).where(
@@ -683,7 +684,8 @@ def aprender(sessao: Session, empresa: Empresa) -> ResultadoAprendizado:
         sessao.info.pop("auditoria_em_bloco", None)
     for chave in contas_chave_pelo_historico(sessao, empresa):
         resultado.contas_chave.append(f"{nome_do_tipo(chave.tipo)} → {chave.conta.rotulo}")
-    registrar_evento(sessao, "APRENDER", detalhe=f"{empresa.nome}: {resultado.resumo()}")
+    if registrar:
+        registrar_evento(sessao, "APRENDER", detalhe=f"{empresa.nome}: {resultado.resumo()}")
     return resultado
 
 

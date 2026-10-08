@@ -1,0 +1,47 @@
+{# Uma linha da Revisão — trocada sozinha (HTMX) depois de cada clique #}
+{% set cp = contrapartida(s) %}
+{% set m = s.movimento %}
+{% set digitado = digitado if digitado is defined and digitado else {} %}
+<tr id="sugestao-{{ s.id }}" class="linha-revisao linha-{{ s.cor }}">
+  <td>{{ m.data.strftime('%d/%m') }}</td>
+  <td>{{ m.historico }}{% if m.complemento %}<br><small class="suave">{{ m.complemento }}</small>{% endif %}</td>
+  <td class="num {{ 'saida' if m.sentido == 'SAIDA' else 'entrada' }}">{{ '−' if m.sentido == 'SAIDA' else '+' }}{{ m.valor | reais }}</td>
+  <td>
+    {% if s.status == 'IGNORADO' %}<span class="suave">sem lançamento</span>
+    {% else %}
+    <span class="lancamento">D <span title="{{ s.conta_debito.descricao if s.conta_debito else '' }}">{{ s.conta_debito.reduzido if s.conta_debito else ('em branco' if s.status != 'PENDENTE' or cp else '?') }}</span>
+      · C <span title="{{ s.conta_credito.descricao if s.conta_credito else '' }}">{{ s.conta_credito.reduzido if s.conta_credito else ('em branco' if s.status != 'PENDENTE' or cp else '?') }}</span></span>
+    {% if cp %}<small class="suave"> {{ cp.descricao }}</small>{% endif %}
+    {% endif %}
+  </td>
+  <td>
+    <span class="etiqueta etiqueta-{{ {'verde': 'verde', 'amarela': 'ambar', 'vermelha': 'vermelha', 'cinza': 'apagada'}[s.cor] }}" title="{{ s.justificativa or '' }}">
+      {% if s.status == 'IGNORADO' %}sem lançamento{% elif s.status in ('APROVADO', 'EXPORTADO') %}✓ {{ s.confianca }}%{% elif s.confianca >= 70 %}? {{ s.confianca }}%{% else %}pendente{% endif %}</span>
+    <br><small class="suave">{{ origens.get(s.origem, s.origem) }}{% if s.conferido_por_id %} · conferido{% endif %}</small>
+  </td>
+  <td class="celula-conferir">
+    {% if s.status == 'EXPORTADO' %}<small class="suave">exportado</small>
+    {% else %}
+    <form method="post" action="/empresas/{{ empresa.id }}/revisao/{{ s.id }}" class="form-revisao"
+          hx-post="/empresas/{{ empresa.id }}/revisao/{{ s.id }}" hx-target="closest tr" hx-swap="outerHTML">
+      <input name="conta" list="contas-revisao" value="{{ digitado.conta if 'conta' in digitado else (cp.rotulo if cp else '') }}" placeholder="conta: código ou nome"
+             aria-label="Conta do lançamento" autocomplete="off">
+      <input name="complemento" value="{{ digitado.complemento if 'complemento' in digitado else s.complemento }}" placeholder="complemento" aria-label="Complemento">
+      <div class="botoes-revisao">
+        <button type="submit" name="acao" value="salvar">Salvar</button>
+        {% if s.status == 'PENDENTE' and cp %}<button type="submit" name="acao" value="aprovar" class="secondary">Aprovar</button>{% endif %}
+        {% if s.status != 'IGNORADO' %}<button type="submit" name="acao" value="ignorar" class="secondary outline">Ignorar</button>{% endif %}
+        {% if s.conferido_por_id or s.status == 'IGNORADO' %}<button type="submit" name="acao" value="reabrir" class="secondary outline">Reabrir</button>{% endif %}
+      </div>
+      {% if erro %}<small class="erro-linha" role="alert">{{ erro }}</small>{% endif %}
+    </form>
+    {% if parecidas %}
+    <form method="post" action="/empresas/{{ empresa.id }}/revisao/{{ s.id }}/parecidas" class="form-parecidas"
+          hx-post="/empresas/{{ empresa.id }}/revisao/{{ s.id }}/parecidas">
+      <small>Aplicar <strong>{{ cp.rotulo }}</strong> às outras {{ parecidas | length }} linha(s) de “{{ m.complemento or m.historico }}” neste mês?</small>
+      <button type="submit" class="secondary">Aplicar às {{ parecidas | length }}</button>
+    </form>
+    {% endif %}
+    {% endif %}
+  </td>
+</tr>
