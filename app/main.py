@@ -23,6 +23,7 @@ from app.rotas import (
     extratos,
     fornecedores,
     ia,
+    painel,
     plano,
     revisao,
     usuarios,
@@ -51,6 +52,7 @@ app.include_router(revisao.router)
 app.include_router(fornecedores.router)
 app.include_router(exportar.router)
 app.include_router(ia.router)
+app.include_router(painel.router)
 app.include_router(backup.router)
 app.include_router(usuarios.router)
 

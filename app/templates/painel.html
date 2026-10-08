@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% from "_macros.html" import pontos_progresso %}
+{% block titulo %}Painel — {{ nome_sistema }}{% endblock %}
+{% block conteudo %}
+<div class="cabecalho-pagina">
+  <h1>Painel do Supervisor</h1>
+  <div class="acoes-cabecalho">
+    <form method="get" action="/painel" class="form-mes">
+      <label>Mês
+        <input type="month" name="mes" value="{{ competencia | valor_campo_mes }}" onchange="this.form.requestSubmit()">
+      </label>
+      {% if responsavel_id %}<input type="hidden" name="responsavel" value="{{ responsavel_id }}">{% endif %}
+      {% if pendencia %}<input type="hidden" name="pendencia" value="1">{% endif %}
+    </form>
+  </div>
+</div>
+
+<article>
+  {% set t = dados.total %}
+  <div class="resumo-painel">
+    <div><strong>{{ dados.linhas | length }}</strong><span>empresa(s) na lista</span></div>
+    <div><strong>{{ dados.concluidas }}</strong><span>com {{ competencia | nome_competencia }} concluído</span></div>
+    <div><strong>{{ t.automatico if t.automatico is not none else '—' }}{% if t.automatico is not none %}%{% endif %}</strong>
+      <span>classificado sozinho (meta: 85% no 1º mês, 95% depois)</span></div>
+    <div><strong>{{ t.pendentes | milhar }}</strong><span>linha(s) pendente(s)</span></div>
+    <div><strong>{{ t.correcoes | milhar }}</strong><span>correção(ões) à mão</span></div>
+  </div>
+  <form method="get" action="/painel" class="filtros filtros-painel">
+    <input type="hidden" name="mes" value="{{ competencia | valor_campo_mes }}">
+    <select name="responsavel" aria-label="Responsável" onchange="this.form.requestSubmit()">
+      <option value="">Todos os responsáveis</option>
+      {% for u in usuarios %}<option value="{{ u.id }}" {% if u.id == responsavel_id %}selected{% endif %}>{{ u.nome }}</option>{% endfor %}
+    </select>
+    <label class="caixa-filtro"><input type="checkbox" name="pendencia" value="1" {% if pendencia %}checked{% endif %}
+      onchange="this.form.requestSubmit()"> Só as que ainda têm o que fazer</label>
+  </form>
+</article>
+
+{% if dados.linhas %}
+<div class="tabela-rolavel">
+  <table class="striped tabela-painel">
+    <thead>
+      <tr>
+        <th>Empresa</th><th>Responsável</th><th>Situação</th>
+        <th class="num" title="Movimentos dos extratos do mês">Mov.</th>
+        <th class="num">Aprovados</th><th class="num">Pendentes</th>
+        <th class="num" title="Aprovados sem ninguém mexer ÷ linhas que geram lançamento">% sozinho</th>
+        <th class="num" title="Conta escolhida à mão na Revisão">Correções</th>
+        <th class="num" title="Aprovados com a conta que a IA deu">Pela IA</th>
+        <th>Exportado</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for l in dados.linhas %}{% set n = l.numeros %}
+      <tr>
+        <td><a href="/empresas/{{ l.empresa.id }}?aba={{ l.aba }}&mes={{ competencia | valor_campo_mes }}">{{ l.empresa.nome }}</a>
+          <br><small class="suave">código {{ l.empresa.codigo_dominio }}</small></td>
+        <td>{{ l.empresa.responsavel.nome if l.empresa.responsavel else '—' }}</td>
+        <td>{{ pontos_progresso(l.etapas, l.atual) }}</td>
+        <td class="num">{{ n.movimentos or '—' }}</td>
+        <td class="num">{{ n.aprovados or '—' }}</td>
+        <td class="num">{% if n.pendentes %}<a href="/empresas/{{ l.empresa.id }}?aba=revisao&mes={{ competencia | valor_campo_mes }}" class="pendentes-painel">{{ n.pendentes }}</a>{% else %}—{% endif %}</td>
+        <td class="num">{% if n.automatico is not none %}<span class="{{ 'meta-ok' if n.automatico >= 85 else 'meta-abaixo' }}">{{ n.automatico }}%</span>{% else %}—{% endif %}</td>
+        <td class="num">{{ n.correcoes or '—' }}</td>
+        <td class="num">{{ n.pela_ia or '—' }}</td>
+        <td>{% if l.exportacao %}{{ l.exportacao.criado_em | data_hora }}<br><small class="suave">{{ l.exportacao.usuario.nome if l.exportacao.usuario else '' }} · {{ n.exportados }} linha(s)</small>{% else %}<span class="suave">—</span>{% endif %}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<article class="vazio"><p>{% if pendencia %}Nenhuma empresa com coisa a fazer em {{ competencia | nome_competencia }}. 🎉{% else %}Nenhuma empresa ativa{% if responsavel_id %} com esse responsável{% endif %}.{% endif %}</p></article>
+{% endif %}
+{% endblock %}

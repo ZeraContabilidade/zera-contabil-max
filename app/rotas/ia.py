@@ -9,6 +9,7 @@ from app.db import obter_sessao
 from app.ia.cliente import ErroIA
 from app.ia.servico import custo_estimado, dolar, inicio_do_mes, situacao_ia, testar_conexao
 from app.modelos import ChamadaIA, Empresa, Usuario
+from app.servicos.painel import uso_da_ia_por_empresa
 from app.web import avisar, pagina, redirecionar
 
 router = APIRouter()
@@ -47,6 +48,7 @@ def painel_ia(
         por_empresa=por_empresa,
         sem_empresa=sem_empresa,
         ultimas=ultimas,
+        uso=uso_da_ia_por_empresa(sessao),
     )
 
 

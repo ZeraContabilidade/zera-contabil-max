@@ -64,6 +64,30 @@
   {% endif %}
 </article>
 
+{% if uso %}
+<article>
+  <header><strong>O que a IA resolveu — desde o início</strong></header>
+  <p class="suave">Linhas resolvidas = movimentos aprovados com a conta que a IA deu (a IA de agosto é chamada em setembro,
+    por isso o custo é comparado com tudo o que ela já resolveu).</p>
+  <div class="tabela-rolavel">
+    <table class="striped">
+      <thead><tr><th>Empresa</th><th class="num">Chamadas</th><th class="num">Custo estimado</th><th class="num">Linhas resolvidas</th><th class="num">Custo por linha</th></tr></thead>
+      <tbody>
+        {% for u in uso %}
+        <tr>
+          <td><a href="/empresas/{{ u.empresa.id }}">{{ u.empresa.nome }}</a></td>
+          <td class="num">{{ u.chamadas | milhar }}</td>
+          <td class="num">{{ u.custo | dolar(4) }}</td>
+          <td class="num">{{ u.linhas | milhar }}</td>
+          <td class="num">{{ u.custo_por_linha | dolar(4) if u.custo_por_linha is not none else '—' }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</article>
+{% endif %}
+
 <article>
   <header><strong>Últimas chamadas</strong></header>
   {% if ultimas %}
