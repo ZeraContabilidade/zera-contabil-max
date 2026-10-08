@@ -18,7 +18,7 @@ Atualizado em: **07/10/2026**
 | 2 | ~~Chave da API~~ — colada no `.env` em 07/10 (lida do arquivo do usuário no Z:\, sem passar pelo chat); `pytest -m ia_real` ok nos dois modelos. Nunca pedir nem mostrar a chave. | — |
 | 3 | Limite mensal de IA: adotado o padrão **US$ 20** (`IA_LIMITE_MENSAL_USD`) até o usuário dizer outro valor | — |
 | 4 | ~~Diário.xls~~ — chegou em 07/10 (jan–jun/2026), copiado para `AMOSTRAS\historicos` | — |
-| 5 | Como a poupança BB 72637-0 é lançada hoje (conta própria ou tudo na conta 8)? O Diário enviado não responde (só tem o Passivo); os rendimentos vão a crédito de 2.2.2.01.000006 RENDIMENTO A APLICAR. O extrato da poupança já é lido; falta a conta contábil (o sistema avisa e deixa escolher na aba Plano → contas-chave). | Etapa 2.6 |
+| 5 | ~~Poupança sem conta no plano~~ — **respondido em 08/10: “se não tiver a conta no plano de contas, deixe em branco”**. Implementado: conta de banco fora do plano fica EM BRANCO no lançamento (aprovado normalmente; completa-se no Domínio). Na exportação (3.1) a linha com conta em branco **não bloqueia** — confirmar com o usuário se o Domínio aceita a importação assim ou se é preciso separar essas linhas. | Etapa 3.1 |
 | 7 | ~~OFX real~~ — o usuário indicou os OFX da APAE (228) no Z:\ em 07/10; 36 copiados para `AMOSTRAS\EXTRATOS\OFX APAE 2025-12`. | — |
 | 6 | **Diário completo** (todas as contas) da Casa Criança — o enviado em 07/10 foi impresso só com o Passivo. Com ele o sistema aprende também as contas de banco, despesas e receitas. Não bloqueia. | quando puder |
 
@@ -56,6 +56,10 @@ Atualizado em: **07/10/2026**
 ### Fase 4 — Extras (um por vez, quando pedido)
 
 ## Histórico
+
+### 08/10/2026 — Conta fora do plano fica em branco (resposta da pendência 5)
+- Usuário: “se não tiver a conta no plano de contas deixe em branco”. A classificação agora aprova com o lado do banco **em branco** quando a conta bancária não tem conta contábil (poupança da Casa Criança): rendimentos/IR da poupança (D em branco / C 10586; D 31 / C em branco) e transferências com ela (lançadas uma vez, a outra ponta “sem lançamento”). Transferência cujo outro extrato não chegou também é lançada com a outra conta em branco (90% quando o histórico diz poupança/aplicação/resgate). A IA também olha movimentos de conta sem conta contábil. Tela: “em branco” no lugar de “?”.
+- **Real (agosto, CC + poupança, só regras):** 77 movimentos → **50 aprovados**, 19 sem lançamento (a 2ª ponta das transferências), 3 para conferir, 5 pendentes (a IA resolve: ver 2.7).
 
 ### 08/10/2026 — Etapa 2.7 concluída (IA no que sobrou)
 - `app/servicos/classificacao_ia.py`: depois de cada importação (e do “Classificar de novo”), **sozinho**, a IA (modelo rápido, lotes de 40, até 5 lotes por vez) olha as sugestões pendentes e amarelas com a conta do banco conhecida (não as do usuário, da própria IA ou de transferência). Contexto estável (cache): plano analítico, contas mais usadas no histórico com exemplos de favorecidos, favorecidos/palavras aprendidos, contas-chave, perfil. A IA devolve só a contrapartida + favorecido, natureza, confiança, justificativa. **Conferida:** conta existe, analítica, não é a do banco; resposta inválida ou “não sei” não apaga o que as regras acharam; só troca se a confiança da IA for maior. ≥ 90 → aprovado.

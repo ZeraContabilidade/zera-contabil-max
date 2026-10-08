@@ -146,17 +146,19 @@ def test_classifica_pelo_que_aprendeu_e_pelas_regras(empresa, sessao):
 def test_transferencia_sem_o_outro_extrato_e_sem_conta_da_poupanca(empresa, sessao):
     importar_extrato(sessao, empresa, "cc.pdf", b"%PDF-falso", None)
     sozinha = sugestoes(sessao)[("ASSOCIACAO EXEMPLO", "500.00")]
-    assert sozinha[:2] == ("PENDENTE", "TRANSFERENCIA")  # o extrato da poupança ainda não chegou
+    # o extrato da poupança ainda não chegou: lançada com a outra conta em branco (decisão do escritório)
+    assert sozinha[:4] == ("APROVADO", "TRANSFERENCIA", None, 8)
 
-    poupanca = sessao.scalar(select(ContaChave).where(ContaChave.tipo == "POUPANCA"))
     importar_extrato(sessao, empresa, "poupanca.pdf", b"%PDF-falso", None)
     poupanca = sessao.scalar(select(ContaChave).where(ContaChave.tipo == "POUPANCA"))
-    poupanca.conta_id = None  # a poupança sem conta contábil (como na Casa Criança)
+    poupanca.conta_id = None  # a poupança sem conta no plano (como na Casa Criança): fica em branco
     classificar(sessao, empresa, date(2026, 8, 1), date(2026, 8, 31))
-    pares = [v for k, v in sugestoes(sessao).items() if k[0] == "ASSOCIACAO EXEMPLO"]
-    assert all(v[:2] == ("PENDENTE", "TRANSFERENCIA") for v in pares)
+    pares = sorted(v[:4] for k, v in sugestoes(sessao).items() if k[0] == "ASSOCIACAO EXEMPLO")
+    assert pares == [("APROVADO", "TRANSFERENCIA", None, 8), ("IGNORADO", "TRANSFERENCIA", None, None)]
     movimento = sessao.scalar(select(MovimentoExtrato).where(MovimentoExtrato.historico == "Aplicação Poupança"))
-    assert "não tem conta contábil" in movimento.sugestao.justificativa
+    assert "Conta do banco em branco" in movimento.sugestao.justificativa
+    juros = sugestoes(sessao)[("Juros", "3.21")]
+    assert juros[:4] == ("APROVADO", "REGRA", None, 10107)  # rendimento da poupança: banco em branco
 
     poupanca.conta_id = sessao.scalar(select(ContaContabil.id).where(ContaContabil.reduzido == 8))  # mesma conta
     classificar(sessao, empresa, date(2026, 8, 1), date(2026, 8, 31))

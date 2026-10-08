@@ -114,8 +114,8 @@
           <td class="num">{% if m.sentido == 'SAIDA' %}{{ m.valor | reais }}{% endif %}</td>
           <td>
             {% if s and s.status != 'IGNORADO' %}
-            <span class="lancamento">D <span title="{{ s.conta_debito.descricao if s.conta_debito else 'falta a conta' }}">{{ s.conta_debito.reduzido if s.conta_debito else '?' }}</span>
-              · C <span title="{{ s.conta_credito.descricao if s.conta_credito else 'falta a conta' }}">{{ s.conta_credito.reduzido if s.conta_credito else '?' }}</span></span>
+            <span class="lancamento">D <span title="{{ s.conta_debito.descricao if s.conta_debito else 'falta a conta' }}">{{ s.conta_debito.reduzido if s.conta_debito else ('em branco' if s.status == 'APROVADO' else '?') }}</span>
+              · C <span title="{{ s.conta_credito.descricao if s.conta_credito else 'falta a conta' }}">{{ s.conta_credito.reduzido if s.conta_credito else ('em branco' if s.status == 'APROVADO' else '?') }}</span></span>
             {% set contrapartida = s.conta_debito if m.sentido == 'SAIDA' else s.conta_credito %}
             {% if contrapartida %}<small class="suave"> {{ contrapartida.descricao }}</small>{% endif %}
             {% if s.complemento %}<br><small>{{ s.complemento }}</small>{% endif %}

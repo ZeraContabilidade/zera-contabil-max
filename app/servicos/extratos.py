@@ -263,9 +263,9 @@ def importar_extrato(
         avisos.insert(
             0,
             Aviso(
-                f"Não encontrei no plano a conta contábil da {conta.rotulo}. Escolha na aba Plano de Contas "
-                "(contas-chave) ou crie a conta no Domínio e reimporte o plano."
-                + (f" ({aviso_ia})" if aviso_ia else "")
+                f"Não encontrei no plano a conta contábil da {conta.rotulo}: nos lançamentos ela fica em branco "
+                "(complete no Domínio). Se a conta existir, escolha na aba Plano de Contas (contas-chave) ou crie "
+                "no Domínio e reimporte o plano." + (f" ({aviso_ia})" if aviso_ia else "")
             ),
         )
     importacao.resumo = {

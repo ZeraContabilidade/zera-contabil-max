@@ -102,7 +102,7 @@ AMOSTRAS/       arquivos reais da Casa Criança (fora do Git)
 ## Fatos das amostras (complementam §11)
 - `AMOSTRAS/PLANO DE CONTAS/contas crianca.csv` é o **TXT de largura fixa do Domínio** com extensão errada (1.190 contas) → detectar o formato pelo conteúdo, não pela extensão.
 - O plano da Casa Criança tem **22 classificações usadas por 44 contas** (ex.: 492 VALE TRANSPORTE e 10585 DESPESA COM RESCISÃO = 3.2.2.01.000010) → ao converter classificação → reduzido, usar também a descrição. A conta 10598 é analítica com classificação de nível 4.
-- O plano **não tem conta para a poupança BB 72637-0** (só "APLIC BB" e "APLIC BB nnnn" de outras contas).
+- O plano **não tem conta para a poupança BB 72637-0** (só "APLIC BB" e "APLIC BB nnnn" de outras contas). **Decisão do escritório (08/10): conta que não existe no plano fica EM BRANCO** — os lançamentos da poupança e as transferências com ela são aprovados com o lado da poupança vazio (completa no Domínio); não inventar conta nem travar a linha. Contrapartida que ninguém achou continua pendente (isso é diferente de conta inexistente).
 - No TXT do Domínio a coluna 68 traz **sempre** o tipo S/A (a descrição é cortada em 40 letras, não invade o tipo). Confiar no tipo do arquivo; a hierarquia discorda em 60 contas (grupos vazios, analíticas com classificação de grupo como a 10598).
 - O plano da Casa Criança repete descrições em grupos diferentes (5× “ÁGUA E ESGOTO”: 355, 10491, 10543, 10490, 10270, 10486) — o lanctos.txt usa a 355. Classificar pelo histórico da empresa, não só pela descrição.
 - `AMOSTRAS/PLANO DE CONTAS/contas.txt` = plano de outra entidade (máscara 1.1.2.2.3.4, reduzidos 1000–7005) → 2º caso de teste.

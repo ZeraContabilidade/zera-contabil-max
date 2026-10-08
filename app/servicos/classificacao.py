@@ -176,14 +176,18 @@ def _transferencia(ctx: Contexto, movimento: MovimentoExtrato) -> Proposta | Non
     if par is None:
         if not _da_empresa(movimento):
             return None
+        # a outra ponta não está no sistema (extrato não enviado ou conta fora do plano): a outra conta fica em branco
+        banco = ctx.banco(movimento)
+        explicito = bool(re.search(r"POUP|APLICAC|RESGAT", _texto(movimento)))
         return Proposta(
             None,
-            50,
+            90 if explicito else 70,
             "TRANSFERENCIA",
-            "Parece transferência entre contas da própria empresa, mas o "
-            "extrato da outra conta ainda não está no sistema.",
+            "Transferência entre contas da própria empresa; a outra conta fica em branco (o extrato dela não está "
+            "no sistema).",
             favorecido=movimento.complemento or "",
             natureza="TRANSFERENCIA ENTRE CONTAS",
+            debito_credito=(None, banco) if movimento.sentido == "SAIDA" else (banco, None),
         )
     ctx.pares_usados.update({movimento.id, par.id})
     ctx.par_de[par.id] = movimento
@@ -191,14 +195,21 @@ def _transferencia(ctx: Contexto, movimento: MovimentoExtrato) -> Proposta | Non
     origem, destino = ctx.banco(saida), ctx.banco(entrada)
     rotulo = f"{saida.conta_bancaria.rotulo} → {entrada.conta_bancaria.rotulo}"
     base = {"favorecido": "TRANSFERENCIA ENTRE CONTAS", "natureza": "TRANSFERENCIA ENTRE CONTAS", "par": par}
-    if origem is None or destino is None:
-        falta = saida.conta_bancaria if origem is None else entrada.conta_bancaria
+    if (origem is None or destino is None) and movimento is entrada:
         return Proposta(
             None,
-            50,
+            98,
             "TRANSFERENCIA",
-            f"Transferência entre contas da empresa ({rotulo}), mas a "
-            f"{falta.rotulo} não tem conta contábil: escolha nas contas-chave (aba Plano de Contas).",
+            f"Transferência entre contas da empresa ({rotulo}): lançada na saída da outra conta.",
+            status="IGNORADO",
+            **base,
+        )
+    if origem is None or destino is None:  # a conta que não existe no plano fica em branco (decisão do escritório)
+        return Proposta(
+            None,
+            98,
+            "TRANSFERENCIA",
+            f"Transferência entre contas da empresa ({rotulo}).",
             debito_credito=(destino, origem),
             **base,
         )
@@ -451,10 +462,19 @@ def _gravar(sessao, ctx: Contexto, movimento: MovimentoExtrato, proposta: Propos
         debito, credito = banco, proposta.contrapartida
     justificativa = proposta.justificativa
     confianca = proposta.confianca
-    if proposta.status != "IGNORADO" and (debito is None or credito is None) and confianca >= 70:
-        confianca = 60  # falta um lado: não pode ser aprovado
-        if banco is None:
-            justificativa += f" A {movimento.conta_bancaria.rotulo} não tem conta contábil (contas-chave)."
+    if proposta.status != "IGNORADO":
+        # conta de banco que não existe no plano (ex.: a poupança) fica EM BRANCO — decisão do escritório, completa
+        # no Domínio; já a contrapartida que ninguém achou deixa a linha pendente
+        transferencia = proposta.debito_credito is not None
+        falta_contrapartida = not transferencia and proposta.contrapartida is None
+        banco_em_branco = (debito is None or credito is None) if transferencia else banco is None
+        if falta_contrapartida and confianca >= 70:
+            confianca = 60
+        if banco_em_branco:
+            justificativa += (
+                " Conta do banco em branco: ela não existe no plano de contas (complete no Domínio ou escolha "
+                "nas contas-chave)."
+            )
     if proposta.status == "IGNORADO":
         status = "IGNORADO"
         resultado.sem_lancamento += 1

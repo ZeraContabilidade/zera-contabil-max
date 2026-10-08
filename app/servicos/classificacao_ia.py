@@ -139,27 +139,29 @@ def montar_contexto(sessao: Session, empresa: Empresa) -> str:
 
 
 def candidatas(sessao: Session, empresa: Empresa, movimentos: list[MovimentoExtrato]) -> list[Sugestao]:
-    """O que vale perguntar à IA: pendente ou amarela, com a conta do banco conhecida."""
+    """O que vale perguntar à IA: pendente ou amarela (a conta do banco pode estar em branco: fora do plano)."""
     escolhidas = []
     for movimento in movimentos:
         sugestao = movimento.sugestao
-        chave = movimento.conta_bancaria.conta_chave
         if (
             sugestao is not None
             and sugestao.status == "PENDENTE"
             and sugestao.confianca < LIMIAR_APROVACAO
             and sugestao.origem not in NAO_PERGUNTAR
             and not sugestao.revisado_ia
-            and chave is not None
-            and chave.conta_id is not None
         ):
             escolhidas.append(sugestao)
     return escolhidas
 
 
+def _banco(movimento: MovimentoExtrato, contas: dict[int, ContaContabil]) -> ContaContabil | None:
+    chave = movimento.conta_bancaria.conta_chave
+    return contas.get(chave.conta_id) if chave and chave.conta_id else None
+
+
 def _linha(numero: int, sugestao: Sugestao, contas: dict[int, ContaContabil]) -> str:
     m = sugestao.movimento
-    banco = contas[m.conta_bancaria.conta_chave.conta_id]
+    banco = _banco(m, contas)
     atual = ""
     if sugestao.confianca >= 70:  # amarela: mostra o que as regras acharam
         contrapartida = sugestao.conta_debito if m.sentido == "SAIDA" else sugestao.conta_credito
@@ -168,7 +170,7 @@ def _linha(numero: int, sugestao: Sugestao, contas: dict[int, ContaContabil]) ->
     sentido = "SAÍDA (pagamento)" if m.sentido == "SAIDA" else "ENTRADA (recebimento)"
     return (
         f"{numero}. {m.data:%d/%m/%Y} | {sentido} | R$ {m.valor} | {m.historico} | {m.complemento or '-'} | "
-        f"banco: {banco.reduzido} {banco.descricao}{atual}"
+        f"banco: {f'{banco.reduzido} {banco.descricao}' if banco else '(sem conta no plano)'}{atual}"
     )
 
 
@@ -242,12 +244,12 @@ def classificar_com_ia(
 
 def _aplicar(empresa, sugestao: Sugestao, item: dict, contas, por_reduzido, resultado: ResultadoIA) -> None:
     movimento = sugestao.movimento
-    banco = contas[movimento.conta_bancaria.conta_chave.conta_id]
+    banco = _banco(movimento, contas)
     conta = por_reduzido.get(item.get("conta"))
     confianca = max(0, min(100, int(item.get("confianca") or 0)))
     justificativa = " ".join(str(item.get("justificativa") or "").split())[:300]
     sugestao.revisado_ia = True  # respondida (mesmo que não sirva): não pergunta de novo
-    if conta is None or not conta.analitica or conta.id == banco.id:
+    if conta is None or not conta.analitica or (banco is not None and conta.id == banco.id):
         if item.get("conta"):
             resultado.recusadas += 1
         conta, confianca = None, 0
