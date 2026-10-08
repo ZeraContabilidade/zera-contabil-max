@@ -234,6 +234,12 @@ tr.inativa td { opacity: .6; }
 .barra-lote input[name="conta"] { flex: 1 1 260px; width: auto; margin: 0; padding: .35rem .6rem; font-size: .9rem; height: auto; }
 .barra-lote button[type="submit"] { margin: 0; padding: .3rem .8rem; font-size: .85rem; width: auto; min-width: 0; }
 .tabela-revisao input[type="checkbox"] { margin: 0; }
+.aguarda-conta { color: var(--ambar); }
+.lista-fornecedores { border-left: 3px solid var(--ambar); }
+.botao-pequeno { padding: .3rem .8rem; font-size: .85rem; margin-left: auto; }
+.form-fornecedor { display: flex; flex-wrap: wrap; gap: .4rem; align-items: center; margin: 0; }
+.form-fornecedor input[name="conta"] { flex: 1 1 180px; width: auto; margin: 0; padding: .3rem .6rem; font-size: .85rem; height: auto; }
+.form-fornecedor button[type="submit"] { margin: 0; padding: .25rem .7rem; font-size: .8rem; width: auto; min-width: 0; }
 .grade-colunas { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 0 1rem; }
 details.aviso { padding: .55rem 1rem; }
 details.aviso summary { font-size: .92rem; }

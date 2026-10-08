@@ -28,6 +28,39 @@
     Para várias linhas de uma vez, marque as caixinhas e use a barra acima da grade.</p>
 </article>
 
+{% if fornecedores %}
+<article class="lista-fornecedores">
+  <header class="cabecalho-pagina"><strong>Fornecedores a cadastrar no Domínio ({{ fornecedores | length }})</strong>
+    <a href="/empresas/{{ empresa.id }}/fornecedores-a-cadastrar.xlsx" role="button" class="secondary outline botao-pequeno">Baixar Excel</a></header>
+  <p class="suave">Crie estas contas no Domínio{% if empresa.grupo_fornecedores %} no grupo <strong>{{ empresa.grupo_fornecedores }}</strong>{% endif %}
+    e reimporte o plano de contas: o sistema dá baixa sozinho e as linhas recebem a conta. Ou informe aqui o código da conta criada.</p>
+  <div class="tabela-rolavel">
+    <table class="striped">
+      <thead><tr><th>Nome da conta a criar</th><th>CNPJ/CPF</th><th>Grupo</th><th class="num">Linhas</th><th class="num">Valor</th><th>Resolver</th></tr></thead>
+      <tbody>
+        {% for item in fornecedores %}{% set f = item.fornecedor %}
+        <tr>
+          <td>{{ f.nome }}{% if f.origem == 'IA' %} <small class="suave" title="{{ f.justificativa or '' }}">🤖 IA</small>{% endif %}</td>
+          <td>{{ f.cnpj_cpf | documento if f.cnpj_cpf else '—' }}</td>
+          <td>{{ f.grupo or '—' }}</td>
+          <td class="num">{{ item.linhas }}</td>
+          <td class="num">{{ item.valor | reais }}</td>
+          <td>
+            <form method="post" action="/empresas/{{ empresa.id }}/fornecedores/{{ f.id }}" class="form-fornecedor">
+              <input type="hidden" name="mes" value="{{ competencia | valor_campo_mes }}">
+              <input name="conta" list="contas-revisao" placeholder="código da conta criada" aria-label="Conta criada para {{ f.nome }}" autocomplete="off">
+              <button type="submit" name="acao" value="cadastrado">Já cadastrei</button>
+              <button type="submit" name="acao" value="descartar" class="secondary outline">Não é fornecedor</button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</article>
+{% endif %}
+
 {% if sugestoes %}
 <form method="post" action="/empresas/{{ empresa.id }}/revisao/lote" id="form-lote" class="barra-lote" data-aguarde="Gravando…">
   <input type="hidden" name="mes" value="{{ competencia | valor_campo_mes }}">
@@ -51,12 +84,14 @@
     </tbody>
   </table>
 </div>
-<datalist id="contas-revisao">
-  {% for rotulo, sem_acento in contas_lista %}<option value="{{ rotulo }}" label="{{ sem_acento }}"></option>{% endfor %}
-</datalist>
 {% elif contagem.total %}
 <article class="vazio"><p>Nada {{ 'precisa de atenção' if filtro == 'atencao' else 'neste filtro' }} em {{ competencia | nome_competencia }}. 🎉
   <a href="/empresas/{{ empresa.id }}?aba=revisao&mes={{ competencia | valor_campo_mes }}&filtro=todos">Ver todas as linhas</a></p></article>
 {% else %}
 <article class="vazio"><p>Nenhum extrato em {{ competencia | nome_competencia }}. Envie os extratos na aba Extratos.</p></article>
+{% endif %}
+{% if sugestoes or fornecedores %}
+<datalist id="contas-revisao">
+  {% for rotulo, sem_acento in contas_lista %}<option value="{{ rotulo }}" label="{{ sem_acento }}"></option>{% endfor %}
+</datalist>
 {% endif %}

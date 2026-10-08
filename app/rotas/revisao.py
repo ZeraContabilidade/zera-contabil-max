@@ -15,6 +15,7 @@ from app.modelos import ContaContabil, Empresa, Sugestao, Usuario
 from app.rotas.comum import buscar_empresa
 from app.servicos.competencia import valor_campo_mes
 from app.servicos.contas_chave import normalizar
+from app.servicos.fornecedores import lista, pela_linha
 from app.servicos.revisao import (
     ACOES_LOTE,
     FILTROS,
@@ -43,6 +44,7 @@ ORIGENS = {
     "PENDENTE": "não reconhecido",
     "IA": "🤖 IA",
     "USUARIO": "escolhido à mão",
+    "FORNECEDOR": "fornecedor novo",
 }
 
 
@@ -71,6 +73,7 @@ def contexto_aba_revisao(
         "contas_lista": contas_para_escolher(sessao, empresa),
         "origens": ORIGENS,
         "contrapartida": contrapartida,
+        "fornecedores": lista(sessao, empresa),
     }
 
 
@@ -169,6 +172,13 @@ def conferir_linha(
         ignorar(sessao, sugestao, usuario)
     elif acao == "reabrir":
         reabrir(sessao, sugestao)
+    elif acao == "fornecedor":
+        if not empresa.usa_conta_individual:
+            erro = "Esta empresa não usa conta individual por fornecedor (veja o Cadastro): escolha a conta."
+        elif sugestao.movimento.sentido != "SAIDA":
+            erro = "Só pagamentos (saídas) vão para a lista de fornecedores a cadastrar."
+        elif pela_linha(sessao, empresa, sugestao) is None:
+            erro = "Não achei o nome do fornecedor nesta linha: escolha a conta."
     else:
         erro = "Ação desconhecida."
     if erro:

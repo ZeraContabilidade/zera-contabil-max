@@ -5,10 +5,12 @@ from app.modelos.base import Auditavel, Base
 from app.modelos.conta_chave import ContaChave
 from app.modelos.empresa import Empresa, Regime
 from app.modelos.extrato import (
+    SITUACOES_FORNECEDOR,
     STATUS_SUGESTAO,
     TIPOS_CONTA,
     ContaBancaria,
     Extrato,
+    FornecedorACadastrar,
     ModeloPlanilha,
     MovimentoExtrato,
     Sugestao,
@@ -29,6 +31,7 @@ __all__ = [
     "ContaContabil",
     "Empresa",
     "Extrato",
+    "FornecedorACadastrar",
     "Importacao",
     "LancamentoHistorico",
     "Log",
@@ -37,6 +40,7 @@ __all__ = [
     "Padrao",
     "Papel",
     "Regime",
+    "SITUACOES_FORNECEDOR",
     "STATUS_SUGESTAO",
     "Sugestao",
     "TIPOS_CONTA",

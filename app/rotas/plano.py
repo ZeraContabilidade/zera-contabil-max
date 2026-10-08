@@ -16,6 +16,7 @@ from app.servicos.contas_chave import (
     contas_chave_da_empresa,
     nome_do_tipo,
 )
+from app.servicos.fornecedores import dar_baixa
 from app.servicos.plano import (
     ErroLeitura,
     buscar_contas,
@@ -100,6 +101,14 @@ def _configurar_sozinho(request: Request, sessao: Session, empresa: Empresa, usu
     resultado = auto_configurar(sessao, empresa, usuario)
     sessao.commit()
     avisar_auto_configuracao(request, resultado)
+    if baixados := dar_baixa(sessao, empresa):  # contas novas dos fornecedores a cadastrar
+        sessao.commit()
+        nomes = ", ".join(f"{f.nome} → {f.conta.reduzido}" for f in baixados)
+        avisar(
+            request,
+            f"{len(baixados)} fornecedor(es) ganharam conta no plano e saíram da lista “Fornecedores a cadastrar”: "
+            f"{nomes}. As linhas deles já receberam a conta.",
+        )
 
 
 @router.post("/empresas/{empresa_id}/plano/copiar")

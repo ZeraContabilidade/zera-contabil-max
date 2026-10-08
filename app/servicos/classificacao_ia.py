@@ -28,6 +28,7 @@ from app.modelos import (
 )
 from app.servicos.classificacao import Proposta, complemento_da_proposta
 from app.servicos.contas_chave import naturezas, nome_do_tipo
+from app.servicos.fornecedores import pela_ia
 
 TAMANHO_LOTE = 40
 MAXIMO_DE_LOTES = 5  # por vez (200 linhas); o resto fica para o próximo “Classificar de novo”
@@ -48,6 +49,12 @@ REPASSE MUNICIPAL).
 - confianca de 0 a 100: 90+ só quando o histórico da empresa mostra claramente essa conta para esse tipo de \
 movimento; 70–89 quando é provável; abaixo de 70 quando é palpite. Sem ideia: conta 0 e confiança 0.
 - justificativa: uma frase curta em português dizendo por quê.
+- conta_a_criar: só quando o contexto diz que a empresa usa CONTA INDIVIDUAL POR FORNECEDOR e a linha é \
+pagamento a um fornecedor (compra, serviço) que deveria ter conta própria no grupo de fornecedores, mas essa conta \
+NÃO existe no plano: escreva o nome da conta a criar (nome do fornecedor, maiúsculas, até 40 letras) e responda \
+conta 0. Salário, imposto, tarifa, transferência e quem já tem conta no plano nunca vão para conta_a_criar. Nos \
+outros casos conta_a_criar fica vazio "". Empresa SEM conta individual: pagamento a fornecedor sem conta melhor vai \
+para a conta genérica de fornecedores (contas-chave).
 Responda um item para cada id recebido."""
 
 ESQUEMA = {
@@ -64,8 +71,9 @@ ESQUEMA = {
                     "natureza": {"type": "string"},
                     "confianca": {"type": "integer"},
                     "justificativa": {"type": "string"},
+                    "conta_a_criar": {"type": "string"},
                 },
-                "required": ["id", "conta", "favorecido", "natureza", "confianca", "justificativa"],
+                "required": ["id", "conta", "favorecido", "natureza", "confianca", "justificativa", "conta_a_criar"],
                 "additionalProperties": False,
             },
         }
@@ -81,6 +89,11 @@ def montar_contexto(sessao: Session, empresa: Empresa) -> str:
     natureza = naturezas(contas)
     por_id = {c.id: c for c in contas}
     linhas = [f"EMPRESA: {empresa.nome}"]
+    if empresa.usa_conta_individual:
+        grupo = f" (grupo {empresa.grupo_fornecedores})" if empresa.grupo_fornecedores else ""
+        linhas.append(f"CONTA INDIVIDUAL POR FORNECEDOR: sim{grupo}")
+    else:
+        linhas.append("CONTA INDIVIDUAL POR FORNECEDOR: não")
     if empresa.perfil_ia:
         linhas.append(f"PERFIL: {empresa.perfil_ia}")
 
@@ -150,6 +163,7 @@ def candidatas(sessao: Session, empresa: Empresa, movimentos: list[MovimentoExtr
             and sugestao.origem not in NAO_PERGUNTAR
             and not sugestao.revisado_ia
             and sugestao.conferido_por_id is None
+            and sugestao.fornecedor_id is None
         ):
             escolhidas.append(sugestao)
     return escolhidas
@@ -182,6 +196,7 @@ class ResultadoIA:
     amarelas: int = 0
     vermelhas: int = 0
     recusadas: int = 0  # conta inexistente, sintética ou a do próprio banco
+    fornecedores: int = 0  # linhas que foram esperar a conta de um fornecedor a cadastrar
     aviso: str = ""
 
     def resumo(self) -> str:
@@ -191,6 +206,8 @@ class ResultadoIA:
         )
         if self.recusadas:
             texto += f" ({self.recusadas} resposta(s) com conta inválida foram descartadas)"
+        if self.fornecedores:
+            texto += f"; {self.fornecedores} pagamento(s) a fornecedor sem conta foram para “Fornecedores a cadastrar”"
         return texto + "."
 
 
@@ -236,20 +253,28 @@ def classificar_com_ia(
             for i, sugestao in enumerate(lote, 1):
                 if (item := respostas.get(i)) is not None:
                     resultado.perguntadas += 1
-                    _aplicar(empresa, sugestao, item, contas, por_reduzido, resultado)
+                    _aplicar(sessao, empresa, sugestao, item, contas, por_reduzido, resultado)
         sessao.flush()
     finally:
         sessao.info.pop("auditoria_em_bloco", None)
     return resultado
 
 
-def _aplicar(empresa, sugestao: Sugestao, item: dict, contas, por_reduzido, resultado: ResultadoIA) -> None:
+def _aplicar(sessao, empresa, sugestao: Sugestao, item: dict, contas, por_reduzido, resultado: ResultadoIA) -> None:
     movimento = sugestao.movimento
     banco = _banco(movimento, contas)
     conta = por_reduzido.get(item.get("conta"))
     confianca = max(0, min(100, int(item.get("confianca") or 0)))
     justificativa = " ".join(str(item.get("justificativa") or "").split())[:300]
     sugestao.revisado_ia = True  # respondida (mesmo que não sirva): não pergunta de novo
+    a_criar = str(item.get("conta_a_criar") or "").strip()
+    if a_criar and empresa.usa_conta_individual and movimento.sentido == "SAIDA":
+        natureza = " ".join(str(item.get("natureza") or "").upper().split())[:200]
+        if pela_ia(sessao, empresa, sugestao, a_criar, natureza, justificativa) is not None:
+            resultado.fornecedores += 1
+            resultado.verdes += sugestao.status == "APROVADO"  # a conta já existia com nome parecido
+            resultado.vermelhas += sugestao.status != "APROVADO"
+            return
     if conta is None or not conta.analitica or (banco is not None and conta.id == banco.id):
         if item.get("conta"):
             resultado.recusadas += 1

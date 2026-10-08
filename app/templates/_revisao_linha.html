@@ -12,7 +12,8 @@
     {% else %}
     <span class="lancamento">D <span title="{{ s.conta_debito.descricao if s.conta_debito else '' }}">{{ s.conta_debito.reduzido if s.conta_debito else ('em branco' if s.status != 'PENDENTE' or cp else '?') }}</span>
       · C <span title="{{ s.conta_credito.descricao if s.conta_credito else '' }}">{{ s.conta_credito.reduzido if s.conta_credito else ('em branco' if s.status != 'PENDENTE' or cp else '?') }}</span></span>
-    {% if cp %}<small class="suave"> {{ cp.descricao }}</small>{% endif %}
+    {% if cp %}<small class="suave"> {{ cp.descricao }}</small>
+    {% elif s.fornecedor and s.fornecedor.situacao == 'A_CADASTRAR' %}<br><small class="aguarda-conta">cadastrar “{{ s.fornecedor.nome }}” no Domínio</small>{% endif %}
     {% endif %}
   </td>
   <td>
@@ -32,6 +33,9 @@
         <button type="submit" name="acao" value="salvar">Salvar</button>
         {% if s.status == 'PENDENTE' and cp %}<button type="submit" name="acao" value="aprovar" class="secondary">Aprovar</button>{% endif %}
         {% if s.status != 'IGNORADO' %}<button type="submit" name="acao" value="ignorar" class="secondary outline">Ignorar</button>{% endif %}
+        {% if empresa.usa_conta_individual and m.sentido == 'SAIDA' and s.status == 'PENDENTE' and not cp and not s.fornecedor_id %}
+        <button type="submit" name="acao" value="fornecedor" class="secondary outline"
+                title="Mandar para a lista “Fornecedores a cadastrar no Domínio”">Fornecedor novo</button>{% endif %}
         {% if s.conferido_por_id or s.status == 'IGNORADO' %}<button type="submit" name="acao" value="reabrir" class="secondary outline">Reabrir</button>{% endif %}
       </div>
       {% if erro %}<small class="erro-linha" role="alert">{{ erro }}</small>{% endif %}

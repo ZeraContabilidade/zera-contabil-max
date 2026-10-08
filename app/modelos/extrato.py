@@ -116,6 +116,34 @@ class ModeloPlanilha(Auditavel, Base):
     confirmado_em: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
+SITUACOES_FORNECEDOR = {"A_CADASTRAR": "A cadastrar", "CADASTRADO": "Cadastrado", "DESCARTADO": "Não é fornecedor"}
+
+
+class FornecedorACadastrar(Auditavel, Base):
+    """Fornecedor sem conta no plano de uma empresa com conta individual por fornecedor (§3.5, §6.2 passo 7).
+
+    As linhas do extrato pagas a ele ficam pendentes até a conta existir: quando o plano é reimportado com uma
+    conta nova de nome parecido (no grupo de fornecedores), ele sai da lista sozinho e as linhas recebem a conta."""
+
+    __tablename__ = "fornecedor_a_cadastrar"
+    __table_args__ = (UniqueConstraint("empresa_id", "chave"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    empresa_id: Mapped[int] = mapped_column(ForeignKey("empresa.id"), index=True)
+    nome: Mapped[str] = mapped_column(String(120))  # nome sugerido para a conta no Domínio
+    chave: Mapped[str] = mapped_column(String(200))  # nome normalizado (o mesmo fornecedor não entra duas vezes)
+    cnpj_cpf: Mapped[str | None] = mapped_column(String(14))  # só quando está escrito no extrato
+    grupo: Mapped[str | None] = mapped_column(String(40))  # onde criar a conta (ex.: 2.1.3.01)
+    origem: Mapped[str] = mapped_column(String(10))  # IA ou USUARIO
+    situacao: Mapped[str] = mapped_column(String(12), default="A_CADASTRAR")
+    conta_id: Mapped[int | None] = mapped_column(ForeignKey("conta_contabil.id"))  # a conta criada no Domínio
+    justificativa: Mapped[str | None] = mapped_column(Text)
+    criado_em: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    resolvido_em: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+    conta: Mapped[ContaContabil | None] = relationship()
+
+
 STATUS_SUGESTAO = {
     "PENDENTE": "Pendente",
     "APROVADO": "Aprovado",
@@ -151,6 +179,8 @@ class Sugestao(Auditavel, Base):
     # o usuário conferiu na Revisão (aprovou, corrigiu ou ignorou): a classificação automática e a IA não mexem mais
     conferido_por_id: Mapped[int | None] = mapped_column(ForeignKey("usuario.id"))
     conferido_em: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # pago a um fornecedor que ainda não tem conta: fica pendente (e a classificação não mexe) até a conta existir
+    fornecedor_id: Mapped[int | None] = mapped_column(ForeignKey("fornecedor_a_cadastrar.id", ondelete="SET NULL"))
     atualizado_em: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
@@ -158,6 +188,7 @@ class Sugestao(Auditavel, Base):
     movimento: Mapped[MovimentoExtrato] = relationship(foreign_keys=[movimento_id], back_populates="sugestao")
     conta_debito: Mapped[ContaContabil | None] = relationship(foreign_keys=[conta_debito_id])
     conta_credito: Mapped[ContaContabil | None] = relationship(foreign_keys=[conta_credito_id])
+    fornecedor: Mapped[FornecedorACadastrar | None] = relationship()
 
     campos_nao_auditados = ("atualizado_em",)
 

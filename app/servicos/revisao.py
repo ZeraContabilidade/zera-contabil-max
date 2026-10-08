@@ -145,6 +145,12 @@ def _conferir(sugestao: Sugestao, usuario: Usuario | None, status: str) -> None:
     sugestao.conferido_em = datetime.now(UTC)
 
 
+def _sair_da_espera(sugestao: Sugestao) -> None:
+    """O usuário decidiu a linha: ela não espera mais a conta de um fornecedor a cadastrar."""
+    if sugestao.fornecedor is not None and sugestao.fornecedor.situacao == "A_CADASTRAR":
+        sugestao.fornecedor = None
+
+
 def aprovar(sessao: Session, sugestao: Sugestao, usuario: Usuario | None) -> str | None:
     """Aprova como está. Devolve um erro em português quando a linha não pode ser aprovada."""
     if contrapartida(sugestao) is None and sugestao.origem != "TRANSFERENCIA":
@@ -169,12 +175,14 @@ def corrigir(
     sugestao.origem = "USUARIO"
     sugestao.confianca = 100
     sugestao.justificativa = "Escolhido na Revisão."
+    _sair_da_espera(sugestao)
     _conferir(sugestao, usuario, "APROVADO")
     _aprender_com(sessao, sugestao)
 
 
 def ignorar(sessao: Session, sugestao: Sugestao, usuario: Usuario | None) -> None:
     """Sem lançamento (ex.: estorno que se anula, movimento que não é da empresa)."""
+    _sair_da_espera(sugestao)
     _conferir(sugestao, usuario, "IGNORADO")
     _aprender_com(sessao, sugestao)
 

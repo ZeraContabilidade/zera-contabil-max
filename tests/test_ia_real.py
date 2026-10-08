@@ -211,3 +211,76 @@ def select_revisados(modelo):
     from app.modelos import Sugestao
 
     return select(modelo).join(Sugestao, Sugestao.movimento_id == modelo.id).where(Sugestao.revisado_ia)
+
+
+@pytest.mark.banco
+@pytest.mark.amostras
+def test_medicao_agosto_casa_crianca(cliente_real, sessao, monkeypatch):
+    """Meta da Fase 2 (§ etapas): os 2 PDFs reais de agosto (CC + poupança), regras + IA de verdade (≈ US$ 0,10).
+    Mostra cada lançamento para conferir à mão e quanto saiu aprovado sozinho."""
+    from collections import Counter
+    from datetime import date
+
+    from sqlalchemy import select
+
+    from app.modelos import Empresa, MovimentoExtrato
+    from app.servicos.aprendizado import aprender, importar_historico
+    from app.servicos.classificacao_ia import classificar_com_ia
+    from app.servicos.contas_chave import auto_configurar
+    from app.servicos.extratos import importar_extrato
+    from app.servicos.fornecedores import lista
+    from app.servicos.historico_ia import revisar_historico
+    from app.servicos.plano import importar_plano, ler_plano
+    from tests.conftest import AMOSTRAS
+
+    arquivos = [
+        AMOSTRAS / "PLANO DE CONTAS" / "contas crianca.csv",
+        AMOSTRAS / "historicos" / "lanctos_2025_casa_crianca.txt",
+        AMOSTRAS / "PLANILHA EXPORTAÇÃO" / "modelo exemplar da exportacao.txt",
+        AMOSTRAS / "historicos" / "Diário.xls",
+        AMOSTRAS / "EXTRATOS" / "EXTRATO CONTA CORRENTE.pdf",
+        AMOSTRAS / "EXTRATOS" / "EXTRATO POUPANÇA.pdf",
+    ]
+    if not all(a.exists() for a in arquivos):
+        pytest.skip("AMOSTRAS/ não está neste computador")
+    monkeypatch.setattr("app.ia.servico.obter_cliente", lambda: cliente_real)
+    plano, *historicos, corrente, poupanca = arquivos
+    empresa = Empresa(codigo_dominio=230, nome_curto="Casa Criança")
+    sessao.add(empresa)
+    sessao.commit()
+    importar_plano(sessao, empresa, ler_plano(plano.read_bytes(), plano.name), None)
+    auto_configurar(sessao, empresa)
+    for arquivo in historicos:
+        importar_historico(sessao, empresa, arquivo.name, arquivo.read_bytes(), None)
+    sessao.commit()
+    revisar_historico(sessao, empresa)
+    aprender(sessao, empresa)
+    for extrato in (corrente, poupanca):
+        importar_extrato(sessao, empresa, extrato.name, extrato.read_bytes(), None)
+    sessao.commit()
+    resultado = classificar_com_ia(sessao, empresa, None, date(2026, 8, 1), date(2026, 8, 31))
+    sessao.commit()
+
+    print(f"\nconta individual: {empresa.usa_conta_individual} ({empresa.grupo_fornecedores})")
+    print(resultado.resumo().replace("🤖 ", "") + " " + resultado.aviso)
+    situacao = Counter()
+    ordem = (MovimentoExtrato.conta_bancaria_id, MovimentoExtrato.data, MovimentoExtrato.ordem)
+    for movimento in sessao.scalars(select(MovimentoExtrato).order_by(*ordem)):
+        s = movimento.sugestao
+        situacao[(s.status, s.origem)] += 1
+        debito = s.conta_debito.reduzido if s.conta_debito else "-"
+        credito = s.conta_credito.reduzido if s.conta_credito else "-"
+        print(f"  {movimento.data:%d/%m} {movimento.sentido[:1]} {movimento.valor:>10} "
+              f"{(movimento.complemento or movimento.historico)[:30]:<30} D {debito!s:>5} C {credito!s:>5} "
+              f"{s.status:<9} {s.origem:<13} {s.confianca:>3}% {(s.justificativa or '')[:90]}")  # fmt: skip
+    for (status, origem), vezes in sorted(situacao.items()):
+        print(f"  {status:<9} {origem:<13} {vezes}")
+    com_lancamento = sum(v for (status, _), v in situacao.items() if status != "IGNORADO")
+    aprovados = sum(v for (status, _), v in situacao.items() if status == "APROVADO")
+    print(f"  aprovados sozinhos: {aprovados} de {com_lancamento} ({aprovados / com_lancamento:.0%})")
+    for item in lista(sessao, empresa):
+        print(f"  a cadastrar: {item.fornecedor.nome} ({item.linhas} linha(s), {item.valor})")
+    assert resultado.recusadas == 0
+    # 08/10/2026: 53 de 58 (91%), todos conferidos à mão contra o histórico; faltaram Bazar Xereta, VIVO, DARF,
+    # CEF (FGTS) e um salário de funcionária nova
+    assert aprovados / com_lancamento >= 0.85  # meta da Fase 2 (§ etapas: ≥ 85% no 1º mês)

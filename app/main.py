@@ -13,7 +13,19 @@ from starlette.middleware.sessions import SessionMiddleware
 from app.auth import NaoAutenticado, SemPermissao
 from app.config import obter_config
 from app.db import banco_disponivel
-from app.rotas import acesso, aprendizado, backup, contas_chave, empresas, extratos, ia, plano, revisao, usuarios
+from app.rotas import (
+    acesso,
+    aprendizado,
+    backup,
+    contas_chave,
+    empresas,
+    extratos,
+    fornecedores,
+    ia,
+    plano,
+    revisao,
+    usuarios,
+)
 from app.web import pagina, redirecionar
 
 PASTA_APP = Path(__file__).resolve().parent
@@ -35,6 +47,7 @@ app.include_router(contas_chave.router)
 app.include_router(aprendizado.router)
 app.include_router(extratos.router)
 app.include_router(revisao.router)
+app.include_router(fornecedores.router)
 app.include_router(ia.router)
 app.include_router(backup.router)
 app.include_router(usuarios.router)

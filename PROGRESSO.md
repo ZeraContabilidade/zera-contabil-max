@@ -3,10 +3,11 @@
 Atualizado em: **08/10/2026**
 
 ## Próximo passo exato
-**Etapa 2.8c — Fornecedores a cadastrar no Domínio + medir** (2.8a e 2.8b prontas).
-- **Fornecedores a cadastrar** (§3.5, §6.2 passo 7; só empresas com `usa_conta_individual`): favorecido identificado mas sem conta (padrão sem conta, ou a IA diz que é fornecedor novo) → a linha fica pendente e entra na lista **“Fornecedores a cadastrar no Domínio”** na aba Revisão: nome + CNPJ + nome sugerido da conta + grupo (`empresa.grupo_fornecedores`) + linhas e valor do mês; botão na linha da Revisão para mandar para a lista; **baixar em Excel** (openpyxl). Tabela `fornecedor_a_cadastrar` (§ modelo de dados). Ao reimportar o plano, conta nova parecida com o nome no grupo → a lista dá baixa sozinha e as linhas pendentes recebem a conta (para conferir).
-- Sem conta individual → conta genérica (`FORNECEDOR_GENERICO` das contas-chave).
-- **Medir ≥ 85% certos** com os extratos reais de agosto (Casa Criança: CC + poupança, regras + IA) — teste `amostras`; anotar aqui o resultado.
+**Etapa 3.1 — Exportar o `lanctos.txt`** (§3.6, §11.1; aba **6 Exportar**). A Fase 2 está completa.
+- Escolher o mês e as contas bancárias; mostrar quantas linhas vão (aprovadas), quantas ficam de fora (pendentes, com confirmação para deixá-las de fora) e o total por conta.
+- **Validações que bloqueiam, mostrando a linha:** conta inexistente ou sintética, data inválida ou fora do mês, débito = crédito, valor ≤ 0, `;` no complemento (o modelo tem 3 erros que devem ser pegos: `28/01//2026`, `28/01//2027`, conta `10595.`). **Conta em branco NÃO bloqueia** (o Domínio aceita — confirmado em 08/10).
+- Formato exato do §11.1: `dd/mm/aaaa;débito;crédito;valor com vírgula sem milhar;;complemento;1;código da empresa;;` — CRLF, Windows-1252, sem cabeçalho. Teste “arquivo de ouro”: gerar a partir das linhas do modelo e comparar byte a byte com `modelo exemplar da exportacao.txt` (sem as 3 linhas com erro).
+- **Resumo em Excel** por conta (openpyxl). Tabela `exportacao` (quem, quando, quantas linhas, arquivo guardado); linhas exportadas → status EXPORTADO (travadas). Barra do mês: **Exportado ✔**. Reabrir fica para a 3.2 (só Supervisor).
 
 ## Pendências com o usuário
 | # | Pergunta | Precisa até |
@@ -44,7 +45,7 @@ Atualizado em: **08/10/2026**
 - [x] 2.7 IA em lote + validação + aprovação automática dos verdes
 - [x] 2.8a Tela de Revisão: grade do mês, editar/aprovar/ignorar/reabrir, aplicar às parecidas, aprendizado com cada decisão
 - [x] 2.8b Seleção múltipla (aplicar conta / aprovar / ignorar várias linhas) + aprovação automática configurável por empresa
-- [ ] 2.8c Fornecedores a cadastrar no Domínio (lista + Excel); medir ≥ 85% nos 2 PDFs
+- [x] 2.8c Fornecedores a cadastrar no Domínio (lista + Excel) + medição real: **91% aprovados sozinhos** nos 2 PDFs de agosto
 
 ### Fase 3 — Exportação e Painel
 - [ ] 3.1 lanctos.txt + validações + resumo Excel + teste "arquivo de ouro"
@@ -55,6 +56,13 @@ Atualizado em: **08/10/2026**
 ### Fase 4 — Extras (um por vez, quando pedido)
 
 ## Histórico
+
+### 08/10/2026 — Etapa 2.8c concluída (fornecedores a cadastrar) — Fase 2 completa
+- **Fornecedores a cadastrar no Domínio** (empresas com conta individual por fornecedor, como a Casa Criança — grupo 2.1.3.01): quando a IA vê pagamento a um fornecedor que deveria ter conta própria e ela não existe, ou o usuário clica **“Fornecedor novo”** na linha (vai junto toda linha pendente do mesmo favorecido), a linha fica pendente “cadastrar “X” no Domínio” e o fornecedor entra na lista no topo da aba Revisão (nome sugerido da conta até 40 letras, CNPJ se estiver no extrato, grupo, linhas e valor). **Baixar Excel** com a lista.
+- Sai da lista sozinho quando o plano é reimportado (ou copiado) com uma conta nova de nome parecido no grupo — as linhas recebem a conta (aprovadas com 90%); ou por **“Já cadastrei”** com o código (as linhas ficam aprovadas e ensinam); ou **“Não é fornecedor”** (as linhas voltam a pendentes e a IA não põe de volta). Se a conta já existia com nome parecido, a linha recebe a conta na hora.
+- Migração 0015 (tabela `fornecedor_a_cadastrar` + `sugestao.fornecedor_id`). A classificação e a IA não mexem na linha que espera a conta.
+- **Medição real (meta da Fase 2):** plano + lanctos 2025/2026 + Diário + os 2 PDFs de agosto, regras + IA de verdade → **53 de 58 lançamentos aprovados sozinhos (91%)**, todos conferidos contra a prática do histórico (SABESP 355, EDP 354, ZERA 10571, salários 187, LYTEX 10594/10596, repasse SME 10578, transferências uma vez só, rendimentos/IR da poupança). Ficaram para conferir: Bazar Xereta (IA 85% → 10599), VIVO (75% → 356), DARF (70% → 191), CEF/FGTS e um salário de funcionária nova. Teste `pytest -m ia_real -k medicao -s`.
+- Testes (8 novos): 300 passando.
 
 ### 08/10/2026 — Etapa 2.8b concluída (várias linhas de uma vez + aprovação automática por empresa)
 - Revisão: **caixinha em cada linha** (+ “marcar todas”) e uma barra acima da grade que acompanha a rolagem: **Aplicar a conta** (código, lista ou parte do nome), **Aprovar** ou **Ignorar** as marcadas. Volta para o mesmo filtro, com o resumo (“359 – MATERIAL DE ESCRITÓRIO aplicada a 3 linha(s)”; “1 linha sem conta não foi aprovada”). O aprendizado roda **uma vez só** no fim (e também no “Aplicar às parecidas”).

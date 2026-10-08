@@ -428,7 +428,10 @@ def classificar(sessao: Session, empresa: Empresa, inicio: date, fim: date) -> R
         for movimento in movimentos:
             sugestao = movimento.sugestao
             if sugestao and (
-                sugestao.origem in PROTEGIDAS or sugestao.status == "EXPORTADO" or sugestao.conferido_por_id
+                sugestao.origem in PROTEGIDAS
+                or sugestao.status == "EXPORTADO"
+                or sugestao.conferido_por_id
+                or sugestao.fornecedor_id  # espera (ou já recebeu) a conta do fornecedor a cadastrar
             ):
                 resultado.contar(sugestao)
                 continue
