@@ -11,11 +11,13 @@ from sqlalchemy.orm import Session
 
 from app.auth import usuario_logado
 from app.db import obter_sessao
+from app.ia.servico import IAIndisponivel
 from app.leitores.planilha import NOMES_PAPEIS, PAPEIS, texto_celula
 from app.modelos import TIPOS_CONTA, ArquivoOriginal, ContaBancaria, Empresa, Extrato, Importacao, Usuario
 from app.rotas.comum import buscar_empresa
 from app.servicos.armazenamento import obter_armazenamento
 from app.servicos.classificacao import classificar
+from app.servicos.classificacao_ia import classificar_com_ia
 from app.servicos.competencia import hoje, valor_campo_mes
 from app.servicos.contas_chave import BANCOS
 from app.servicos.extratos import (
@@ -97,7 +99,24 @@ def classificar_de_novo(
     resultado = classificar(sessao, empresa, *limites_do_mes(competencia))
     sessao.commit()
     avisar(request, resultado.resumo())
+    _ia_no_que_sobrou(request, sessao, empresa, usuario, *limites_do_mes(competencia), avisar_desligada=True)
     return redirecionar(f"/empresas/{empresa.id}?aba=extratos&mes={valor_campo_mes(competencia)}")
+
+
+def _ia_no_que_sobrou(request, sessao, empresa, usuario, inicio: date, fim: date, avisar_desligada=False) -> None:
+    """A IA olha os pendentes e amarelos do período (§6.2 passo 6). Sem IA, tudo segue como está."""
+    try:
+        resultado = classificar_com_ia(sessao, empresa, usuario, inicio, fim)
+    except IAIndisponivel as erro:
+        sessao.rollback()
+        if avisar_desligada:
+            avisar(request, f"A IA não olhou os pendentes: {erro}", "atencao")
+        return
+    sessao.commit()
+    if resultado.perguntadas:
+        avisar(request, resultado.resumo())
+    if resultado.aviso:
+        avisar(request, resultado.aviso, "atencao")
 
 
 def _avisar_importado(request: Request, nome: str, extrato: Extrato) -> None:
@@ -147,6 +166,7 @@ def enviar_extratos(
             continue
         sessao.commit()
         _avisar_importado(request, arquivo.filename, extrato)
+        _ia_no_que_sobrou(request, sessao, empresa, usuario, extrato.inicio, extrato.fim)
         ultimo_mes = extrato.fim.replace(day=1)
     if len(confirmar) == 1 and len(arquivos) == 1:
         return redirecionar(f"/empresas/{empresa.id}/extratos/planilha/{confirmar[0]}")
@@ -284,4 +304,5 @@ def confirmar_planilha(
         return _tela_confirmar(request, sessao, empresa, arquivo, analise, [str(erro)], formulario, 400)
     sessao.commit()
     _avisar_importado(request, arquivo.nome_original, extrato)
+    _ia_no_que_sobrou(request, sessao, empresa, usuario, extrato.inicio, extrato.fim)
     return redirecionar(f"/empresas/{empresa.id}?aba=extratos&mes={valor_campo_mes(extrato.fim.replace(day=1))}")

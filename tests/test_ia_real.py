@@ -152,3 +152,62 @@ def test_ia_real_le_o_pdf_do_bb_como_banco_desconhecido(cliente_real, sessao, mo
     assert len(lido.movimentos) == 49
     assert entradas == saidas == Decimal("149568.52")
     assert "72637" in lido.numero
+
+
+@pytest.mark.banco
+@pytest.mark.amostras
+def test_ia_real_classifica_o_que_sobrou_na_casa_crianca(cliente_real, sessao, monkeypatch):
+    """Histórico real (lanctos + Diário revisado pela IA) e extrato real de agosto: a IA de verdade olha o que as
+    regras deixaram pendente ou amarelo (≈ US$ 0,05). Mostra cada decisão."""
+    from datetime import date
+
+    from app.modelos import Empresa, MovimentoExtrato
+    from app.servicos.aprendizado import aprender, importar_historico
+    from app.servicos.classificacao_ia import classificar_com_ia
+    from app.servicos.contas_chave import auto_configurar
+    from app.servicos.extratos import importar_extrato
+    from app.servicos.historico_ia import revisar_historico
+    from app.servicos.plano import importar_plano, ler_plano
+    from tests.conftest import AMOSTRAS
+
+    arquivos = [
+        AMOSTRAS / "PLANO DE CONTAS" / "contas crianca.csv",
+        AMOSTRAS / "historicos" / "lanctos_2025_casa_crianca.txt",
+        AMOSTRAS / "PLANILHA EXPORTAÇÃO" / "modelo exemplar da exportacao.txt",
+        AMOSTRAS / "historicos" / "Diário.xls",
+        AMOSTRAS / "EXTRATOS" / "EXTRATO CONTA CORRENTE.pdf",
+    ]
+    if not all(a.exists() for a in arquivos):
+        pytest.skip("AMOSTRAS/ não está neste computador")
+    monkeypatch.setattr("app.ia.servico.obter_cliente", lambda: cliente_real)
+    plano, *historicos, corrente = arquivos
+    empresa = Empresa(codigo_dominio=230, nome_curto="Casa Criança")
+    sessao.add(empresa)
+    sessao.commit()
+    importar_plano(sessao, empresa, ler_plano(plano.read_bytes(), plano.name), None)
+    auto_configurar(sessao, empresa)
+    for arquivo in historicos:
+        importar_historico(sessao, empresa, arquivo.name, arquivo.read_bytes(), None)
+    sessao.commit()
+    revisar_historico(sessao, empresa)
+    aprender(sessao, empresa)
+    importar_extrato(sessao, empresa, corrente.name, corrente.read_bytes(), None)
+    sessao.commit()
+
+    resultado = classificar_com_ia(sessao, empresa, None, date(2026, 8, 1), date(2026, 8, 31))
+    sessao.commit()
+    print("\n" + resultado.resumo().replace("🤖 ", "") + " " + resultado.aviso)
+    for movimento in sessao.scalars(select_revisados(MovimentoExtrato)):
+        s = movimento.sugestao
+        conta = s.conta_debito if movimento.sentido == "SAIDA" else s.conta_credito
+        print(f"  {movimento.complemento or movimento.historico:<30} {movimento.valor:>10} → "
+              f"{conta.rotulo if conta else '-':<45} {s.confianca:>3}% {s.status:<9} {s.justificativa}")  # fmt: skip
+    assert resultado.perguntadas >= 5 and resultado.recusadas == 0
+
+
+def select_revisados(modelo):
+    from sqlalchemy import select
+
+    from app.modelos import Sugestao
+
+    return select(modelo).join(Sugestao, Sugestao.movimento_id == modelo.id).where(Sugestao.revisado_ia)

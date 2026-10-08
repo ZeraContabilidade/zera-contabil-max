@@ -3,12 +3,13 @@
 Atualizado em: **07/10/2026**
 
 ## Próximo passo exato
-**Etapa 2.7 — IA em lote no que sobrou** (§6.2 passo 6; a 2.6 — regras, CNPJ, nome, palavra, valor — está pronta).
-- `app/servicos/classificacao_ia.py`: depois de `classificar()`, **sozinho, sem botão**, manda à IA (modelo rápido; forte só se pedir) as sugestões PENDENTES e as amarelas (< 90) que não são transferência sem conta nem origem USUARIO, em **lotes de 30–40**. `contexto` estável (para o cache): plano **analítico** da empresa (reduzido | classificação | descrição | natureza), perfil da empresa (`empresa.perfil_ia`), favorecidos aprendidos mais usados (nome → conta, natureza, valores), contas-chave e exemplos de lançamentos aprovados parecidos. `pergunta`: as linhas (id, data, valor, entrada/saída, histórico e favorecido do banco, conta contábil do banco).
-- Resposta (JSON, `additionalProperties: false`): `{itens: [{id, conta_contrapartida (reduzido), favorecido, natureza, confianca, justificativa}]}` (o lado do banco o sistema já sabe). **Validar**: conta existe, é analítica, não é a do banco; senão a linha fica pendente. Confiança da IA ≥ 90 → verde (aprovado), 70–89 → amarela, < 70 → vermelha; origem IA; justificativa “🤖 IA: …”. Complemento montado com favorecido/natureza da IA.
-- Casos reais para conferir (Casa Criança, agosto): “SME ITAQUAQUECETUBA” 80.000 (repasse municipal → 10578 VERBA RECEBIDA A APLICAR — o Diário ensinou), “RFB-DARF” 15.931,03 (guia de INSS/IRRF → 191), “CEF MATRIZ” 5.049,35 (guia de FGTS → 192), “BAZAR XERETA” (material → 359/360?), “JANAINA A PEREIRA SILVA” 2.868,50 (salário → 187). Medir com a IA real (`ia_real`) e custo.
-- §6.2 passo 7: fornecedor sem conta numa empresa com conta individual → a IA sugere o nome da conta a criar e o grupo (`empresa.grupo_fornecedores`) → lista “Fornecedores a cadastrar no Domínio” (pode ficar para a 2.8).
-- Sem IA (desligada ou limite atingido) → tudo segue como está, sem erro.
+**Etapa 2.8 — Tela de Revisão** (§3.5, §6.3; aba **5 Revisão**; a 2.7 — IA no que sobrou — está pronta).
+- Grade do mês: **Data | Descrição do banco | Valor | Débito | Crédito | Complemento | Confiança | Origem**; cores verde/amarelo/vermelho/cinza; **abre filtrada no que precisa de atenção** (amarelos e vermelhos); filtros Todos / Pendentes / Amarelos / Por conta / Só IA; busca. Justificativa ao passar o mouse.
+- Editar a linha (HTMX, sem recarregar): conta com **autocompletar** só de analíticas (“agua” ou “355” → “355 – ÁGUA E ESGOTO”; reaproveitar `buscar_contas`), complemento, **Aprovar**, **Ignorar** (sem lançamento), desfazer aprovação. Seleção múltipla para aplicar a mesma conta. Edição = origem USUARIO + log (Sugestao é Auditavel; a classificação automática nunca mexe).
+- **Aprendizado contínuo (§6.3):** aprovar/corrigir vira histórico (`LancamentoHistorico` com origem do extrato) e recalcula os padrões (`aprender`) → na próxima vez a mesma linha sai pelas regras, sem IA. Ao corrigir, perguntar “Aplicar às outras X linhas parecidas?” (mesmo favorecido normalizado / mesmo CNPJ no mês).
+- **Fornecedores a cadastrar no Domínio** (§6.2 passo 7; empresas com conta individual): favorecido sem conta → linha pendente + lista (nome + CNPJ + sugestão de conta/grupo `empresa.grupo_fornecedores`), exportável em Excel (openpyxl).
+- Barra do mês: etapa **Revisão ✔** quando não houver pendente/amarelo no mês (`progresso._concluidas`). Limiar de aprovação automática por empresa (padrão 90) no cadastro.
+- **Medir ≥ 85% certos** com os extratos reais de agosto (Casa Criança) depois que a poupança tiver conta (pendência 5).
 
 ## Pendências com o usuário
 | # | Pergunta | Precisa até |
@@ -43,7 +44,7 @@ Atualizado em: **07/10/2026**
 - [x] 2.5a Leitor universal com IA (PDF de banco sem leitor próprio, só entra se o saldo conferir)
 - [x] 2.5b Excel/CSV com colunas identificadas pelos títulos ou pela IA (confirmação na 1ª vez)
 - [x] 2.6 Motor de classificação (regras, CNPJ, nome parecido, palavra-chave, valor) + pareamento de transferências
-- [ ] 2.7 IA em lote + validação + aprovação automática dos verdes
+- [x] 2.7 IA em lote + validação + aprovação automática dos verdes
 - [ ] 2.8 Tela de Revisão + fornecedores a cadastrar; medir ≥ 85% nos 2 PDFs
 
 ### Fase 3 — Exportação e Painel
@@ -55,6 +56,12 @@ Atualizado em: **07/10/2026**
 ### Fase 4 — Extras (um por vez, quando pedido)
 
 ## Histórico
+
+### 08/10/2026 — Etapa 2.7 concluída (IA no que sobrou)
+- `app/servicos/classificacao_ia.py`: depois de cada importação (e do “Classificar de novo”), **sozinho**, a IA (modelo rápido, lotes de 40, até 5 lotes por vez) olha as sugestões pendentes e amarelas com a conta do banco conhecida (não as do usuário, da própria IA ou de transferência). Contexto estável (cache): plano analítico, contas mais usadas no histórico com exemplos de favorecidos, favorecidos/palavras aprendidos, contas-chave, perfil. A IA devolve só a contrapartida + favorecido, natureza, confiança, justificativa. **Conferida:** conta existe, analítica, não é a do banco; resposta inválida ou “não sei” não apaga o que as regras acharam; só troca se a confiança da IA for maior. ≥ 90 → aprovado.
+- `revisado_ia` na sugestão (migração 0012): a IA não é perguntada de novo sobre o mesmo movimento; volta a poder perguntar só se a sugestão das regras mudar. “Classificar de novo” não apaga a resposta da IA (só uma regra verde troca). Sem IA → nada muda (o botão avisa).
+- **Real (Casa Criança, agosto, IA de verdade, US$ 0,045):** 8 movimentos olhados → repasse “SME ITAQUAQUECETUBA” 80.000 → **10578 VERBA RECEBIDA A APLICAR (98%, aprovado)**, LYTEX 910/448 → 10594/10596 (aprovados), DARF → 191 (88%), VIVO → 356 (85%), Janaina → 187 (82%), Bazar Xereta → 359 (75%), CEF → 192 (70%) — todos para conferir com a conta certa ou bem provável. Atenção: a justificativa da IA às vezes afirma coisa que não está no histórico (“Bazar Xereta consta no histórico”) → por isso fica amarela. Com regras + IA, **todos os 30 movimentos fora das transferências da poupança têm sugestão**.
+- Testes (5 + 1 real): 282 passando.
 
 ### 08/10/2026 — Etapa 2.6 concluída (classificação)
 - Tabela `sugestao` (migração 0011): débito, crédito, complemento (modelo da empresa), confiança, origem, justificativa, padrão, par da transferência, status (PENDENTE, APROVADO, IGNORADO = sem lançamento, EXPORTADO). `rapidfuzz` no requirements.

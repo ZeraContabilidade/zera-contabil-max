@@ -185,4 +185,6 @@ RESPOSTAS_DEMONSTRACAO: dict[str, Any] = {
     },
     "historico_ia": {"itens": []},  # no modo simulado a IA não muda o histórico
     "leitura_pdf": {"e_extrato": False},  # no modo simulado a IA não lê extratos
+    "classificacao": {"itens": []},  # nem classifica
+    "colunas_planilha": {"linha_titulos": -1},
 }

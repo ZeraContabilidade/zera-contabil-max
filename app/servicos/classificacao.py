@@ -367,6 +367,17 @@ class ResultadoClassificacao:
     vermelhas: int = 0
     sem_lancamento: int = 0
 
+    def contar(self, sugestao: Sugestao) -> None:
+        """Conta uma sugestão que ficou como estava (do usuário, da IA ou exportada)."""
+        if sugestao.status == "IGNORADO":
+            self.sem_lancamento += 1
+        elif sugestao.status in ("APROVADO", "EXPORTADO"):
+            self.verdes += 1
+        elif sugestao.confianca >= 70:
+            self.amarelas += 1
+        else:
+            self.vermelhas += 1
+
     def resumo(self) -> str:
         return (
             f"Classificação: {self.verdes} aprovado(s) automaticamente, {self.amarelas} para conferir, "
@@ -376,7 +387,7 @@ class ResultadoClassificacao:
         )
 
 
-def _complemento(empresa: Empresa, proposta: Proposta, movimento: MovimentoExtrato) -> str:
+def complemento_da_proposta(empresa: Empresa, proposta: Proposta, movimento: MovimentoExtrato) -> str:
     valores = {
         "FAVORECIDO": proposta.favorecido or movimento.complemento or movimento.historico,
         "CNPJ": formatar_documento(proposta.cnpj) if proposta.cnpj else "",
@@ -407,15 +418,18 @@ def classificar(sessao: Session, empresa: Empresa, inicio: date, fim: date) -> R
         for movimento in movimentos:
             sugestao = movimento.sugestao
             if sugestao and (sugestao.origem in PROTEGIDAS or sugestao.status == "EXPORTADO"):
+                resultado.contar(sugestao)
                 continue
             proposta = next((p for passo in PASSOS if (p := passo(ctx, movimento)) is not None), None)
+            if sugestao and sugestao.origem == "IA" and (proposta is None or proposta.confianca < LIMIAR_APROVACAO):
+                resultado.contar(sugestao)  # a resposta da IA vale até uma regra achar algo certo
+                continue
             if proposta is None:
                 proposta = Proposta(
                     None,
                     0,
                     "PENDENTE",
-                    "Nenhuma regra nem favorecido aprendido reconheceu este "
-                    "movimento (a IA vai olhar na próxima etapa).",
+                    "Nenhuma regra nem favorecido aprendido reconheceu este movimento.",
                 )
             _gravar(sessao, ctx, movimento, proposta, resultado)
         sessao.flush()
@@ -460,9 +474,13 @@ def _gravar(sessao, ctx: Contexto, movimento: MovimentoExtrato, proposta: Propos
         sessao.add(sugestao)  # primeiro na sessão, depois ligada ao movimento
         sugestao.movimento = movimento
     ignorado = proposta.status == "IGNORADO"
+    if (sugestao.conta_debito, sugestao.conta_credito, sugestao.origem) != (debito, credito, proposta.origem):
+        sugestao.revisado_ia = False  # a sugestão mudou: a IA pode olhar de novo
     sugestao.conta_debito = None if ignorado else debito
     sugestao.conta_credito = None if ignorado else credito
-    sugestao.complemento = _complemento(ctx.empresa, proposta, movimento) if proposta.status != "IGNORADO" else ""
+    sugestao.complemento = (
+        complemento_da_proposta(ctx.empresa, proposta, movimento) if proposta.status != "IGNORADO" else ""
+    )
     sugestao.confianca = confianca
     sugestao.origem = proposta.origem
     sugestao.justificativa = justificativa
