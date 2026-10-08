@@ -240,6 +240,11 @@ tr.inativa td { opacity: .6; }
 .form-exportar { display: flex; flex-wrap: wrap; align-items: center; gap: .6rem 1rem; margin: 1rem 0; }
 .form-exportar label { margin: 0; }
 .form-exportar button[type="submit"] { margin: 0; }
+.exportacao-reaberta td { opacity: .75; }
+details.reabrir { margin: .4rem 0 0; }
+details.reabrir summary { font-size: .85rem; }
+details.reabrir form { display: grid; gap: .4rem; margin-top: .4rem; }
+details.reabrir input, details.reabrir button[type="submit"] { margin: 0; font-size: .85rem; padding: .3rem .6rem; height: auto; width: auto; min-width: 0; }
 .lista-fornecedores { border-left: 3px solid var(--ambar); }
 .botao-pequeno { padding: .3rem .8rem; font-size: .85rem; margin-left: auto; }
 .form-fornecedor { display: flex; flex-wrap: wrap; gap: .4rem; align-items: center; margin: 0; }

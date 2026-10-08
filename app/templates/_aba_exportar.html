@@ -82,14 +82,34 @@
       <thead><tr><th>Mês</th><th>Gerado em</th><th class="num">Lançamentos</th><th class="num">Total</th><th>Pendentes de fora</th><th>Baixar</th></tr></thead>
       <tbody>
         {% for e in exportacoes %}
-        <tr>
+        <tr{% if e.reaberta_em %} class="exportacao-reaberta"{% endif %}>
           <td>{{ e.competencia | nome_competencia }}</td>
-          <td>{{ e.criado_em | data_hora }}</td>
+          <td>{{ e.criado_em | data_hora }}{% if e.usuario %}<br><small class="suave">{{ e.usuario.nome }}</small>{% endif %}</td>
           <td class="num">{{ e.linhas }}</td>
           <td class="num">{{ e.total | reais }}</td>
           <td>{{ e.deixadas_de_fora or '—' }}</td>
-          <td><a href="/empresas/{{ empresa.id }}/exportacoes/{{ e.id }}/lanctos.txt" role="button" class="botao-pequeno">lanctos.txt</a>
-            <a href="/empresas/{{ empresa.id }}/exportacoes/{{ e.id }}/resumo.xlsx" role="button" class="secondary outline botao-pequeno">Resumo Excel</a></td>
+          <td>
+            {% if e.reaberta_em %}
+            <span class="etiqueta etiqueta-vermelha">reaberta — não importar</span>
+            <br><small class="suave">{{ e.reaberta_em | data_hora }}{% if e.reaberta_por %} por {{ e.reaberta_por.nome }}{% endif %}: {{ e.motivo_reabertura }}</small>
+            <br><a href="/empresas/{{ empresa.id }}/exportacoes/{{ e.id }}/lanctos.txt" class="suave">arquivo antigo</a>
+            {% else %}
+            <a href="/empresas/{{ empresa.id }}/exportacoes/{{ e.id }}/lanctos.txt" role="button" class="botao-pequeno">lanctos.txt</a>
+            <a href="/empresas/{{ empresa.id }}/exportacoes/{{ e.id }}/resumo.xlsx" role="button" class="secondary outline botao-pequeno">Resumo Excel</a>
+            {% if usuario.e_supervisor %}
+            <details class="reabrir">
+              <summary>Reabrir</summary>
+              <form method="post" action="/empresas/{{ empresa.id }}/exportacoes/{{ e.id }}/reabrir">
+                <p class="suave">As {{ e.linhas }} linha(s) voltam para a Revisão (aprovadas) para corrigir e exportar de novo.
+                  <strong>Se este arquivo já foi importado no Domínio, exclua lá os lançamentos dele antes de importar o novo</strong>
+                  — senão ficam em dobro.</p>
+                <input name="motivo" required minlength="5" placeholder="Motivo (fica no log)" aria-label="Motivo da reabertura">
+                <button type="submit" class="secondary">Reabrir esta exportação</button>
+              </form>
+            </details>
+            {% endif %}
+            {% endif %}
+          </td>
         </tr>
         {% endfor %}
       </tbody>

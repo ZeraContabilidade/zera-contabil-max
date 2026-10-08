@@ -7,13 +7,20 @@ from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import Response
 from sqlalchemy.orm import Session
 
-from app.auth import usuario_logado
+from app.auth import exigir_supervisor, usuario_logado
 from app.db import obter_sessao
 from app.modelos import Empresa, Exportacao, Usuario
 from app.rotas.comum import buscar_empresa
 from app.servicos.armazenamento import obter_armazenamento
 from app.servicos.competencia import ler_competencia, valor_campo_mes
-from app.servicos.exportacao import ErroExportacao, exportacoes, exportar, preparar, resumo_excel
+from app.servicos.exportacao import (
+    ErroExportacao,
+    exportacoes,
+    exportar,
+    preparar,
+    reabrir_exportacao,
+    resumo_excel,
+)
 from app.web import avisar, competencia_da_tela, redirecionar
 
 router = APIRouter()
@@ -61,6 +68,36 @@ def gerar_lanctos(
         request,
         f"lanctos.txt gerado: {exportacao.linhas} lançamento(s). Baixe o arquivo abaixo e importe no Domínio; "
         "as linhas exportadas ficaram travadas.",
+    )
+    return redirecionar(voltar)
+
+
+@router.post("/empresas/{empresa_id}/exportacoes/{exportacao_id}/reabrir")
+def reabrir(
+    request: Request,
+    empresa_id: int,
+    exportacao_id: int,
+    motivo: str = Form(""),
+    supervisor: Usuario = Depends(exigir_supervisor),
+    sessao: Session = Depends(obter_sessao),
+):
+    if (empresa := buscar_empresa(sessao, request, empresa_id)) is None:
+        return redirecionar("/")
+    if (exportacao := _exportacao_da_empresa(sessao, empresa, exportacao_id)) is None:
+        avisar(request, "Exportação não encontrada.", "erro")
+        return redirecionar(f"/empresas/{empresa.id}?aba=exportar")
+    voltar = f"/empresas/{empresa.id}?" + urlencode({"aba": "exportar", "mes": valor_campo_mes(exportacao.competencia)})
+    try:
+        linhas = reabrir_exportacao(sessao, exportacao, supervisor, motivo)
+    except ErroExportacao as erro:
+        sessao.rollback()
+        avisar(request, str(erro), "erro")
+        return redirecionar(voltar)
+    sessao.commit()
+    avisar(
+        request,
+        f"Exportação reaberta: {linhas} linha(s) voltaram para a Revisão como aprovadas. Corrija o que for preciso e "
+        "gere o arquivo de novo. Se o arquivo antigo já foi importado no Domínio, exclua lá aqueles lançamentos antes.",
     )
     return redirecionar(voltar)
 

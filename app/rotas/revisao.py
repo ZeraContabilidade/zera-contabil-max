@@ -157,7 +157,12 @@ def conferir_linha(
     sugestao = _sugestao_da_empresa(sessao, empresa, sugestao_id)
     voltar = f"/empresas/{empresa.id}?aba=revisao"
     if sugestao is None or sugestao.status == "EXPORTADO":
-        avisar(request, "Esta linha não pode mais ser mudada (já exportada ou não encontrada).", "erro")
+        avisar(
+            request,
+            "Esta linha não pode mais ser mudada: já foi exportada (o Supervisor pode reabrir a exportação na aba "
+            "Exportar) ou não existe.",
+            "erro",
+        )
         return redirecionar(voltar)
     erro, outras = "", []
     if acao == "salvar":

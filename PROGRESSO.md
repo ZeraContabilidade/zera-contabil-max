@@ -3,10 +3,10 @@
 Atualizado em: **08/10/2026**
 
 ## Próximo passo exato
-**Etapa 3.2 — Travamento e reabertura pelo Supervisor** (§3.6, §5 papéis). A 3.1 (lanctos.txt) está pronta.
-- Linhas exportadas já ficam travadas (EXPORTADO: Revisão, lote, classificação e IA não mexem). Falta: **“Reabrir exportação”** na aba Exportar, **só para o Supervisor** (`exigir_supervisor`), pedindo o motivo → as linhas daquela exportação voltam a APROVADO (podem ser corrigidas e exportadas de novo), a exportação fica marcada como reaberta (quem, quando, motivo — migração nova) e o log registra. O arquivo antigo continua guardado (histórico) mas aparece como “reaberto — não importar”.
-- Avisar na tela que, se o arquivo já foi importado no Domínio, é preciso excluir lá os lançamentos antes de importar o novo.
-- Testes: assistente não vê/não consegue reabrir (403); supervisor reabre; a barra do mês volta; exportar de novo gera arquivo com as linhas corrigidas.
+**Etapa 3.3 — Painel do supervisor + uso da IA** (§2 telas, §6.4, §8). A 3.2 (reabrir exportação) está pronta.
+- **Painel do supervisor** (menu, só Supervisor): todas as empresas ativas × mês escolhido — responsável, situação da barra do mês (onde parou), movimentos, aprovados, pendentes, **% classificado automaticamente** (aprovado sem ser conferido à mão ÷ linhas com lançamento — a meta do projeto), **nº de correções manuais** (origem USUARIO), quem exportou e quando, nº de linhas exportadas; filtros “só com pendência” e por responsável; link para a empresa na aba certa.
+- **Uso da IA** (a tela `/ia` já tem chamadas e custo): acrescentar **linhas resolvidas pela IA** por empresa/mês (sugestões origem IA aprovadas) e custo por linha resolvida.
+- Testes com 2–3 empresas fictícias em situações diferentes; conferir que assistente não abre o painel (403).
 
 ## Pendências com o usuário
 | # | Pergunta | Precisa até |
@@ -49,13 +49,18 @@ Atualizado em: **08/10/2026**
 ### Fase 3 — Exportação e Painel
 - [x] 3.1a Gerador do lanctos.txt (formato exato) + conferência linha a linha + teste “arquivo de ouro”
 - [x] 3.1b Tela Exportar: escolher mês e contas, validações mostrando a linha, resumo Excel, registro e travamento
-- [ ] 3.2 Travamento e reabertura pelo Supervisor
+- [x] 3.2 Travamento e reabertura pelo Supervisor
 - [ ] 3.3 Painel do supervisor + painel de uso da IA
 - [ ] 3.4 Guarda de arquivos por 5 anos + acesso pela rede
 
 ### Fase 4 — Extras (um por vez, quando pedido)
 
 ## Histórico
+
+### 08/10/2026 — Etapa 3.2 concluída (reabrir exportação)
+- Aba Exportar → “Arquivos gerados”: **Reabrir** aparece **só para o Supervisor** (assistente nem vê; tentar pela URL dá “Sem permissão”). Pede o **motivo** (fica no log) e avisa: se o arquivo já foi importado no Domínio, excluir lá os lançamentos dele antes de importar o novo.
+- Ao reabrir: as linhas daquela exportação voltam para a Revisão como **aprovadas** (podem ser corrigidas) e entram no próximo arquivo; o arquivo antigo continua guardado, marcado **“reaberta — não importar”** com quem, quando e o motivo (migração 0017); a barra do mês tira o “Exportado”. A Revisão mostra “exportado 🔒” e explica que só o Supervisor reabre.
+- Testes (1 novo, de ponta a ponta): 321 passando.
 
 ### 08/10/2026 — Etapa 3.1b concluída (aba Exportar)
 - Aba **6 Exportar**: escolher as contas bancárias do mês (todas marcadas), ver quantos lançamentos vão (aprovados, com o total), quantos ficam de fora (pendentes — só com a caixinha “Deixar as N pendentes de fora”), sem lançamento e já exportados; **total por conta**.

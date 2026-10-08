@@ -8,11 +8,21 @@ import pytest
 from openpyxl import load_workbook
 from sqlalchemy import select
 
-from app.modelos import ArquivoOriginal, ContaBancaria, ContaContabil, Exportacao, Log, MovimentoExtrato, Sugestao
+from app.modelos import (
+    ArquivoOriginal,
+    ContaBancaria,
+    ContaContabil,
+    Exportacao,
+    Log,
+    MovimentoExtrato,
+    Papel,
+    Sugestao,
+)
 from app.servicos.classificacao import classificar
 from app.servicos.exportacao import conferir_txt, preparar
 from app.servicos.extratos import importar_extrato
 from app.servicos.progresso import progresso_do_mes
+from tests.conftest import entrar
 from tests.test_classificacao import POUPANCA, extrato
 from tests.test_revisao import (  # noqa: F401 — mesma empresa de teste (histórico, contas-chave e extrato de agosto)
     AGOSTO,
@@ -134,3 +144,44 @@ def test_resumo_em_excel(cliente, empresa, sessao):  # noqa: F811
         select(MovimentoExtrato).where(MovimentoExtrato.complemento == "COMPANHIA DE AGUA EXEMPL")
     )
     assert linhas[0][:3] == (movimento.data, 355, 8) or linhas[0][0].date() == movimento.data
+
+
+def test_so_o_supervisor_reabre_a_exportacao(cliente, empresa, sessao, criar_usuario):  # noqa: F811
+    gerar(cliente, empresa, deixar_pendentes="on")
+    exportacao = sessao.scalar(select(Exportacao))
+    linhas = exportacao.linhas
+    reabrir = f"/empresas/{empresa.id}/exportacoes/{exportacao.id}/reabrir"
+
+    criar_usuario("carla", papel=Papel.ASSISTENTE)
+    entrar(cliente, "carla")
+    tela = cliente.get(f"/empresas/{empresa.id}", params={"aba": "exportar", **MES}).text
+    assert "Arquivos gerados" in tela and "Reabrir esta exportação" not in tela  # o assistente nem vê o botão
+    assert cliente.post(reabrir, data={"motivo": "quero mudar"}).status_code == 403
+    sessao.refresh(exportacao)
+    assert exportacao.reaberta_em is None
+
+    entrar(cliente, "ana")  # supervisora
+    tela = cliente.get(f"/empresas/{empresa.id}", params={"aba": "exportar", **MES}).text
+    assert "Reabrir esta exportação" in tela and "exclua lá os lançamentos dele" in tela
+    assert "Escreva o motivo da reabertura" in cliente.post(reabrir, data={"motivo": " "}, follow_redirects=True).text
+    tela = cliente.post(reabrir, data={"motivo": "Conta errada no salário"}, follow_redirects=True).text
+    assert f"Exportação reaberta: {linhas} linha(s) voltaram para a Revisão" in tela
+    assert "reaberta — não importar" in tela and "Conta errada no salário" in tela
+
+    sessao.expire_all()
+    exportacao = sessao.get(Exportacao, exportacao.id)
+    assert exportacao.reaberta_por.login == "ana" and exportacao.motivo_reabertura == "Conta errada no salário"
+    salario = sugestao_de(sessao, "MARIA SOUZA")
+    assert (salario.status, salario.exportacao_id) == ("APROVADO", None)  # pode ser corrigida de novo
+    log = sessao.scalar(select(Log).where(Log.acao == "REABRIR_EXPORTACAO"))
+    assert log.detalhe.endswith("Motivo: Conta errada no salário") and f"{linhas} linha(s) reaberta(s)" in log.detalhe
+    etapa = next(e for e in progresso_do_mes(sessao, empresa, AGOSTO) if e.chave == "exportado")
+    assert etapa.situacao != "feita"  # há aprovadas fora de um arquivo válido
+    assert "já foi reaberta" in cliente.post(reabrir, data={"motivo": "de novo"}, follow_redirects=True).text
+
+    cliente.post(f"/empresas/{empresa.id}/revisao/{salario.id}", data={"acao": "salvar", "conta": "331"})
+    gerar(cliente, empresa, deixar_pendentes="on")  # o arquivo novo sai com a correção
+    nova = sessao.scalars(select(Exportacao).order_by(Exportacao.id.desc())).first()
+    assert nova.id != exportacao.id and nova.linhas == linhas
+    conteudo = cliente.get(f"/empresas/{empresa.id}/exportacoes/{nova.id}/lanctos.txt").content.decode("cp1252")
+    assert "06/08/2026;331;8;2861,25;;" in conteudo

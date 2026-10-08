@@ -9,6 +9,7 @@ from app.modelos.base import Auditavel, Base
 from app.modelos.conta_chave import ContaChave
 from app.modelos.importacao import ArquivoOriginal, Importacao
 from app.modelos.plano import ContaContabil
+from app.modelos.usuario import Usuario
 
 TIPOS_CONTA = {"BANCO": "Conta corrente", "POUPANCA": "Poupança", "APLICACAO": "Aplicação"}
 
@@ -162,8 +163,14 @@ class Exportacao(Base):
     arquivo_id: Mapped[int] = mapped_column(ForeignKey("arquivo_original.id"))
     usuario_id: Mapped[int | None] = mapped_column(ForeignKey("usuario.id"))
     criado_em: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    # reaberta pelo Supervisor: as linhas voltaram a APROVADO e o arquivo antigo não deve ser importado
+    reaberta_em: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    reaberta_por_id: Mapped[int | None] = mapped_column(ForeignKey("usuario.id"))
+    motivo_reabertura: Mapped[str | None] = mapped_column(Text)
 
     arquivo: Mapped[ArquivoOriginal] = relationship()
+    usuario: Mapped[Usuario | None] = relationship(foreign_keys=[usuario_id])
+    reaberta_por: Mapped[Usuario | None] = relationship(foreign_keys=[reaberta_por_id])
 
 
 STATUS_SUGESTAO = {

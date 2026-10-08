@@ -14,7 +14,7 @@ vírgula, sem milhar e sem zeros sobrando (346,5 · 120). Conta em branco é ace
 import re
 import unicodedata
 from dataclasses import dataclass, field
-from datetime import date, datetime
+from datetime import UTC, date, datetime
 from decimal import Decimal, InvalidOperation
 from io import BytesIO
 
@@ -367,6 +367,37 @@ def exportar(
     detalhe = f"{empresa.nome}, {mes}: {exportacao.linhas} lançamento(s), R$ {total}{fora} — {nome}"
     registrar_evento(sessao, "EXPORTAR", usuario.id if usuario else None, detalhe)
     return exportacao
+
+
+def reabrir_exportacao(sessao: Session, exportacao: Exportacao, usuario: Usuario, motivo: str) -> int:
+    """Só o Supervisor (a rota exige): as linhas daquela exportação voltam a APROVADO, para corrigir e exportar de
+    novo. O arquivo antigo continua guardado, marcado como reaberto (não importar). Devolve quantas linhas voltaram."""
+    motivo = " ".join((motivo or "").split())
+    if exportacao.reaberta_em is not None:
+        raise ErroExportacao("Esta exportação já foi reaberta.")
+    if len(motivo) < 5:
+        raise ErroExportacao("Escreva o motivo da reabertura (ele fica registrado no log).")
+    sugestoes = list(
+        sessao.scalars(select(Sugestao).where(Sugestao.exportacao_id == exportacao.id, Sugestao.status == "EXPORTADO"))
+    )
+    sessao.info["auditoria_em_bloco"] = True  # um evento no log, não uma linha por sugestão
+    try:
+        for sugestao in sugestoes:
+            sugestao.status = "APROVADO"
+            sugestao.exportacao_id = None
+        exportacao.reaberta_em = datetime.now(UTC)
+        exportacao.reaberta_por_id = usuario.id
+        exportacao.motivo_reabertura = motivo[:2000]
+        sessao.flush()
+    finally:
+        sessao.info.pop("auditoria_em_bloco", None)
+    empresa = sessao.get(Empresa, exportacao.empresa_id)
+    detalhe = (
+        f"{empresa.nome}, {nome_competencia(exportacao.competencia)}: {len(sugestoes)} linha(s) reaberta(s) "
+        f"({exportacao.arquivo.nome_original}). Motivo: {motivo}"
+    )
+    registrar_evento(sessao, "REABRIR_EXPORTACAO", usuario.id, detalhe)
+    return len(sugestoes)
 
 
 def exportacoes(sessao: Session, empresa: Empresa) -> list[Exportacao]:

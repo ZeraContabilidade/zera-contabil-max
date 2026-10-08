@@ -22,7 +22,7 @@
     <br><small class="suave">{{ origens.get(s.origem, s.origem) }}{% if s.conferido_por_id %} · conferido{% endif %}</small>
   </td>
   <td class="celula-conferir">
-    {% if s.status == 'EXPORTADO' %}<small class="suave">exportado</small>
+    {% if s.status == 'EXPORTADO' %}<small class="suave" title="Para mudar, o Supervisor reabre a exportação na aba Exportar.">exportado 🔒</small>
     {% else %}
     <form method="post" action="/empresas/{{ empresa.id }}/revisao/{{ s.id }}" class="form-revisao"
           hx-post="/empresas/{{ empresa.id }}/revisao/{{ s.id }}" hx-target="closest tr" hx-swap="outerHTML">

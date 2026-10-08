@@ -21,6 +21,7 @@ ROTULOS_ACAO = {
     "CLASSIFICAR": "Classificou os movimentos do extrato",
     "APRENDER": "Recalculou o aprendizado",
     "EXPORTAR": "Gerou o lanctos.txt",
+    "REABRIR_EXPORTACAO": "Reabriu uma exportação",
     "BACKUP": "Fez backup",
     "BACKUP_FALHOU": "Backup falhou",
     "RESTAURAR_BACKUP": "Restaurou um backup",
