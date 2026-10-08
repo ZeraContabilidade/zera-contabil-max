@@ -3,17 +3,12 @@
 Atualizado em: **07/10/2026**
 
 ## Próximo passo exato
-**Etapa 2.6 — Motor de classificação** (§6.2 passos 1–5 e 7; a IA para o que sobrar é a 2.7).
-- Tabela `sugestao` (migração 0011; §8): movimento_extrato (1:1), conta débito, conta crédito, complemento (montado por `empresa.modelo_complemento` com `montar_complemento`), confiança (0–100), origem (REGRA, CNPJ, NOME, PALAVRA, VALOR, IA, USUARIO), justificativa (“Fornecedor SABESP – 6 lançamentos no histórico”), padrão usado, status PENDENTE/APROVADO/IGNORADO/EXPORTADO. Lado do banco = conta contábil da conta bancária (`conta.conta_chave.conta`); SAIDA → débito = contrapartida, crédito = banco; ENTRADA → o contrário.
-- Ordem (`app/servicos/classificacao.py`), parar no 1º que resolver:
-  1. **Regras de banco** com as contas-chave: transferência entre contas próprias (CC ↔ poupança: mesmo dia e valor, sentidos opostos, nas contas bancárias da empresa — códigos BB 875/141 e 475/601; as duas pontas na mesma conta contábil quando a poupança não tem conta própria → avisar), rendimentos (Juros, Reajuste Monetário, RENDIMENTO) → conta-chave RENDIMENTO, IR (Imposto De Renda) → IR_RETIDO, TARIFA, IOF.
-  2. **CNPJ/CPF** escrito no movimento = de um padrão → alta (95).
-  3. **Nome parecido** com `rapidfuzz` (acrescentar ao requirements) entre o complemento do banco (“ZERA ASSESSORIA EMPRESARIAL E”, cortado) e o nome do padrão: ≥ 90 alta, 75–89 média (comparar normalizado, `token_set_ratio`/`partial_ratio` por causa do corte).
-  4. **Palavra-chave** (padrões PALAVRA) → média/alta; 5. **valor recorrente** do padrão → média.
-  7. Fornecedor achado mas sem conta (empresa com conta individual) → PENDENTE + “Fornecedores a cadastrar no Domínio”.
-- Roda sozinho depois de importar o extrato e por um botão “Classificar de novo”; não mexe em sugestão APROVADA/IGNORADA/USUARIO. Verdes (≥ limiar, padrão 90) já vêm APROVADOS (§3.5).
-- Aba Extratos (ou início da aba Revisão): coluna Débito/Crédito/Complemento/Confiança/Origem nos movimentos. Tela de revisão completa é a 2.8.
-- **Medir com os PDFs reais** (Casa Criança: lanctos 2025/2026 aprendidos + extratos de agosto): quantos ficam verdes/amarelos/pendentes — a meta da 2.8 é ≥ 85% certos.
+**Etapa 2.7 — IA em lote no que sobrou** (§6.2 passo 6; a 2.6 — regras, CNPJ, nome, palavra, valor — está pronta).
+- `app/servicos/classificacao_ia.py`: depois de `classificar()`, **sozinho, sem botão**, manda à IA (modelo rápido; forte só se pedir) as sugestões PENDENTES e as amarelas (< 90) que não são transferência sem conta nem origem USUARIO, em **lotes de 30–40**. `contexto` estável (para o cache): plano **analítico** da empresa (reduzido | classificação | descrição | natureza), perfil da empresa (`empresa.perfil_ia`), favorecidos aprendidos mais usados (nome → conta, natureza, valores), contas-chave e exemplos de lançamentos aprovados parecidos. `pergunta`: as linhas (id, data, valor, entrada/saída, histórico e favorecido do banco, conta contábil do banco).
+- Resposta (JSON, `additionalProperties: false`): `{itens: [{id, conta_contrapartida (reduzido), favorecido, natureza, confianca, justificativa}]}` (o lado do banco o sistema já sabe). **Validar**: conta existe, é analítica, não é a do banco; senão a linha fica pendente. Confiança da IA ≥ 90 → verde (aprovado), 70–89 → amarela, < 70 → vermelha; origem IA; justificativa “🤖 IA: …”. Complemento montado com favorecido/natureza da IA.
+- Casos reais para conferir (Casa Criança, agosto): “SME ITAQUAQUECETUBA” 80.000 (repasse municipal → 10578 VERBA RECEBIDA A APLICAR — o Diário ensinou), “RFB-DARF” 15.931,03 (guia de INSS/IRRF → 191), “CEF MATRIZ” 5.049,35 (guia de FGTS → 192), “BAZAR XERETA” (material → 359/360?), “JANAINA A PEREIRA SILVA” 2.868,50 (salário → 187). Medir com a IA real (`ia_real`) e custo.
+- §6.2 passo 7: fornecedor sem conta numa empresa com conta individual → a IA sugere o nome da conta a criar e o grupo (`empresa.grupo_fornecedores`) → lista “Fornecedores a cadastrar no Domínio” (pode ficar para a 2.8).
+- Sem IA (desligada ou limite atingido) → tudo segue como está, sem erro.
 
 ## Pendências com o usuário
 | # | Pergunta | Precisa até |
@@ -47,7 +42,7 @@ Atualizado em: **07/10/2026**
 - [x] 2.4 Leitor PDF BB poupança
 - [x] 2.5a Leitor universal com IA (PDF de banco sem leitor próprio, só entra se o saldo conferir)
 - [x] 2.5b Excel/CSV com colunas identificadas pelos títulos ou pela IA (confirmação na 1ª vez)
-- [ ] 2.6 Motor de classificação (regras, CNPJ, nome parecido, palavra-chave, valor) + pareamento de transferências
+- [x] 2.6 Motor de classificação (regras, CNPJ, nome parecido, palavra-chave, valor) + pareamento de transferências
 - [ ] 2.7 IA em lote + validação + aprovação automática dos verdes
 - [ ] 2.8 Tela de Revisão + fornecedores a cadastrar; medir ≥ 85% nos 2 PDFs
 
@@ -60,6 +55,13 @@ Atualizado em: **07/10/2026**
 ### Fase 4 — Extras (um por vez, quando pedido)
 
 ## Histórico
+
+### 08/10/2026 — Etapa 2.6 concluída (classificação)
+- Tabela `sugestao` (migração 0011): débito, crédito, complemento (modelo da empresa), confiança, origem, justificativa, padrão, par da transferência, status (PENDENTE, APROVADO, IGNORADO = sem lançamento, EXPORTADO). `rapidfuzz` no requirements.
+- `app/servicos/classificacao.py` (roda sozinho no fim de toda importação de extrato, no período inteiro e em todas as contas, + botão “Classificar de novo”): 1) **transferência entre contas da empresa** (as duas pontas: mesmo dia, valor, sentidos opostos; lançada uma vez na saída; mesma conta contábil → sem lançamento; conta sem conta contábil → pendente explicando) e **regras de banco** pelas contas-chave (rendimento, IR, tarifa, IOF); 2) **CNPJ** (inteiro ou só a raiz que o BB escreve); 3) **nome parecido** — primeiro nome igual, iniciais e “DE/DA” ignorados, palavra cortada vale pelo começo, erro de digitação pelo `rapidfuzz`; empate entre nomes em contas diferentes: vale o mais recente se a prática mudou; 4) palavra-chave; 5) **valor que se repete** num só favorecido (conta pela natureza daquele valor). Verde ≥ 90 já APROVADO; o que o usuário escolheu (USUARIO) e o exportado nunca são refeitos; um evento no log.
+- Aba Extratos: “Lançamento sugerido” (D/C com o nome da conta e o complemento), situação colorida (passar o mouse mostra de onde veio), contagem verde/amarelo/pendente/sem lançamento.
+- **Real (Casa Criança, agosto, só regras — sem IA):** conta corrente 49 movimentos → 22 aprovados (todos os salários de 28/08 com os nomes cortados/abreviados, ZERA, SABESP, EDP, QUATAI, SUPRICORP, ADONAI, MEDTRABALHO, JULIANA pelo CNPJ), 3 para conferir pelo valor (LYTEX 910,00 → 10594 plano odontológico e 448,00 → 10596 mensalidade sindical do SIEMACO; VIVO 119,99 → 356 Telefônica), 5 pendentes (repasse municipal, DARF, CEF, BAZAR XERETA, funcionária nova) e 19 transferências com a poupança pendentes porque a poupança não tem conta contábil (pendência 5). Fora as transferências: **25 de 30 resolvidos (83%)**, antes da IA.
+- Testes (14 + 1 real): 277 passando. Tela conferida no servidor de teste.
 
 ### 07/10/2026 — Etapa 2.5b concluída (extrato em Excel/CSV)
 - `app/leitores/planilha.py`: lê xlsx/xls (calamine, a aba com mais datas) e CSV (`;`, `,` ou tab); valores do jeito dos bancos (“1.234,56”, “-1.234,56”, “1.234,56 D”, “(10,00)”, número do Excel); datas dd/mm/aaaa, dd/mm/aa ou do Excel; títulos comuns (Data, Histórico/Lançamento, Documento, Valor, Débito, Crédito, C/D, Saldo); linhas “SALDO ANTERIOR/DO DIA” viram saldo; sem saldo anterior, o inicial sai da coluna Saldo da 1ª linha.

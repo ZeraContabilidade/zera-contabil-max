@@ -1,13 +1,14 @@
 from datetime import date, datetime
 from decimal import Decimal
 
-from sqlalchemy import Date, DateTime, ForeignKey, Numeric, String, UniqueConstraint, func
+from sqlalchemy import Date, DateTime, ForeignKey, Numeric, String, Text, UniqueConstraint, func
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.modelos.base import Auditavel, Base
 from app.modelos.conta_chave import ContaChave
 from app.modelos.importacao import Importacao
+from app.modelos.plano import ContaContabil
 
 TIPOS_CONTA = {"BANCO": "Conta corrente", "POUPANCA": "Poupança", "APLICACAO": "Aplicação"}
 
@@ -86,6 +87,11 @@ class MovimentoExtrato(Base):
     codigo_banco: Mapped[str | None] = mapped_column(String(10))  # código do histórico no banco (BB: 109, 144...)
     hash: Mapped[str] = mapped_column(String(64))
 
+    conta_bancaria: Mapped[ContaBancaria] = relationship()
+    sugestao: Mapped["Sugestao | None"] = relationship(
+        foreign_keys="Sugestao.movimento_id", back_populates="movimento", uselist=False
+    )
+
     @property
     def descricao(self) -> str:
         return f"{self.historico} {self.complemento or ''}".strip()
@@ -108,3 +114,51 @@ class ModeloPlanilha(Auditavel, Base):
     confirmado: Mapped[bool] = mapped_column(default=False)
     confirmado_por_id: Mapped[int | None] = mapped_column(ForeignKey("usuario.id"))
     confirmado_em: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+STATUS_SUGESTAO = {
+    "PENDENTE": "Pendente",
+    "APROVADO": "Aprovado",
+    "IGNORADO": "Sem lançamento",
+    "EXPORTADO": "Exportado",
+}
+
+
+class Sugestao(Auditavel, Base):
+    """Lançamento sugerido para um movimento do extrato (§6.2): débito, crédito, complemento, de onde veio.
+
+    Feita em bloco pela classificação (sem log linha a linha); o que o usuário mudar depois é auditado.
+    Verde (confiança ≥ 90) já vem APROVADO; IGNORADO = não gera lançamento (ex.: transferência entre
+    contas da própria empresa que caem na mesma conta contábil)."""
+
+    __tablename__ = "sugestao"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    empresa_id: Mapped[int] = mapped_column(ForeignKey("empresa.id"), index=True)
+    movimento_id: Mapped[int] = mapped_column(ForeignKey("movimento_extrato.id"), unique=True)
+    conta_debito_id: Mapped[int | None] = mapped_column(ForeignKey("conta_contabil.id"))
+    conta_credito_id: Mapped[int | None] = mapped_column(ForeignKey("conta_contabil.id"))
+    complemento: Mapped[str] = mapped_column(String(300), default="")
+    confianca: Mapped[int] = mapped_column(default=0)  # 0 a 100
+    # REGRA (banco), TRANSFERENCIA, CNPJ, NOME, PALAVRA, VALOR, IA ou USUARIO
+    origem: Mapped[str] = mapped_column(String(14))
+    justificativa: Mapped[str | None] = mapped_column(Text)
+    padrao_id: Mapped[int | None] = mapped_column(ForeignKey("padrao.id", ondelete="SET NULL"))
+    par_id: Mapped[int | None] = mapped_column(ForeignKey("movimento_extrato.id"))  # a outra ponta da transferência
+    status: Mapped[str] = mapped_column(String(10), default="PENDENTE")
+    atualizado_em: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+    movimento: Mapped[MovimentoExtrato] = relationship(foreign_keys=[movimento_id], back_populates="sugestao")
+    conta_debito: Mapped[ContaContabil | None] = relationship(foreign_keys=[conta_debito_id])
+    conta_credito: Mapped[ContaContabil | None] = relationship(foreign_keys=[conta_credito_id])
+
+    campos_nao_auditados = ("atualizado_em",)
+
+    @property
+    def cor(self) -> str:
+        """verde (alta), amarela (média) ou vermelha (pendente) — para a tela."""
+        if self.status in ("IGNORADO", "APROVADO", "EXPORTADO"):
+            return "verde" if self.status != "IGNORADO" else "cinza"
+        return "amarela" if self.confianca >= 70 else "vermelha"

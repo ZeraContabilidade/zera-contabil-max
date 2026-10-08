@@ -1,6 +1,7 @@
 """Aba “4 Extratos”: arrastar e soltar os extratos do mês, contas bancárias da empresa e movimentos lidos.
 Planilha (Excel/CSV) de layout novo: tela para confirmar as colunas e a conta, uma vez por layout."""
 
+from collections import Counter
 from datetime import date, timedelta
 from decimal import Decimal
 
@@ -14,15 +15,34 @@ from app.leitores.planilha import NOMES_PAPEIS, PAPEIS, texto_celula
 from app.modelos import TIPOS_CONTA, ArquivoOriginal, ContaBancaria, Empresa, Extrato, Importacao, Usuario
 from app.rotas.comum import buscar_empresa
 from app.servicos.armazenamento import obter_armazenamento
+from app.servicos.classificacao import classificar
 from app.servicos.competencia import hoje, valor_campo_mes
 from app.servicos.contas_chave import BANCOS
-from app.servicos.extratos import contas_bancarias, extratos_do_mes, importar_extrato, mesma_conta, movimentos_do_mes
+from app.servicos.extratos import (
+    contas_bancarias,
+    extratos_do_mes,
+    importar_extrato,
+    limites_do_mes,
+    mesma_conta,
+    movimentos_do_mes,
+)
 from app.servicos.planilha_extrato import PrecisaConfirmar, analisar, guardar_modelo, problema_nas_colunas
 from app.servicos.plano import ErroLeitura
-from app.web import avisar, pagina, redirecionar
+from app.web import avisar, competencia_da_tela, pagina, redirecionar
 
 router = APIRouter()
 TAMANHO_MAXIMO = 30 * 1024 * 1024
+ORIGENS = {
+    "TRANSFERENCIA": "transferência entre contas",
+    "REGRA": "regra do banco",
+    "CNPJ": "pelo CNPJ",
+    "NOME": "pelo nome",
+    "PALAVRA": "palavra-chave",
+    "VALOR": "pelo valor",
+    "PENDENTE": "não reconhecido",
+    "IA": "🤖 IA",
+    "USUARIO": "escolhido à mão",
+}
 CONFERENCIA = {
     "CONFERE": "saldo confere",
     "DIFERENCA": "saldo NÃO confere",
@@ -57,7 +77,27 @@ def contexto_aba_extratos(sessao: Session, empresa: Empresa, competencia: date) 
         "total_saidas": sum((m.valor for m in movimentos if m.sentido == "SAIDA"), Decimal("0")),
         "rotulo_conferencia": CONFERENCIA,
         "planilhas_esperando": planilhas_esperando(sessao, empresa),
+        "contagem": Counter({"verde": 0, "amarela": 0, "vermelha": 0, "cinza": 0})
+        + Counter(m.sugestao.cor for m in movimentos if m.sugestao),
+        "origens": ORIGENS,
     }
+
+
+@router.post("/empresas/{empresa_id}/extratos/classificar")
+def classificar_de_novo(
+    request: Request,
+    empresa_id: int,
+    mes: str = Form(""),
+    usuario: Usuario = Depends(usuario_logado),
+    sessao: Session = Depends(obter_sessao),
+):
+    if (empresa := buscar_empresa(sessao, request, empresa_id)) is None:
+        return redirecionar("/")
+    competencia = competencia_da_tela(request, mes)
+    resultado = classificar(sessao, empresa, *limites_do_mes(competencia))
+    sessao.commit()
+    avisar(request, resultado.resumo())
+    return redirecionar(f"/empresas/{empresa.id}?aba=extratos&mes={valor_campo_mes(competencia)}")
 
 
 def _avisar_importado(request: Request, nome: str, extrato: Extrato) -> None:
@@ -66,6 +106,8 @@ def _avisar_importado(request: Request, nome: str, extrato: Extrato) -> None:
     if resumo["repetidos"]:
         texto += f", {resumo['repetidos']} repetido(s) ignorado(s) (já estavam no sistema)"
     texto += f" — {CONFERENCIA[extrato.conferencia]}."
+    if resumo.get("classificacao"):
+        texto += f" {resumo['classificacao']}"
     ok = extrato.conferencia == "CONFERE" and not extrato.importacao.avisos
     avisar(request, texto, "ok" if ok else "atencao")
 

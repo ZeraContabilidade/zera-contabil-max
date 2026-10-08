@@ -27,6 +27,7 @@ from app.modelos import (
     Usuario,
 )
 from app.servicos.armazenamento import guardar_arquivo
+from app.servicos.classificacao import classificar
 from app.servicos.contas_chave import identificar_banco, ligar_conta_bancaria, referencia_bancaria
 from app.servicos.planilha_extrato import ler_planilha_extrato
 from app.servicos.plano import Aviso, ErroLeitura
@@ -285,6 +286,9 @@ def importar_extrato(
         f"{len(novos)} movimento(s) novo(s), {repetidos} repetido(s); saldo: {conferencia}",
     )
     sessao.flush()
+    # classifica o período inteiro (todas as contas): a transferência acha o par no extrato da outra conta
+    resultado = classificar(sessao, empresa, extrato.inicio, extrato.fim)
+    importacao.resumo = {**importacao.resumo, "classificacao": resultado.resumo()}
     return extrato
 
 

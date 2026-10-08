@@ -89,18 +89,41 @@
 <article>
   <header class="cabecalho-pagina"><strong>Movimentos de {{ competencia | nome_competencia }}</strong>
     <span class="suave">{{ movimentos | length }} movimento(s) · entradas R$ {{ total_entradas | reais }} · saídas R$ {{ total_saidas | reais }}</span></header>
-  <p class="suave">A classificação (débito, crédito e histórico do Domínio) chega na etapa 2.6.</p>
+  <div class="resumo-classificacao">
+    <span class="etiqueta etiqueta-verde">✓ {{ contagem.verde }} aprovado(s)</span>
+    <span class="etiqueta etiqueta-ambar">? {{ contagem.amarela }} para conferir</span>
+    <span class="etiqueta etiqueta-vermelha">! {{ contagem.vermelha }} pendente(s)</span>
+    {% if contagem.cinza %}<span class="etiqueta etiqueta-apagada">{{ contagem.cinza }} sem lançamento</span>{% endif %}
+    <form method="post" action="/empresas/{{ empresa.id }}/extratos/classificar" data-aguarde="Classificando…" class="form-inline">
+      <input type="hidden" name="mes" value="{{ competencia | valor_campo_mes }}">
+      <button type="submit" class="secondary outline">Classificar de novo</button>
+    </form>
+  </div>
+  <p class="suave">Verde já vem aprovado (confiança de 90% ou mais). Passe o mouse na situação para ver de onde veio a sugestão.
+    O que ficou pendente a IA vai olhar na próxima etapa; a tela de revisão completa vem depois.</p>
   <div class="tabela-rolavel">
     <table class="striped tabela-movimentos">
-      <thead><tr><th>Data</th><th>Descrição</th><th>Documento</th><th class="num">Entrada</th><th class="num">Saída</th></tr></thead>
+      <thead><tr><th>Data</th><th>Descrição do banco</th><th class="num">Entrada</th><th class="num">Saída</th><th>Lançamento sugerido</th><th>Situação</th></tr></thead>
       <tbody>
         {% for m in movimentos %}
+        {% set s = m.sugestao %}
         <tr>
           <td>{{ m.data.strftime('%d/%m') }}</td>
           <td>{{ m.historico }}{% if m.complemento %}<br><small class="suave">{{ m.complemento }}</small>{% endif %}</td>
-          <td><small>{{ m.documento or '' }}</small></td>
           <td class="num">{% if m.sentido == 'ENTRADA' %}{{ m.valor | reais }}{% endif %}</td>
           <td class="num">{% if m.sentido == 'SAIDA' %}{{ m.valor | reais }}{% endif %}</td>
+          <td>
+            {% if s and s.status != 'IGNORADO' %}
+            <span class="lancamento">D <span title="{{ s.conta_debito.descricao if s.conta_debito else 'falta a conta' }}">{{ s.conta_debito.reduzido if s.conta_debito else '?' }}</span>
+              · C <span title="{{ s.conta_credito.descricao if s.conta_credito else 'falta a conta' }}">{{ s.conta_credito.reduzido if s.conta_credito else '?' }}</span></span>
+            {% set contrapartida = s.conta_debito if m.sentido == 'SAIDA' else s.conta_credito %}
+            {% if contrapartida %}<small class="suave"> {{ contrapartida.descricao }}</small>{% endif %}
+            {% if s.complemento %}<br><small>{{ s.complemento }}</small>{% endif %}
+            {% endif %}
+          </td>
+          <td>{% if s %}<span class="etiqueta etiqueta-{{ {'verde': 'verde', 'amarela': 'ambar', 'vermelha': 'vermelha', 'cinza': 'apagada'}[s.cor] }}" title="{{ s.justificativa or '' }}">
+            {% if s.status == 'IGNORADO' %}sem lançamento{% elif s.status == 'APROVADO' %}✓ {{ s.confianca }}%{% elif s.confianca >= 70 %}? {{ s.confianca }}%{% else %}pendente{% endif %}</span>
+            <br><small class="suave">{{ origens.get(s.origem, s.origem) }}</small>{% endif %}</td>
         </tr>
         {% endfor %}
       </tbody>

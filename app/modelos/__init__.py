@@ -4,7 +4,15 @@ from app.modelos.aprendizado import LancamentoHistorico, Padrao
 from app.modelos.base import Auditavel, Base
 from app.modelos.conta_chave import ContaChave
 from app.modelos.empresa import Empresa, Regime
-from app.modelos.extrato import TIPOS_CONTA, ContaBancaria, Extrato, ModeloPlanilha, MovimentoExtrato
+from app.modelos.extrato import (
+    STATUS_SUGESTAO,
+    TIPOS_CONTA,
+    ContaBancaria,
+    Extrato,
+    ModeloPlanilha,
+    MovimentoExtrato,
+    Sugestao,
+)
 from app.modelos.ia import ChamadaIA
 from app.modelos.importacao import ArquivoOriginal, Importacao
 from app.modelos.log import Log
@@ -29,6 +37,8 @@ __all__ = [
     "Padrao",
     "Papel",
     "Regime",
+    "STATUS_SUGESTAO",
+    "Sugestao",
     "TIPOS_CONTA",
     "Usuario",
 ]

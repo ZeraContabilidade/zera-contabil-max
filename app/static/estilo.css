@@ -208,6 +208,10 @@ tr.inativa td { opacity: .6; }
 .tabela-amostra { font-size: .82rem; }
 .tabela-amostra td, .tabela-amostra th { white-space: nowrap; }
 .tabela-amostra tr.linha-titulos td { font-weight: 700; color: var(--ouro); }
+.resumo-classificacao { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; margin-bottom: .6rem; }
+.resumo-classificacao .form-inline { margin: 0 0 0 auto; }
+.resumo-classificacao .form-inline button { margin: 0; padding: .3rem .8rem; font-size: .85rem; }
+.lancamento { font-weight: 600; white-space: nowrap; }
 .grade-colunas { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 0 1rem; }
 details.aviso { padding: .55rem 1rem; }
 details.aviso summary { font-size: .92rem; }

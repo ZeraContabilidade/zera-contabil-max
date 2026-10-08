@@ -22,6 +22,9 @@ anthropic==1.11.0
 # Leitura de extratos em PDF (pela posição das palavras)
 pdfplumber==0.11.10
 
+# Nomes parecidos na classificação (“ZERA ASSESSORIA EMPRESARIAL E” ≈ “ZERA ASSESSORIA EMPRES CONTABIL”)
+rapidfuzz==3.14.6
+
 # Segurança
 argon2-cffi==25.1.0
 

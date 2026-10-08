@@ -18,6 +18,7 @@ ROTULOS_ACAO = {
     "IMPORTAR_PLANO": "Importou o plano de contas",
     "IMPORTAR_HISTORICO": "Importou histórico de lançamentos",
     "IMPORTAR_EXTRATO": "Importou extrato bancário",
+    "CLASSIFICAR": "Classificou os movimentos do extrato",
     "APRENDER": "Recalculou o aprendizado",
     "BACKUP": "Fez backup",
     "BACKUP_FALHOU": "Backup falhou",
