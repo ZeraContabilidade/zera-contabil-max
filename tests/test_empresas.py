@@ -216,7 +216,7 @@ def test_pagina_da_empresa_tem_barra_do_mes_e_abas(cliente, supervisor_logado, s
     extratos = cliente.get(f"/empresas/{empresa.id}", params={"aba": "extratos"}).text
     assert "Arraste os extratos para cá" in extratos
     exportar = cliente.get(f"/empresas/{empresa.id}", params={"aba": "exportar"}).text
-    assert "Esta parte chega na etapa 3.1" in exportar  # abas que ainda não existem avisam quando chegam
+    assert "lanctos.txt para importar no Domínio" in exportar and "Envie os extratos na aba Extratos" in exportar
 
 
 def test_empresa_inexistente_volta_para_a_lista(cliente, supervisor_logado):

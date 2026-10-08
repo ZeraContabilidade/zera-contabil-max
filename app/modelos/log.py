@@ -20,6 +20,7 @@ ROTULOS_ACAO = {
     "IMPORTAR_EXTRATO": "Importou extrato bancário",
     "CLASSIFICAR": "Classificou os movimentos do extrato",
     "APRENDER": "Recalculou o aprendizado",
+    "EXPORTAR": "Gerou o lanctos.txt",
     "BACKUP": "Fez backup",
     "BACKUP_FALHOU": "Backup falhou",
     "RESTAURAR_BACKUP": "Restaurou um backup",

@@ -7,6 +7,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.modelos import Empresa, Padrao
+from app.servicos.exportacao import situacao_do_mes
 from app.servicos.extratos import contar_movimentos_do_mes
 from app.servicos.plano import contar_contas
 from app.servicos.revisao import contagem_do_mes
@@ -45,6 +46,9 @@ def _concluidas(sessao: Session, empresa: Empresa, competencia: date) -> dict[st
         contagem = contagem_do_mes(sessao, empresa, competencia)
         if contagem.total and not (contagem.amarela or contagem.vermelha):
             feitas["revisao"] = f"{contagem.verde:,} aprovados".replace(",", ".")
+        exportadas, faltam = situacao_do_mes(sessao, empresa, competencia)
+        if exportadas and not faltam:  # tudo o que foi aprovado já está num lanctos.txt
+            feitas["exportado"] = f"{exportadas:,} lançamentos".replace(",", ".")
     return feitas
 
 

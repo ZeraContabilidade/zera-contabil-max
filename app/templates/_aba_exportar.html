@@ -1,0 +1,99 @@
+{# Aba "6 Exportar" — incluída em empresa.html #}
+<article>
+  <header class="cabecalho-pagina"><strong>Exportar {{ competencia | nome_competencia }}</strong>
+    <span class="suave">lanctos.txt para importar no Domínio</span></header>
+  {% if not preparo.disponiveis %}
+  <p>Nenhum extrato em {{ competencia | nome_competencia }}. Envie os extratos na aba Extratos.</p>
+  {% else %}
+  <form method="get" action="/empresas/{{ empresa.id }}" class="filtros">
+    <input type="hidden" name="aba" value="exportar">
+    <input type="hidden" name="mes" value="{{ competencia | valor_campo_mes }}">
+    <fieldset class="contas-exportar">
+      <legend>Contas bancárias</legend>
+      {% for conta in preparo.disponiveis %}
+      <label><input type="checkbox" name="bancos" value="{{ conta.id }}" {% if conta.id in escolhidas_ids %}checked{% endif %}> {{ conta.rotulo }}</label>
+      {% endfor %}
+    </fieldset>
+    <button type="submit" class="secondary outline botao-atualizar">Atualizar</button>
+  </form>
+
+  <div class="resumo-classificacao">
+    <span class="etiqueta etiqueta-verde">✓ {{ preparo.prontas | length }} lançamento(s) prontos — R$ {{ preparo.total | reais }}</span>
+    {% if preparo.pendentes %}<span class="etiqueta etiqueta-vermelha">! {{ preparo.pendentes | length }} pendente(s) ficam de fora</span>{% endif %}
+    {% if preparo.sem_lancamento %}<span class="etiqueta etiqueta-apagada">{{ preparo.sem_lancamento }} sem lançamento</span>{% endif %}
+    {% if preparo.exportadas %}<span class="etiqueta etiqueta-apagada">{{ preparo.exportadas }} já exportado(s)</span>{% endif %}
+  </div>
+  {% if preparo.pendentes %}
+  <p class="suave">As pendentes não entram no arquivo. Para incluí-las, resolva na
+    <a href="/empresas/{{ empresa.id }}?aba=revisao&mes={{ competencia | valor_campo_mes }}">aba Revisão</a> e volte aqui.</p>
+  {% endif %}
+
+  {% if preparo.problemas %}
+  <div class="aviso aviso-erro" role="alert">
+    <p><strong>{{ preparo.problemas | length }} problema(s) impedem a exportação.</strong> Corrija na Revisão e volte aqui:</p>
+    <div class="tabela-rolavel">
+      <table>
+        <thead><tr><th>Data</th><th>Descrição do banco</th><th class="num">Valor</th><th>Problema</th></tr></thead>
+        <tbody>
+          {% for p in preparo.problemas %}{% set m = p.sugestao.movimento %}
+          <tr><td>{{ m.data.strftime('%d/%m') }}</td><td>{{ m.complemento or m.historico }}</td>
+            <td class="num">{{ m.valor | reais }}</td><td>{{ p.texto }}</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% elif preparo.prontas %}
+  <form method="post" action="/empresas/{{ empresa.id }}/exportar" class="form-exportar" data-aguarde="Gerando…">
+    <input type="hidden" name="mes" value="{{ competencia | valor_campo_mes }}">
+    {% for i in escolhidas_ids %}<input type="hidden" name="bancos" value="{{ i }}">{% endfor %}
+    {% if preparo.pendentes %}
+    <label><input type="checkbox" name="deixar_pendentes" required>
+      Deixar as {{ preparo.pendentes | length }} linha(s) pendente(s) de fora deste arquivo</label>
+    {% endif %}
+    <button type="submit">Gerar lanctos.txt</button>
+    <small class="suave">As linhas exportadas ficam travadas (só o Supervisor reabre). Conta em branco vai vazia — complete no Domínio.</small>
+  </form>
+  {% endif %}
+
+  {% if preparo.prontas %}
+  <details>
+    <summary>Total por conta ({{ preparo.por_conta | length }})</summary>
+    <div class="tabela-rolavel">
+      <table class="striped">
+        <thead><tr><th>Conta</th><th class="num">Débitos</th><th class="num">Créditos</th><th class="num">Linhas</th></tr></thead>
+        <tbody>
+          {% for t in preparo.por_conta %}
+          <tr><td>{{ t.rotulo }}</td><td class="num">{{ t.debitos | reais }}</td><td class="num">{{ t.creditos | reais }}</td><td class="num">{{ t.linhas }}</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </details>
+  {% endif %}
+  {% endif %}
+</article>
+
+{% if exportacoes %}
+<article>
+  <header><strong>Arquivos gerados</strong></header>
+  <div class="tabela-rolavel">
+    <table class="striped">
+      <thead><tr><th>Mês</th><th>Gerado em</th><th class="num">Lançamentos</th><th class="num">Total</th><th>Pendentes de fora</th><th>Baixar</th></tr></thead>
+      <tbody>
+        {% for e in exportacoes %}
+        <tr>
+          <td>{{ e.competencia | nome_competencia }}</td>
+          <td>{{ e.criado_em | data_hora }}</td>
+          <td class="num">{{ e.linhas }}</td>
+          <td class="num">{{ e.total | reais }}</td>
+          <td>{{ e.deixadas_de_fora or '—' }}</td>
+          <td><a href="/empresas/{{ empresa.id }}/exportacoes/{{ e.id }}/lanctos.txt" role="button" class="botao-pequeno">lanctos.txt</a>
+            <a href="/empresas/{{ empresa.id }}/exportacoes/{{ e.id }}/resumo.xlsx" role="button" class="secondary outline botao-pequeno">Resumo Excel</a></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</article>
+{% endif %}

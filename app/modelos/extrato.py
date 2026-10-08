@@ -7,7 +7,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.modelos.base import Auditavel, Base
 from app.modelos.conta_chave import ContaChave
-from app.modelos.importacao import Importacao
+from app.modelos.importacao import ArquivoOriginal, Importacao
 from app.modelos.plano import ContaContabil
 
 TIPOS_CONTA = {"BANCO": "Conta corrente", "POUPANCA": "Poupança", "APLICACAO": "Aplicação"}
@@ -144,6 +144,28 @@ class FornecedorACadastrar(Auditavel, Base):
     conta: Mapped[ContaContabil | None] = relationship()
 
 
+class Exportacao(Base):
+    """Um lanctos.txt gerado (§3.6): quem, quando, mês, contas bancárias, quantas linhas e o arquivo (guardado 5 anos).
+
+    As sugestões exportadas ficam EXPORTADO (travadas) e ligadas a esta exportação; só o Supervisor reabre (3.2).
+    Não é Auditavel: a exportação inteira vira um evento no log."""
+
+    __tablename__ = "exportacao"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    empresa_id: Mapped[int] = mapped_column(ForeignKey("empresa.id"), index=True)
+    competencia: Mapped[date] = mapped_column(Date)  # 1º dia do mês exportado
+    contas_bancarias: Mapped[list[int]] = mapped_column(JSONB, default=list)  # ids das contas escolhidas
+    linhas: Mapped[int]
+    total: Mapped[Decimal] = mapped_column(Numeric(14, 2))
+    deixadas_de_fora: Mapped[int] = mapped_column(default=0)  # pendentes que ficaram de fora
+    arquivo_id: Mapped[int] = mapped_column(ForeignKey("arquivo_original.id"))
+    usuario_id: Mapped[int | None] = mapped_column(ForeignKey("usuario.id"))
+    criado_em: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+    arquivo: Mapped[ArquivoOriginal] = relationship()
+
+
 STATUS_SUGESTAO = {
     "PENDENTE": "Pendente",
     "APROVADO": "Aprovado",
@@ -181,6 +203,7 @@ class Sugestao(Auditavel, Base):
     conferido_em: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     # pago a um fornecedor que ainda não tem conta: fica pendente (e a classificação não mexe) até a conta existir
     fornecedor_id: Mapped[int | None] = mapped_column(ForeignKey("fornecedor_a_cadastrar.id", ondelete="SET NULL"))
+    exportacao_id: Mapped[int | None] = mapped_column(ForeignKey("exportacao.id"), index=True)  # EXPORTADO por ela
     atualizado_em: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )

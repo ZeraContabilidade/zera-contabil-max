@@ -3,11 +3,10 @@
 Atualizado em: **08/10/2026**
 
 ## Próximo passo exato
-**Etapa 3.1b — Tela Exportar** (§3.6, §11.1; aba **6 Exportar**). A 3.1a (gerador + conferência do `lanctos.txt`, `app/servicos/exportacao.py`) está pronta: falta a tela, o registro e o travamento.
-- Escolher o mês e as contas bancárias; mostrar quantas linhas vão (aprovadas), quantas ficam de fora (pendentes, com confirmação para deixá-las de fora) e o total por conta.
-- **Validações que bloqueiam, mostrando a linha:** conta inexistente ou sintética, data inválida ou fora do mês, débito = crédito, valor ≤ 0, `;` no complemento (o modelo tem 3 erros que devem ser pegos: `28/01//2026`, `28/01//2027`, conta `10595.`). **Conta em branco NÃO bloqueia** (o Domínio aceita — confirmado em 08/10).
-- Montar as `LinhaLancto` das sugestões aprovadas (conta em branco = `None`), conferir as sugestões (sintética, inativa, débito = crédito, valor, data, `;`) mostrando o movimento, gerar com `gerar_txt` e passar `conferir_txt` no resultado antes de entregar.
-- **Resumo em Excel** por conta (openpyxl). Tabela `exportacao` (quem, quando, quantas linhas, arquivo guardado); linhas exportadas → status EXPORTADO (travadas). Barra do mês: **Exportado ✔**. Reabrir fica para a 3.2 (só Supervisor).
+**Etapa 3.2 — Travamento e reabertura pelo Supervisor** (§3.6, §5 papéis). A 3.1 (lanctos.txt) está pronta.
+- Linhas exportadas já ficam travadas (EXPORTADO: Revisão, lote, classificação e IA não mexem). Falta: **“Reabrir exportação”** na aba Exportar, **só para o Supervisor** (`exigir_supervisor`), pedindo o motivo → as linhas daquela exportação voltam a APROVADO (podem ser corrigidas e exportadas de novo), a exportação fica marcada como reaberta (quem, quando, motivo — migração nova) e o log registra. O arquivo antigo continua guardado (histórico) mas aparece como “reaberto — não importar”.
+- Avisar na tela que, se o arquivo já foi importado no Domínio, é preciso excluir lá os lançamentos antes de importar o novo.
+- Testes: assistente não vê/não consegue reabrir (403); supervisor reabre; a barra do mês volta; exportar de novo gera arquivo com as linhas corrigidas.
 
 ## Pendências com o usuário
 | # | Pergunta | Precisa até |
@@ -49,7 +48,7 @@ Atualizado em: **08/10/2026**
 
 ### Fase 3 — Exportação e Painel
 - [x] 3.1a Gerador do lanctos.txt (formato exato) + conferência linha a linha + teste “arquivo de ouro”
-- [ ] 3.1b Tela Exportar: escolher mês e contas, validações mostrando a linha, resumo Excel, registro e travamento
+- [x] 3.1b Tela Exportar: escolher mês e contas, validações mostrando a linha, resumo Excel, registro e travamento
 - [ ] 3.2 Travamento e reabertura pelo Supervisor
 - [ ] 3.3 Painel do supervisor + painel de uso da IA
 - [ ] 3.4 Guarda de arquivos por 5 anos + acesso pela rede
@@ -57,6 +56,12 @@ Atualizado em: **08/10/2026**
 ### Fase 4 — Extras (um por vez, quando pedido)
 
 ## Histórico
+
+### 08/10/2026 — Etapa 3.1b concluída (aba Exportar)
+- Aba **6 Exportar**: escolher as contas bancárias do mês (todas marcadas), ver quantos lançamentos vão (aprovados, com o total), quantos ficam de fora (pendentes — só com a caixinha “Deixar as N pendentes de fora”), sem lançamento e já exportados; **total por conta**.
+- **Problemas que bloqueiam, mostrando a linha** (data, descrição, valor e o que fazer): conta que saiu do plano, conta sintética, débito = crédito, sem nenhuma conta, valor ≤ 0, “;” no complemento. Conta em branco não bloqueia.
+- **Gerar lanctos.txt**: o arquivo é conferido linha a linha antes de sair, guardado por 5 anos (`lanctos_230_2026-08.txt`) e registrado (quem, quando, mês, contas, linhas, total, pendentes de fora — migração 0016); as linhas exportadas ficam **travadas** (a Revisão mostra “exportado”). Lista **Arquivos gerados** com download do TXT e do **Resumo Excel** (total por conta + todas as linhas). Um evento no Log. Barra do mês: **Exportado ✔**. Linha resolvida depois vai num 2º arquivo do mesmo mês.
+- Testes (6 novos): 320 passando.
 
 ### 08/10/2026 — Etapa 3.1a concluída (gerador e conferência do lanctos.txt)
 - `app/servicos/exportacao.py`: gera o `lanctos.txt` **idêntico, byte a byte**, ao que o Domínio já aceita (10 campos com “;”, valor com vírgula sem zeros sobrando — 346,5 · 120 —, inicia lote 1, código da empresa, CRLF, Windows-1252; letra fora do Windows-1252 perde o acento). Conta em branco sai vazia (o Domínio aceita).

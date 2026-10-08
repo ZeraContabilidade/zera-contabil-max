@@ -1,6 +1,6 @@
 """Lista de empresas (página inicial), cadastro e página da empresa com as abas do mês."""
 
-from fastapi import APIRouter, Depends, Form, Request
+from fastapi import APIRouter, Depends, Form, Query, Request
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
@@ -9,6 +9,7 @@ from app.db import obter_sessao
 from app.modelos import Empresa, Regime, Usuario
 from app.rotas.aprendizado import contexto_aba_aprendizado
 from app.rotas.comum import avisar_consulta, buscar_empresa
+from app.rotas.exportar import contexto_aba_exportar, ler_ids
 from app.rotas.extratos import contexto_aba_extratos
 from app.rotas.plano import contexto_aba_plano
 from app.rotas.revisao import contexto_aba_revisao
@@ -34,9 +35,7 @@ ABAS = (
     ("revisao", "Revisão"),
     ("exportar", "Exportar"),
 )
-CHEGA_NA_ETAPA = {
-    "exportar": "na etapa 3.1 (geração do lanctos.txt)",
-}
+CHEGA_NA_ETAPA: dict[str, str] = {}  # aba que ainda não existe → em que etapa chega
 
 
 def _usuarios_ativos(sessao: Session) -> list[Usuario]:
@@ -189,6 +188,7 @@ def tela_empresa(
     ambiguos: str = "",
     filtro: str = "atencao",
     conta: str = "",
+    bancos: list[str] = Query([]),
     usuario: Usuario = Depends(usuario_logado),
     sessao: Session = Depends(obter_sessao),
 ):
@@ -203,6 +203,8 @@ def tela_empresa(
         extras = contexto_aba_extratos(sessao, empresa, competencia_da_tela(request, mes))
     elif aba == "revisao":
         extras = contexto_aba_revisao(sessao, empresa, competencia_da_tela(request, mes), filtro, q, conta)
+    elif aba == "exportar":
+        extras = contexto_aba_exportar(sessao, empresa, competencia_da_tela(request, mes), ler_ids(bancos))
     return _tela_empresa(request, sessao, empresa, aba, mes, **extras)
 
 
