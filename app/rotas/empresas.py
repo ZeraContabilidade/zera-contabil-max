@@ -223,6 +223,7 @@ def editar_empresa(
     ia_limite_mensal_usd: str = Form(""),
     usa_conta_individual: str | None = Form(None),
     grupo_fornecedores: str = Form(""),
+    limiar_aprovacao: str = Form(""),
     supervisor: Usuario = Depends(exigir_supervisor),
     sessao: Session = Depends(obter_sessao),
 ):
@@ -242,6 +243,7 @@ def editar_empresa(
         "ia_limite_mensal_usd": ia_limite_mensal_usd,
         "usa_conta_individual": usa_conta_individual,
         "grupo_fornecedores": grupo_fornecedores,
+        "limiar_aprovacao": limiar_aprovacao,
     }
     valores, erros = ler_formulario(sessao, form, empresa)
     if erros:

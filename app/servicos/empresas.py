@@ -7,6 +7,7 @@ from sqlalchemy import String, cast, func, or_, select
 from sqlalchemy.orm import Session, joinedload
 
 from app.modelos import Empresa, Regime, Usuario
+from app.modelos.empresa import LIMIAR_MINIMO, LIMIAR_PADRAO
 from app.servicos import cnpj_publico
 from app.servicos.cnpj_publico import DadosPublicos
 from app.servicos.complemento import MODELO_PADRAO, problema_no_modelo
@@ -79,6 +80,17 @@ def ler_formulario(sessao: Session, form: dict[str, str | None], empresa: Empres
         if len(grupo) > 40:
             erros.append("O grupo de fornecedores pode ter no máximo 40 letras (ex.: 2.1.3.01).")
         valores["grupo_fornecedores"] = grupo or None
+    if "limiar_aprovacao" in form:
+        texto = (form.get("limiar_aprovacao") or "").replace("%", "").strip()
+        if not texto:
+            valores["limiar_aprovacao"] = LIMIAR_PADRAO
+        elif texto.isdigit() and LIMIAR_MINIMO <= int(texto) <= 100:
+            valores["limiar_aprovacao"] = int(texto)
+        else:
+            erros.append(
+                f"A aprovação automática vai de {LIMIAR_MINIMO}% a 100% (padrão {LIMIAR_PADRAO}%). "
+                "Digite só o número, ex.: 90."
+            )
     if "ia_limite_mensal_usd" in form:
         limite = _ler_dolares(form["ia_limite_mensal_usd"])
         if limite is False:

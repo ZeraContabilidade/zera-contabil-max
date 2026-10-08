@@ -24,13 +24,28 @@
   </form>
   <p class="suave">Escolha a conta digitando o código ou parte do nome (ex.: “agua” ou “355”) e clique em <strong>Salvar</strong>
     — a linha fica aprovada e o sistema aprende para o próximo mês. <strong>Aprovar</strong> aceita a sugestão como está;
-    <strong>Ignorar</strong> deixa a linha sem lançamento. Passe o mouse na situação para ver de onde veio a sugestão.</p>
+    <strong>Ignorar</strong> deixa a linha sem lançamento. Passe o mouse na situação para ver de onde veio a sugestão.
+    Para várias linhas de uma vez, marque as caixinhas e use a barra acima da grade.</p>
 </article>
+
+{% if sugestoes %}
+<form method="post" action="/empresas/{{ empresa.id }}/revisao/lote" id="form-lote" class="barra-lote" data-aguarde="Gravando…">
+  <input type="hidden" name="mes" value="{{ competencia | valor_campo_mes }}">
+  <input type="hidden" name="filtro" value="{{ filtro }}">
+  <input type="hidden" name="q" value="{{ busca_revisao }}">
+  <input type="hidden" name="conta_filtro" value="{{ conta_filtro }}">
+  <span>Marcadas: <strong data-marcadas>0</strong></span>
+  <input name="conta" list="contas-revisao" placeholder="conta para as marcadas" aria-label="Conta para as linhas marcadas" autocomplete="off">
+  <button type="submit" name="acao" value="conta">Aplicar a conta</button>
+  <button type="submit" name="acao" value="aprovar" class="secondary">Aprovar</button>
+  <button type="submit" name="acao" value="ignorar" class="secondary outline">Ignorar</button>
+</form>
+{% endif %}
 
 {% if sugestoes %}
 <div class="tabela-rolavel">
   <table class="striped tabela-revisao">
-    <thead><tr><th>Data</th><th>Descrição do banco</th><th class="num">Valor</th><th>Lançamento</th><th>Situação</th><th>Conferir</th></tr></thead>
+    <thead><tr><th><input type="checkbox" data-marcar-todas aria-label="Marcar todas as linhas"></th><th>Data</th><th>Descrição do banco</th><th class="num">Valor</th><th>Lançamento</th><th>Situação</th><th>Conferir</th></tr></thead>
     <tbody>
       {% for s in sugestoes %}{% include "_revisao_linha.html" %}{% endfor %}
     </tbody>

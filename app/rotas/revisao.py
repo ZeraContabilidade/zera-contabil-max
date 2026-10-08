@@ -2,6 +2,7 @@
 (HTMX: só a linha muda) — e cada decisão ensina o sistema (§3.5, §6.3)."""
 
 from datetime import date
+from urllib.parse import urlencode
 
 from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import Response
@@ -15,12 +16,15 @@ from app.rotas.comum import buscar_empresa
 from app.servicos.competencia import valor_campo_mes
 from app.servicos.contas_chave import normalizar
 from app.servicos.revisao import (
+    ACOES_LOTE,
     FILTROS,
     achar_conta_digitada,
+    aprender_no_fim,
     aprovar,
     contagem_do_mes,
     contrapartida,
     corrigir,
+    decidir_em_lote,
     ignorar,
     parecidas,
     reabrir,
@@ -89,6 +93,51 @@ def _sugestao_da_empresa(sessao: Session, empresa: Empresa, sugestao_id: int) ->
     return sugestao if sugestao is not None and sugestao.empresa_id == empresa.id else None
 
 
+@router.post("/empresas/{empresa_id}/revisao/lote")  # antes da rota com {sugestao_id}
+def conferir_marcadas(
+    request: Request,
+    empresa_id: int,
+    ids: list[str] = Form([]),
+    acao: str = Form(""),
+    conta: str = Form(""),
+    mes: str = Form(""),
+    filtro: str = Form(""),
+    q: str = Form(""),
+    conta_filtro: str = Form(""),
+    usuario: Usuario = Depends(usuario_logado),
+    sessao: Session = Depends(obter_sessao),
+):
+    if (empresa := buscar_empresa(sessao, request, empresa_id)) is None:
+        return redirecionar("/")
+    voltar = f"/empresas/{empresa.id}?" + urlencode(
+        {"aba": "revisao", "mes": mes, "filtro": filtro, "q": q, "conta": conta_filtro}
+    )
+    marcadas = [int(i) for i in ids if i.strip().isdigit()]
+    escolhida, erro = None, ""
+    if not marcadas:
+        erro = "Marque as linhas (caixinha à esquerda) antes de escolher o que fazer com elas."
+    elif acao not in ACOES_LOTE:
+        erro = "Escolha “Aplicar a conta”, “Aprovar” ou “Ignorar”."
+    elif acao == "conta":
+        escolhida, erro = achar_conta_digitada(sessao, empresa.id, conta)
+    if erro:
+        avisar(request, erro, "erro")
+        return redirecionar(voltar)
+    resultado = decidir_em_lote(sessao, empresa, marcadas, acao, escolhida, usuario)
+    sessao.commit()
+    if acao == "conta":
+        avisar(request, f"{escolhida.rotulo} aplicada a {resultado.feitas} linha(s).")
+    else:
+        avisar(request, f"{'Aprovada(s)' if acao == 'aprovar' else 'Ignorada(s)'} {resultado.feitas} linha(s).")
+    if resultado.sem_conta:
+        avisar(
+            request, f"{resultado.sem_conta} linha(s) sem conta não foram aprovadas: escolha a conta primeiro.", "erro"
+        )
+    if resultado.exportadas:
+        avisar(request, f"{resultado.exportadas} linha(s) já exportada(s) ficaram como estavam.", "erro")
+    return redirecionar(voltar)
+
+
 @router.post("/empresas/{empresa_id}/revisao/{sugestao_id}")
 def conferir_linha(
     request: Request,
@@ -151,8 +200,9 @@ def aplicar_as_parecidas(
     escolhida = contrapartida(sugestao) if sugestao else None
     if escolhida is not None:
         outras = parecidas(sessao, sugestao)
-        for outra in outras:
-            corrigir(sessao, outra, escolhida, "", usuario)
+        with aprender_no_fim(sessao):
+            for outra in outras:
+                corrigir(sessao, outra, escolhida, "", usuario)
         sessao.commit()
         avisar(request, f"{escolhida.rotulo} aplicada a mais {len(outras)} linha(s) parecida(s).")
     if request.headers.get("HX-Request"):

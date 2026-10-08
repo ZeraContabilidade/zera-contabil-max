@@ -36,7 +36,6 @@ from app.servicos.complemento import MODELO_PADRAO, montar_complemento
 from app.servicos.contas_chave import nome_do_tipo, normalizar
 from app.servicos.documentos import formatar_documento, normalizar_documento, tipo_documento
 
-LIMIAR_APROVACAO = 90
 PROTEGIDAS = ("USUARIO",)  # origem que a classificação automática nunca troca
 
 REGRAS_BANCO = (
@@ -434,7 +433,11 @@ def classificar(sessao: Session, empresa: Empresa, inicio: date, fim: date) -> R
                 resultado.contar(sugestao)
                 continue
             proposta = next((p for passo in PASSOS if (p := passo(ctx, movimento)) is not None), None)
-            if sugestao and sugestao.origem == "IA" and (proposta is None or proposta.confianca < LIMIAR_APROVACAO):
+            if (
+                sugestao
+                and sugestao.origem == "IA"
+                and (proposta is None or proposta.confianca < empresa.limiar_aprovacao)
+            ):
                 resultado.contar(sugestao)  # a resposta da IA vale até uma regra achar algo certo
                 continue
             if proposta is None:
@@ -480,7 +483,7 @@ def _gravar(sessao, ctx: Contexto, movimento: MovimentoExtrato, proposta: Propos
     if proposta.status == "IGNORADO":
         status = "IGNORADO"
         resultado.sem_lancamento += 1
-    elif confianca >= LIMIAR_APROVACAO:
+    elif confianca >= ctx.empresa.limiar_aprovacao:
         status = "APROVADO"
         resultado.verdes += 1
     else:

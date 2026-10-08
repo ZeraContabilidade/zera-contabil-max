@@ -3,6 +3,7 @@
 {% set m = s.movimento %}
 {% set digitado = digitado if digitado is defined and digitado else {} %}
 <tr id="sugestao-{{ s.id }}" class="linha-revisao linha-{{ s.cor }}">
+  <td>{% if s.status != 'EXPORTADO' %}<input type="checkbox" name="ids" value="{{ s.id }}" form="form-lote" aria-label="Marcar esta linha">{% endif %}</td>
   <td>{{ m.data.strftime('%d/%m') }}</td>
   <td>{{ m.historico }}{% if m.complemento %}<br><small class="suave">{{ m.complemento }}</small>{% endif %}</td>
   <td class="num {{ 'saida' if m.sentido == 'SAIDA' else 'entrada' }}">{{ '−' if m.sentido == 'SAIDA' else '+' }}{{ m.valor | reais }}</td>

@@ -33,6 +33,10 @@ class Regime(enum.StrEnum):
         }[self.value]
 
 
+LIMIAR_PADRAO = 90  # aprovação automática a partir de 90% de confiança
+LIMIAR_MINIMO = 70  # abaixo disso a sugestão é “pendente”, nunca aprovada sozinha
+
+
 class Empresa(Auditavel, Base):
     """Empresa-cliente do escritório. Só o código no Domínio é obrigatório: o resto o sistema descobre."""
 
@@ -58,6 +62,8 @@ class Empresa(Auditavel, Base):
     perfil_ia_em: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     ia_ligada: Mapped[bool] = mapped_column(default=True, server_default=true())
     ia_limite_mensal_usd: Mapped[Decimal | None] = mapped_column(Numeric(10, 2))  # vazio = só o limite geral
+    # sugestão com esta confiança ou mais já vem aprovada (§3.5: configurável por empresa, padrão 90)
+    limiar_aprovacao: Mapped[int] = mapped_column(default=LIMIAR_PADRAO, server_default=str(LIMIAR_PADRAO))
     # campos preenchidos pelo sistema (selo "🤖 automático"); sai da lista quando o usuário altera
     campos_automaticos: Mapped[list[str]] = mapped_column(JSONB, default=list)
     dados_publicos: Mapped[dict[str, Any] | None] = mapped_column(JSONB)  # resumo da consulta do CNPJ

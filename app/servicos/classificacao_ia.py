@@ -26,7 +26,7 @@ from app.modelos import (
     Sugestao,
     Usuario,
 )
-from app.servicos.classificacao import LIMIAR_APROVACAO, Proposta, complemento_da_proposta
+from app.servicos.classificacao import Proposta, complemento_da_proposta
 from app.servicos.contas_chave import naturezas, nome_do_tipo
 
 TAMANHO_LOTE = 40
@@ -146,7 +146,7 @@ def candidatas(sessao: Session, empresa: Empresa, movimentos: list[MovimentoExtr
         if (
             sugestao is not None
             and sugestao.status == "PENDENTE"
-            and sugestao.confianca < LIMIAR_APROVACAO
+            and sugestao.confianca < empresa.limiar_aprovacao
             and sugestao.origem not in NAO_PERGUNTAR
             and not sugestao.revisado_ia
             and sugestao.conferido_por_id is None
@@ -276,7 +276,7 @@ def _aplicar(empresa, sugestao: Sugestao, item: dict, contas, por_reduzido, resu
     sugestao.origem = "IA"
     sugestao.justificativa = proposta.justificativa
     sugestao.padrao_id = None
-    if confianca >= LIMIAR_APROVACAO:
+    if confianca >= empresa.limiar_aprovacao:
         sugestao.status = "APROVADO"
         resultado.verdes += 1
     elif confianca >= 70:

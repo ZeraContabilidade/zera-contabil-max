@@ -221,3 +221,59 @@ def test_linha_exportada_ou_de_outra_empresa_nao_muda(cliente, empresa, sessao):
     assert recarregar(sessao, sugestao).conta_debito is None
     resposta = cliente.post(f"/empresas/{empresa.id}/revisao/999999", data={"acao": "ignorar"}, follow_redirects=True)
     assert "Esta linha não pode mais ser mudada" in resposta.text
+
+
+@pytest.mark.banco
+def test_varias_linhas_de_uma_vez(cliente, empresa, sessao, monkeypatch):
+    fulano = sugestao_de(sessao, "FULANO DESCONHECIDO")
+    zeta1, zeta2 = sugestao_de(sessao, "MERCEARIA ZETA"), sugestao_de(sessao, "MERCEARIA ZETA", vez=1)
+    amarela = sugestao_de(sessao, "INTERMEDIADORA DE PAGAMENTO")
+    lote = f"/empresas/{empresa.id}/revisao/lote"
+    volta = {"mes": "2026-08", "filtro": "todos", "q": "", "conta_filtro": ""}
+
+    resposta = cliente.post(lote, data={**volta, "acao": "aprovar"}, follow_redirects=True)
+    assert "Marque as linhas" in resposta.text
+
+    resposta = cliente.post(
+        lote, data={**volta, "acao": "aprovar", "ids": [amarela.id, fulano.id]}, follow_redirects=True
+    )
+    assert "Aprovada(s) 1 linha(s)." in resposta.text and "1 linha(s) sem conta não foram aprovadas" in resposta.text
+    assert recarregar(sessao, amarela).status == "APROVADO"
+
+    vezes = []
+    import app.servicos.revisao as revisao
+
+    original = revisao.aprender
+    monkeypatch.setattr(revisao, "aprender", lambda *a, **k: vezes.append(1) or original(*a, **k))
+    ids = [fulano.id, zeta1.id, zeta2.id]
+    resposta = cliente.post(lote, data={**volta, "acao": "conta", "conta": "escrit", "ids": ids}, follow_redirects=True)
+    assert "359 – MATERIAL DE ESCRITÓRIO aplicada a 3 linha(s)." in resposta.text
+    assert "filtro=todos" in str(resposta.url)  # volta para o mesmo filtro
+    assert [reduzidos(recarregar(sessao, s)) for s in (fulano, zeta1, zeta2)] == [("APROVADO", "USUARIO", 359, 8)] * 3
+    assert vezes == [1]  # aprendeu uma vez só, no fim
+    assert ensinados_pela_revisao(sessao) == 4  # a amarela aprovada + as 3 corrigidas
+
+    cliente.post(lote, data={**volta, "acao": "ignorar", "ids": [zeta2.id]})
+    assert recarregar(sessao, zeta2).status == "IGNORADO" and ensinados_pela_revisao(sessao) == 3
+
+
+@pytest.mark.banco
+def test_aprovacao_automatica_configuravel_por_empresa(cliente, empresa, sessao):
+    def tarifa():
+        sessao.expire_all()
+        return sessao.scalar(select(MovimentoExtrato).where(MovimentoExtrato.historico == "Tarifa Pacote de Serviços"))
+
+    assert (tarifa().sugestao.status, tarifa().sugestao.confianca) == ("PENDENTE", 80)  # padrão: só a partir de 90
+    dados = {"codigo_dominio": "230", "nome_curto": "Creche Teste", "modelo_complemento": empresa.modelo_complemento}
+    resposta = cliente.post(f"/empresas/{empresa.id}", data={**dados, "limiar_aprovacao": "65"})
+    assert resposta.status_code == 400 and "A aprovação automática vai de 70% a 100% (padrão 90%)" in resposta.text
+    salvo = cliente.post(f"/empresas/{empresa.id}", data={**dados, "limiar_aprovacao": "80"}, follow_redirects=False)
+    assert salvo.status_code == 303
+    sessao.refresh(empresa)
+    assert empresa.limiar_aprovacao == 80
+    classificar(sessao, empresa, AGOSTO, date(2026, 8, 31))
+    sessao.commit()
+    assert tarifa().sugestao.status == "APROVADO"
+    cliente.post(f"/empresas/{empresa.id}", data={**dados, "limiar_aprovacao": ""})  # em branco volta ao padrão
+    sessao.refresh(empresa)
+    assert empresa.limiar_aprovacao == 90

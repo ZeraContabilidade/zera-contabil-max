@@ -7,6 +7,8 @@ empresa) e recalcula os padrões: na próxima vez a mesma linha sai pelas regras
 
 import hashlib
 import re
+from collections.abc import Iterator
+from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import UTC, date, datetime
 
@@ -214,7 +216,55 @@ def parecidas(sessao: Session, sugestao: Sugestao) -> list[Sugestao]:
     return resultado
 
 
+@dataclass
+class ResultadoLote:
+    feitas: int = 0
+    sem_conta: int = 0  # “Aprovar” em linha que ainda não tem conta
+    exportadas: int = 0
+
+
+ACOES_LOTE = ("conta", "aprovar", "ignorar")
+
+
+def decidir_em_lote(
+    sessao: Session, empresa: Empresa, ids: list[int], acao: str, conta: ContaContabil | None, usuario: Usuario | None
+) -> ResultadoLote:
+    """A mesma decisão em várias linhas marcadas (§3.5 “seleção múltipla”); os padrões são recalculados uma vez."""
+    resultado = ResultadoLote()
+    sugestoes = sessao.scalars(select(Sugestao).where(Sugestao.empresa_id == empresa.id, Sugestao.id.in_(ids))).all()
+    with aprender_no_fim(sessao):
+        for sugestao in sugestoes:
+            if sugestao.status == "EXPORTADO":
+                resultado.exportadas += 1
+                continue
+            if acao == "conta" and conta is not None:
+                corrigir(sessao, sugestao, conta, "", usuario)
+            elif acao == "aprovar":
+                if aprovar(sessao, sugestao, usuario):
+                    resultado.sem_conta += 1
+                    continue
+            elif acao == "ignorar":
+                ignorar(sessao, sugestao, usuario)
+            else:
+                continue
+            resultado.feitas += 1
+    return resultado
+
+
 # ---------------------------------------------------------------- aprendizado contínuo (§6.3)
+
+
+@contextmanager
+def aprender_no_fim(sessao: Session) -> Iterator[None]:
+    """Várias decisões de uma vez: os padrões são recalculados uma vez só, no fim (e não a cada linha)."""
+    sessao.info["revisao_em_lote"] = set()
+    try:
+        yield
+    finally:
+        empresas = sessao.info.pop("revisao_em_lote")
+    sessao.flush()
+    for empresa_id in empresas:
+        aprender(sessao, sessao.get(Empresa, empresa_id), registrar=False)
 
 
 def _importacao_da_revisao(sessao: Session, empresa_id: int) -> Importacao:
@@ -285,5 +335,8 @@ def _aprender_com(sessao: Session, sugestao: Sugestao) -> None:
 
 
 def _reaprender(sessao: Session, sugestao: Sugestao) -> None:
+    if (adiadas := sessao.info.get("revisao_em_lote")) is not None:
+        adiadas.add(sugestao.empresa_id)  # em lote: aprende uma vez só, no fim
+        return
     sessao.flush()
     aprender(sessao, sessao.get(Empresa, sugestao.empresa_id), registrar=False)

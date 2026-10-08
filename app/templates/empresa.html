@@ -99,10 +99,16 @@
           <input name="grupo_fornecedores" value="{{ valor('grupo_fornecedores', empresa.grupo_fornecedores) }}" placeholder="ex.: 2.1.3.01">
         </label>
       </div>
-      <label>Limite mensal de IA desta empresa (US$) <small class="suave">(opcional — vale também o limite geral)</small>
-        <input name="ia_limite_mensal_usd" inputmode="decimal" placeholder="sem limite próprio"
-               value="{{ valor('ia_limite_mensal_usd', (empresa.ia_limite_mensal_usd | string).replace('.', ',') if empresa.ia_limite_mensal_usd is not none else '') }}">
-      </label>
+      <div class="grid">
+        <label>Aprovar sozinho a partir de (% de confiança) <small class="suave">(padrão 90; de 70 a 100)</small>
+          <input name="limiar_aprovacao" type="number" min="70" max="100" step="1"
+                 value="{{ valor('limiar_aprovacao', empresa.limiar_aprovacao) }}">
+        </label>
+        <label>Limite mensal de IA desta empresa (US$) <small class="suave">(opcional — vale também o limite geral)</small>
+          <input name="ia_limite_mensal_usd" inputmode="decimal" placeholder="sem limite próprio"
+                 value="{{ valor('ia_limite_mensal_usd', (empresa.ia_limite_mensal_usd | string).replace('.', ',') if empresa.ia_limite_mensal_usd is not none else '') }}">
+        </label>
+      </div>
       {% if usuario.e_supervisor %}<button type="submit">Salvar cadastro</button>{% endif %}
     </fieldset>
   </form>

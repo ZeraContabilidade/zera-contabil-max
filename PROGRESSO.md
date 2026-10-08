@@ -3,11 +3,10 @@
 Atualizado em: **08/10/2026**
 
 ## Próximo passo exato
-**Etapa 2.8b — Revisão: seleção múltipla + fornecedores a cadastrar + medir** (a 2.8a — grade, editar, aprovar/ignorar/reabrir, aprendizado — está pronta).
-- **Seleção múltipla:** caixinha em cada linha + “Aplicar a conta às marcadas” / “Aprovar marcadas” / “Ignorar marcadas” (mesmas funções de `app/servicos/revisao.py`, um `aprender` só no fim).
-- **Fornecedores a cadastrar no Domínio** (§6.2 passo 7; empresas com conta individual por fornecedor): favorecido sem conta → linha pendente + lista na aba (nome + CNPJ + grupo sugerido `empresa.grupo_fornecedores`), exportável em Excel (openpyxl).
-- **Limiar de aprovação automática por empresa** (padrão 90) no cadastro (hoje é `LIMIAR_APROVACAO` fixo em `classificacao.py`).
-- **Medir ≥ 85% certos** com os extratos reais de agosto (Casa Criança: CC + poupança, regras + IA) — teste `amostras`.
+**Etapa 2.8c — Fornecedores a cadastrar no Domínio + medir** (2.8a e 2.8b prontas).
+- **Fornecedores a cadastrar** (§3.5, §6.2 passo 7; só empresas com `usa_conta_individual`): favorecido identificado mas sem conta (padrão sem conta, ou a IA diz que é fornecedor novo) → a linha fica pendente e entra na lista **“Fornecedores a cadastrar no Domínio”** na aba Revisão: nome + CNPJ + nome sugerido da conta + grupo (`empresa.grupo_fornecedores`) + linhas e valor do mês; botão na linha da Revisão para mandar para a lista; **baixar em Excel** (openpyxl). Tabela `fornecedor_a_cadastrar` (§ modelo de dados). Ao reimportar o plano, conta nova parecida com o nome no grupo → a lista dá baixa sozinha e as linhas pendentes recebem a conta (para conferir).
+- Sem conta individual → conta genérica (`FORNECEDOR_GENERICO` das contas-chave).
+- **Medir ≥ 85% certos** com os extratos reais de agosto (Casa Criança: CC + poupança, regras + IA) — teste `amostras`; anotar aqui o resultado.
 
 ## Pendências com o usuário
 | # | Pergunta | Precisa até |
@@ -16,7 +15,7 @@ Atualizado em: **08/10/2026**
 | 2 | ~~Chave da API~~ — colada no `.env` em 07/10 (lida do arquivo do usuário no Z:\, sem passar pelo chat); `pytest -m ia_real` ok nos dois modelos. Nunca pedir nem mostrar a chave. | — |
 | 3 | Limite mensal de IA: adotado o padrão **US$ 20** (`IA_LIMITE_MENSAL_USD`) até o usuário dizer outro valor | — |
 | 4 | ~~Diário.xls~~ — chegou em 07/10 (jan–jun/2026), copiado para `AMOSTRAS\historicos` | — |
-| 5 | ~~Poupança sem conta no plano~~ — **respondido em 08/10: “se não tiver a conta no plano de contas, deixe em branco”**. Implementado: conta de banco fora do plano fica EM BRANCO no lançamento (aprovado normalmente; completa-se no Domínio). Na exportação (3.1) a linha com conta em branco **não bloqueia** — confirmar com o usuário se o Domínio aceita a importação assim ou se é preciso separar essas linhas. | Etapa 3.1 |
+| 5 | ~~Poupança sem conta no plano~~ — **respondido em 08/10: “se não tiver a conta no plano de contas, deixe em branco”**. Implementado: conta de banco fora do plano fica EM BRANCO no lançamento (aprovado normalmente; completa-se no Domínio). **08/10: o usuário confirmou que o Domínio aceita a linha com conta em branco** → na exportação (3.1) essas linhas vão normalmente, sem bloquear nem separar. | — |
 | 7 | ~~OFX real~~ — o usuário indicou os OFX da APAE (228) no Z:\ em 07/10; 36 copiados para `AMOSTRAS\EXTRATOS\OFX APAE 2025-12`. | — |
 | 6 | **Diário completo** (todas as contas) da Casa Criança — o enviado em 07/10 foi impresso só com o Passivo. Com ele o sistema aprende também as contas de banco, despesas e receitas. Não bloqueia. | quando puder |
 
@@ -44,7 +43,8 @@ Atualizado em: **08/10/2026**
 - [x] 2.6 Motor de classificação (regras, CNPJ, nome parecido, palavra-chave, valor) + pareamento de transferências
 - [x] 2.7 IA em lote + validação + aprovação automática dos verdes
 - [x] 2.8a Tela de Revisão: grade do mês, editar/aprovar/ignorar/reabrir, aplicar às parecidas, aprendizado com cada decisão
-- [ ] 2.8b Seleção múltipla + fornecedores a cadastrar + limiar por empresa; medir ≥ 85% nos 2 PDFs
+- [x] 2.8b Seleção múltipla (aplicar conta / aprovar / ignorar várias linhas) + aprovação automática configurável por empresa
+- [ ] 2.8c Fornecedores a cadastrar no Domínio (lista + Excel); medir ≥ 85% nos 2 PDFs
 
 ### Fase 3 — Exportação e Painel
 - [ ] 3.1 lanctos.txt + validações + resumo Excel + teste "arquivo de ouro"
@@ -55,6 +55,12 @@ Atualizado em: **08/10/2026**
 ### Fase 4 — Extras (um por vez, quando pedido)
 
 ## Histórico
+
+### 08/10/2026 — Etapa 2.8b concluída (várias linhas de uma vez + aprovação automática por empresa)
+- Revisão: **caixinha em cada linha** (+ “marcar todas”) e uma barra acima da grade que acompanha a rolagem: **Aplicar a conta** (código, lista ou parte do nome), **Aprovar** ou **Ignorar** as marcadas. Volta para o mesmo filtro, com o resumo (“359 – MATERIAL DE ESCRITÓRIO aplicada a 3 linha(s)”; “1 linha sem conta não foi aprovada”). O aprendizado roda **uma vez só** no fim (e também no “Aplicar às parecidas”).
+- Cadastro da empresa: **“Aprovar sozinho a partir de (% de confiança)”** — padrão 90, de 70 a 100 (§3.5). A classificação por regras e a IA usam o número da empresa (migração 0014).
+- Usuário confirmou: **o Domínio aceita a linha com conta em branco** (pendência 5 encerrada).
+- Testes (2 novos): 292 passando.
 
 ### 08/10/2026 — Etapa 2.8a concluída (tela de Revisão)
 - Aba **5 Revisão** (`app/rotas/revisao.py`, `app/servicos/revisao.py`): o mês abre **filtrado no que precisa de atenção** (amarelas e pendentes); filtros Pendentes / Para conferir / Só IA / Aprovados / Todos; busca no histórico/favorecido/complemento; filtro por conta. Contadores verde/amarelo/vermelho/cinza; de onde veio a sugestão ao passar o mouse.
