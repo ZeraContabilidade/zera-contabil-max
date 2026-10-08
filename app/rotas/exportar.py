@@ -11,7 +11,7 @@ from app.auth import exigir_supervisor, usuario_logado
 from app.db import obter_sessao
 from app.modelos import Empresa, Exportacao, Usuario
 from app.rotas.comum import buscar_empresa
-from app.servicos.armazenamento import obter_armazenamento
+from app.servicos.armazenamento import ArquivoApagado, ler_arquivo
 from app.servicos.competencia import ler_competencia, valor_campo_mes
 from app.servicos.exportacao import (
     ErroExportacao,
@@ -121,8 +121,13 @@ def baixar_lanctos(
         avisar(request, "Exportação não encontrada.", "erro")
         return redirecionar(f"/empresas/{empresa.id}?aba=exportar")
     arquivo = exportacao.arquivo
+    try:
+        conteudo = ler_arquivo(arquivo)
+    except ArquivoApagado as erro:
+        avisar(request, str(erro), "erro")
+        return redirecionar(f"/empresas/{empresa.id}?aba=exportar")
     return Response(
-        obter_armazenamento().ler(arquivo.chave),
+        conteudo,
         media_type="text/plain; charset=windows-1252",
         headers={"Content-Disposition": f'attachment; filename="{arquivo.nome_original}"'},
     )

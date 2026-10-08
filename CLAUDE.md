@@ -24,6 +24,7 @@ A especificação completa está em `PROMPT_Claude_Code_ZeraConcilia.md` (citada
 | Banco | `docker compose up -d banco` · contêiner `zera-contabil-max-banco` · porta `127.0.0.1:5433` |
 | Nova migração | `.venv\Scripts\alembic revision --autogenerate -m "descricao" --rev-id 0002` → revisar o arquivo (Enum gera CHECK em dobro: apagar o explícito) |
 | Backup / restaurar | automático pelo `INICIAR.bat` (1 por dia) ou tela **Backup**; restaurar: `RESTAURAR.bat` (passo a passo em `docs/restaurar_backup.md`) |
+| Rede do escritório | `LIBERAR_REDE.bat` / `FECHAR_REDE.bat` como administrador (`scripts/rede.py`: regra do Firewall só para rede privada + `HOST` do `.env`); passo a passo em `docs/acesso_pela_rede.md`. Nunca rodar nos testes (netsh simulado). |
 | Ver as telas | `.venv\Scripts\python -m scripts.servidor_teste` → http://127.0.0.1:8001 (banco `_teste`, usuários ana/carla/davi; senha em `scripts/servidor_teste.py`). Também em `.claude/launch.json` (`zera-teste`). Rodar o pytest apaga esses dados: reinicie o servidor. |
 
 ## Estrutura
@@ -41,9 +42,9 @@ app/            sistema web
   static/         estilo.css (identidade Zera), tema.js, marca/ (logos, emblema, Cinzel), vendor/ (Pico, HTMX)
   ia/             cliente.py (Anthropic + falso), precos.py, servico.py (chamar_ia, limites, registro)
   leitores/       leitores de extrato como plug-ins: __init__ (tipos, ArquivoExtrato, LEITORES, ler_extrato), ferramentas.py, bb_conta_corrente.py, bb_poupanca.py, ofx.py; universal_ia.py (PDF de banco sem leitor: IA página por página, chamado pelo serviço quando `ler_extrato` levanta `NaoReconhecido`); planilha.py (Excel/CSV: só a leitura — títulos, valores, montagem; as colunas e a conta vêm de `servicos/planilha_extrato.py`)
-migracoes/      Alembic (0001 usuario+log; 0002 empresa+unaccent; 0003 conta_contabil+arquivo_original+importacao; 0004 chamada_ia; 0005 conta_chave; 0006 lancamento_historico+padrao+perfil; 0007 lançamento com um lado só; 0008 revisado_ia; 0009 conta_bancaria+extrato+movimento_extrato; 0010 modelo_planilha_banco + conta_bancaria.assinatura_planilha; 0011 sugestao; 0012 sugestao.revisado_ia; 0013 sugestao.conferido_por_id/conferido_em; 0014 empresa.limiar_aprovacao; 0015 fornecedor_a_cadastrar + sugestao.fornecedor_id; 0016 exportacao + sugestao.exportacao_id; 0017 exportacao reaberta)
+migracoes/      Alembic (0001 usuario+log; 0002 empresa+unaccent; 0003 conta_contabil+arquivo_original+importacao; 0004 chamada_ia; 0005 conta_chave; 0006 lancamento_historico+padrao+perfil; 0007 lançamento com um lado só; 0008 revisado_ia; 0009 conta_bancaria+extrato+movimento_extrato; 0010 modelo_planilha_banco + conta_bancaria.assinatura_planilha; 0011 sugestao; 0012 sugestao.revisado_ia; 0013 sugestao.conferido_por_id/conferido_em; 0014 empresa.limiar_aprovacao; 0015 fornecedor_a_cadastrar + sugestao.fornecedor_id; 0016 exportacao + sugestao.exportacao_id; 0017 exportacao reaberta; 0018 arquivo_original.excluido_em)
 scripts/        rotinas dos .bat (instalar, iniciar + backup automático, restaurar, banco_docker, criar_env) + banco_teste e servidor_teste
-docs/           passo a passo para o usuário (restaurar_backup.md)
+docs/           passo a passo para o usuário (como_usar.md = roteiro do mês, restaurar_backup.md, acesso_pela_rede.md)
 tests/          pytest (banco separado <nome>_teste)
 ferramentas/preparar_computador/   instalador da máquina (Git, Python, Node, Docker, Claude Code)
 AMOSTRAS/       arquivos reais da Casa Criança (fora do Git)
@@ -62,6 +63,7 @@ AMOSTRAS/       arquivos reais da Casa Criança (fora do Git)
 - Testes nunca acessam a internet (fixture autouse `_sem_internet`); para simular a BrasilAPI use `cnpj_responde(resposta)`.
 - **Backup:** só por `app/servicos/backup.py` (`fazer_backup`, `situacao`, `restaurar_backup`). Nos testes `PASTA_BACKUP` é temporária e `PASTA_BACKUP_NUVEM=NAO` (nunca grava no Google Drive real); o servidor de teste usa `dados/backups_teste`. Tabela nova entra sozinha no backup (é o banco inteiro).
 - CNPJ/CPF: sempre por `app/servicos/documentos.py` (aceita CNPJ alfanumérico de jul/2026); gravar normalizado (só letras e números).
+- **Guarda de 5 anos:** todo arquivo entra por `guardar_arquivo` (expira em 5 anos) e é lido por `ler_arquivo` (avisa com `ArquivoApagado` se já venceu). `apagar_vencidos` roda no `INICIAR.bat` (thread do backup): marca `excluido_em`, apaga do disco só a chave que nenhum registro em vigor usa (o mesmo conteúdo é guardado uma vez) e registra um evento.
 - Importações em bloco (plano, Diário, extrato) **não** usam `Auditavel` linha a linha: gravam `ArquivoOriginal` (`guardar_arquivo`) + `Importacao` (resumo e avisos) + `registrar_evento`.
 - Avisos de importação = `Aviso(texto, itens)`: texto curto com exemplos, lista completa em `itens` (a tela abre ao clicar).
 - **IA:** nunca chamar o SDK direto — montar `PedidoIA` (instruções fixas, `contexto` grande e estável para o cache, `pergunta` variável, `esquema` JSON com `additionalProperties: false`, `forte=True` só quando precisa) e chamar `app.ia.servico.chamar_ia(sessao, pedido, empresa, usuario)`; capturar `ErroIA` (inclui `IAIndisponivel`) e seguir sem IA. **Validar** a resposta (conta existe e é analítica etc.) antes de gravar. Testes: fixture `ia_falsa` (`ia_falsa.respostas[finalidade] = {...}`). Modelos: Haiku 4.5 não aceita `effort`; Sonnet 5.5 não aceita `tool_choice` forçado nem `thinking` desligado. Ler a skill `claude-api` antes de mudar `app/ia/cliente.py`.

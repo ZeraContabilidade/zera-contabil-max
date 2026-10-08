@@ -3,10 +3,16 @@
 Atualizado em: **08/10/2026**
 
 ## Próximo passo exato
-**Etapa 3.4 — Guarda dos arquivos por 5 anos + acesso pela rede** (§7.1, §7.3). Última etapa da Fase 3.
-- **Guarda (§7.3):** os arquivos enviados e gerados já ficam guardados com `expira_em` = 5 anos (`app/servicos/armazenamento.py`). Falta a **exclusão automática** do que venceu (rodar no `INICIAR.bat`, junto do backup diário, com um evento no log por arquivo/lote), sem apagar arquivo ligado a exportação ainda válida; e o download do original pela tela só para quem está logado (conferir as rotas existentes).
-- **Acesso pela rede (§7.1):** opção no `.env` para ouvir em `0.0.0.0` (padrão continua `127.0.0.1`), o `INICIAR.bat` mostra o endereço da rede (ex.: `http://192.168.0.10:8000`) e um passo a passo simples em `docs/acesso_pela_rede.md` (liberar a porta no Firewall do Windows; nunca abrir para a internet). Antes da nuvem (Fase 4) reavaliar CSRF e HTTPS (já anotado nas armadilhas).
-- Depois da 3.4: **o usuário testa a importação do lanctos.txt no Domínio** (critério de aceite da Fase 3).
+**Fase 3 concluída — falta o aceite do usuário:** gerar o `lanctos.txt` de um mês real pela aba Exportar e **importar
+no Domínio** (critério da Fase 3: “importo no Domínio com sucesso”). Se o Domínio reclamar, corrigir o formato com a
+mensagem exata dele.
+
+Depois, **Fase 4 — um item por vez, só quando o usuário pedir** (§ etapas, §6.5, §7.4):
+- Exportação automática por empresa (§6.5): mês todo verde + saldo conferido → gera sozinho e avisa no Painel
+  (desligado por padrão; o Supervisor liga por empresa).
+- Leitores próprios de PDF dos bancos mais usados pelo escritório (perguntar quais) — reduz o custo da IA.
+- Relação de pagamentos (aba DADOS da planilha antiga) cruzada com o extrato.
+- Nuvem: Supabase (São Paulo) + Render; trocar `DATABASE_URL` e criar `ArmazenamentoSupabase`; antes, CSRF e HTTPS.
 
 ## Pendências com o usuário
 | # | Pergunta | Precisa até |
@@ -51,11 +57,23 @@ Atualizado em: **08/10/2026**
 - [x] 3.1b Tela Exportar: escolher mês e contas, validações mostrando a linha, resumo Excel, registro e travamento
 - [x] 3.2 Travamento e reabertura pelo Supervisor
 - [x] 3.3 Painel do supervisor + painel de uso da IA
-- [ ] 3.4 Guarda de arquivos por 5 anos + acesso pela rede
+- [x] 3.4 Guarda de arquivos por 5 anos + acesso pela rede
 
 ### Fase 4 — Extras (um por vez, quando pedido)
 
 ## Histórico
+
+### 08/10/2026 — Etapa 3.4 concluída (guarda de 5 anos + rede) — Fase 3 completa
+- **Guarda de 5 anos (§7.3):** extratos, planos, Diários e os lanctos.txt gerados ficam guardados por 5 anos; depois o
+  `INICIAR.bat` apaga sozinho (junto do backup diário) e registra no Log. O registro do arquivo fica (quem, quando,
+  nome, impressão digital) com a data em que foi apagado; o mesmo arquivo enviado duas vezes só sai do disco quando
+  os dois registros vencerem. Baixar um arquivo apagado avisa e indica os backups antigos (migração 0018).
+- **Acesso pela rede (§7.1):** `LIBERAR_REDE.bat` (botão direito → Executar como administrador) libera a porta só
+  para a **rede privada** no Firewall do Windows e muda o `HOST` do `.env`; o `INICIAR.bat` mostra o endereço para os
+  outros computadores (ex.: `http://192.168.0.10:8000`). `FECHAR_REDE.bat` desfaz. Passo a passo em
+  `docs/acesso_pela_rede.md`. O banco continua fechado para a rede. Ainda **não** foi ligado neste computador.
+- `docs/como_usar.md`: roteiro do mês para o escritório.
+- Testes (7 novos; o Firewall nunca é mexido nos testes): 332 passando.
 
 ### 08/10/2026 — Etapa 3.3 concluída (Painel do Supervisor)
 - Menu **Painel** (só Supervisor): todas as empresas ativas no mês escolhido — responsável, onde parou (pontinhos da barra; o nome da empresa abre a aba da etapa), movimentos, aprovados, pendentes (link para a Revisão), **% classificado sozinho** (verde a partir de 85%), correções à mão, linhas resolvidas pela IA e a última exportação válida (quando, quem, linhas). Cartões no topo com os totais (empresas, meses concluídos, % sozinho geral, pendentes, correções). Filtros por responsável e “só as que ainda têm o que fazer”.

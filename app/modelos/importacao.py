@@ -16,7 +16,7 @@ class ArquivoOriginal(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     empresa_id: Mapped[int] = mapped_column(ForeignKey("empresa.id"), index=True)
-    tipo: Mapped[str] = mapped_column(String(20))  # PLANO, DIARIO, RAZAO, EXTRATO
+    tipo: Mapped[str] = mapped_column(String(20))  # PLANO, DIARIO, RAZAO, EXTRATO, EXPORTACAO
     nome_original: Mapped[str] = mapped_column(String(255))
     # onde o arquivo está no armazenamento (app/servicos/armazenamento.py)
     chave: Mapped[str] = mapped_column(String(300))
@@ -25,6 +25,8 @@ class ArquivoOriginal(Base):
     enviado_em: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     enviado_por_id: Mapped[int | None] = mapped_column(ForeignKey("usuario.id"))
     expira_em: Mapped[date]
+    # passou dos 5 anos: o arquivo foi apagado (§7.3); o registro fica (quem enviou, quando, nome, SHA-256)
+    excluido_em: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
 class Importacao(Base):

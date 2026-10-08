@@ -22,6 +22,7 @@ ROTULOS_ACAO = {
     "APRENDER": "Recalculou o aprendizado",
     "EXPORTAR": "Gerou o lanctos.txt",
     "REABRIR_EXPORTACAO": "Reabriu uma exportação",
+    "APAGAR_ARQUIVOS_VENCIDOS": "Apagou arquivos com mais de 5 anos",
     "BACKUP": "Fez backup",
     "BACKUP_FALHOU": "Backup falhou",
     "RESTAURAR_BACKUP": "Restaurou um backup",

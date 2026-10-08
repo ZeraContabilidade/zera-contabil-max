@@ -1,4 +1,5 @@
-"""Parte Python do INICIAR.bat: liga o banco, sobe o sistema, abre o navegador e faz o backup do dia."""
+"""Parte Python do INICIAR.bat: liga o banco, sobe o sistema, abre o navegador, faz o backup do dia e apaga os
+arquivos que passaram dos 5 anos de guarda."""
 
 import argparse
 import threading
@@ -11,6 +12,7 @@ import uvicorn
 from app.config import RAIZ, obter_config
 from scripts.banco_docker import preparar_banco
 from scripts.comum import ErroAmigavel, rodar
+from scripts.rede import REDE_DO_ESCRITORIO, enderecos_da_rede
 
 
 def sistema_respondendo(url: str) -> bool:
@@ -31,11 +33,27 @@ def abrir_navegador_quando_pronto(url_interna: str, url: str, espera_segundos: i
         time.sleep(1)
 
 
+def guarda_dos_arquivos() -> None:
+    """Apaga os arquivos que passaram dos 5 anos (§7.3); o registro e o evento no log ficam."""
+    from app.db import fabrica_sessoes
+    from app.servicos.armazenamento import apagar_vencidos
+
+    with fabrica_sessoes()() as sessao:
+        resultado = apagar_vencidos(sessao)
+        sessao.commit()
+    if resultado.apagados:
+        print(resultado.resumo())
+
+
 def backup_automatico(parar: threading.Event, checar_a_cada_segundos: int = 30 * 60) -> None:
-    """Um backup por dia: ao abrir o sistema e, se ele ficar aberto, a cada 24 horas."""
+    """Um backup por dia: ao abrir o sistema e, se ele ficar aberto, a cada 24 horas. Antes, a guarda de 5 anos."""
     from app.servicos import backup
 
     while True:
+        try:
+            guarda_dos_arquivos()
+        except Exception as erro:  # noqa: BLE001 — a guarda nunca pode derrubar o backup
+            print(f"\n[ATENÇÃO] Não foi possível apagar os arquivos com mais de 5 anos: {erro}\n")
         try:
             if backup.situacao().precisa_backup():
                 print(backup.fazer_backup("automatico").resumo())
@@ -72,6 +90,9 @@ def main(argv: list[str] | None = None) -> int:
     if not args.sem_navegador:
         threading.Thread(target=abrir_navegador_quando_pronto, args=(url_interna, url), daemon=True).start()
     print(f"\nSistema no ar em {url}")
+    if config.host == REDE_DO_ESCRITORIO:
+        for endereco in enderecos_da_rede():
+            print(f"Nos outros computadores do escritório: http://{endereco}:{config.porta}")
     print("Para desligar o sistema, feche esta janela.\n")
     uvicorn.run("app.main:app", host=config.host, port=config.porta, log_level="warning")
     return 0
