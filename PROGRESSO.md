@@ -3,12 +3,13 @@
 Atualizado em: **09/10/2026**
 
 ## Próximo passo exato
-**Fase 3 concluída — falta o aceite do usuário:** gerar o `lanctos.txt` de um mês real pela aba Exportar e **importar
-no Domínio** (critério da Fase 3: “importo no Domínio com sucesso”). Se o Domínio reclamar, corrigir o formato com a
-mensagem exata dele.
+**SISTEMA CONCLUÍDO E EM USO (09/10/2026).** Fases 1, 2 e 3 completas e **aceitas pelo usuário** — o `lanctos.txt`
+gerado pelo sistema foi importado no Domínio com sucesso (critério da Fase 3). Visual final “Lingote & Livro-razão”.
+341 testes + 7 com IA real passando.
 
-**Fase 4 — um item por vez, só quando o usuário pedir** (§ etapas, §6.5, §7.4). Feito: 4.1 exportação automática.
-Próximos possíveis (perguntar qual):
+Não há etapa obrigatória pendente. Ao voltar: perguntar o que o usuário quer (ajuste pedido no uso diário ou um item
+da **Fase 4 — um item por vez, só quando o usuário pedir** (§ etapas, §6.5, §7.4)). Feito: 4.1 exportação automática.
+Próximos possíveis:
 - Leitores próprios de PDF dos bancos mais usados pelo escritório (perguntar quais) — reduz o custo da IA.
 - Relação de pagamentos (aba DADOS da planilha antiga) cruzada com o extrato.
 - Nuvem: Supabase (São Paulo) + Render; trocar `DATABASE_URL` e criar `ArmazenamentoSupabase`; antes, CSRF e HTTPS.
@@ -51,7 +52,7 @@ Próximos possíveis (perguntar qual):
 - [x] 2.8b Seleção múltipla (aplicar conta / aprovar / ignorar várias linhas) + aprovação automática configurável por empresa
 - [x] 2.8c Fornecedores a cadastrar no Domínio (lista + Excel) + medição real: **91% aprovados sozinhos** nos 2 PDFs de agosto
 
-### Fase 3 — Exportação e Painel
+### Fase 3 — Exportação e Painel ✅ aceita pelo usuário em 09/10/2026 (importou no Domínio com sucesso)
 - [x] 3.1a Gerador do lanctos.txt (formato exato) + conferência linha a linha + teste “arquivo de ouro”
 - [x] 3.1b Tela Exportar: escolher mês e contas, validações mostrando a linha, resumo Excel, registro e travamento
 - [x] 3.2 Travamento e reabertura pelo Supervisor
@@ -62,6 +63,11 @@ Próximos possíveis (perguntar qual):
 - [x] 4.1 Exportação automática por empresa (§6.5)
 
 ## Histórico
+
+### 09/10/2026 — Aceite da Fase 3 e sistema finalizado
+- Usuário: “o teste da fase 3 está ok, pode finalizar” — o `lanctos.txt` gerado pela aba Exportar foi importado no
+  Domínio sem erro. Fases 1–3 concluídas e aceitas; Fase 4 segue sob demanda (4.1 exportação automática já feita).
+- Conferência final: `ruff` limpo, **341 testes passando** (+ 7 com IA real na rodada anterior do mesmo dia).
 
 ### 09/10/2026 — Teste geral + visual novo “Lingote & Livro-razão”
 - Usuário: “teste tudo e finalize… visual limpo, intuitivo, identidade inovadora não genérica, navegação que gere dopamina”;
