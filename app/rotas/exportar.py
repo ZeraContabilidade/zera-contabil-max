@@ -61,6 +61,7 @@ def exportar_sozinho(request: Request, sessao: Session, empresa: Empresa, compet
                 request,
                 f"🤖 Exportação automática: o lanctos.txt de {nome_competencia(competencia)} foi gerado sozinho "
                 f"({exportacao.linhas} lançamento(s)). Baixe na aba Exportar e importe no Domínio.",
+                "festa",
             )
 
 
@@ -92,6 +93,7 @@ def gerar_lanctos(
         request,
         f"lanctos.txt gerado: {exportacao.linhas} lançamento(s). Baixe o arquivo abaixo e importe no Domínio; "
         "as linhas exportadas ficaram travadas.",
+        "festa",
     )
     return redirecionar(voltar)
 

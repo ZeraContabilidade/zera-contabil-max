@@ -12,26 +12,63 @@
 {% if empresa and empresa.e_automatico(campo) %}<span class="selo-auto" title="Preenchido pelo sistema. Pode alterar à vontade.">🤖 automático</span>{% endif %}
 {% endmacro %}
 
-{# Barra completa do mês: Plano → Aprendizado → Extrato → Revisão → Exportado #}
-{% macro barra_progresso(etapas, competencia) %}
-<p class="progresso-titulo">Situação de {{ competencia | nome_competencia }}</p>
-<ol class="progresso" aria-label="Situação de {{ competencia | nome_competencia }}">
-  {% for etapa in etapas %}
-  <li class="etapa-{{ etapa.situacao }}" {% if etapa.situacao == 'atual' %}aria-current="step"{% endif %}
-      title="{{ etapa.nome }}: {{ {'feita': 'feito', 'atual': 'é a próxima', 'pendente': 'pendente'}[etapa.situacao] }}">
-    <span class="etapa-marca">{% if etapa.situacao == 'feita' %}✔{% elif etapa.situacao == 'atual' %}●{% endif %}</span>
-    <span class="etapa-nome">{{ etapa.nome }}</span>
-    {% if etapa.detalhe %}<small class="etapa-detalhe">{{ etapa.detalhe }}</small>{% endif %}
-  </li>
-  {% endfor %}
-</ol>
+{% macro icone(nome) %}<svg class="ico" aria-hidden="true"><use href="#i-{{ nome }}"></use></svg>{% endmacro %}
+
+{# Cada etapa do mês → aba que a resolve, nome do passo e ícone #}
+{% set PASSOS = {
+  'plano': ('plano', 'Plano de contas', 'plano'),
+  'aprendizado': ('aprendizado', 'Aprendizado', 'aprendizado'),
+  'extrato': ('extratos', 'Extratos', 'extratos'),
+  'revisao': ('revisao', 'Revisão', 'revisao'),
+  'exportado': ('exportar', 'Exportar', 'exportar'),
+} %}
+
+{% macro aba_da_etapa(etapa) %}{{ PASSOS[etapa.chave][0] if etapa else 'exportar' }}{% endmacro %}
+
+{# Lingotes: uma barrinha de ouro por etapa do mês (feita = cheia; a próxima brilha) #}
+{% macro lingotes(etapas) %}
+<span class="lingotes" role="img"
+      aria-label="{{ etapas | selectattr('situacao', 'equalto', 'feita') | list | length }} de {{ etapas | length }} etapas feitas"
+      title="{% for e in etapas %}{{ e.nome }}: {{ 'feito' if e.situacao == 'feita' else 'pendente' }}{{ ' · ' if not loop.last }}{% endfor %}">
+  {% for e in etapas %}<i class="lingote lingote-{{ e.situacao }}"></i>{% endfor %}
+</span>
 {% endmacro %}
 
-{# Versão compacta para a lista de empresas #}
+{# Selo do mês: “3/5” em Cinzel sobre os lingotes #}
+{% macro selo_mes(etapas, classe='') %}
+<div class="selo-mes {{ classe }}">
+  <span class="selo-mes-num"><strong>{{ etapas | selectattr('situacao', 'equalto', 'feita') | list | length }}</strong>/{{ etapas | length }}</span>
+  {{ lingotes(etapas) }}
+</div>
+{% endmacro %}
+
+{# Jornada do mês: Plano → Aprendizado → Extrato → Revisão → Exportado. Cada passo abre a sua parte. #}
+{% macro barra_progresso(etapas, competencia, empresa=none, aba='') %}
+{% set feitas = etapas | selectattr('situacao', 'equalto', 'feita') | list | length %}
+{% set ns = namespace(seguidas=0, parou=false) %}
+{% for etapa in etapas %}{% if etapa.situacao == 'feita' and not ns.parou %}{% set ns.seguidas = ns.seguidas + 1 %}{% else %}{% set ns.parou = true %}{% endif %}{% endfor %}
+<nav class="jornada" aria-label="Situação de {{ competencia | nome_competencia }}">
+  <p class="progresso-titulo">Situação de {{ competencia | nome_competencia }}</p>
+  <ol class="progresso" style="--feito: {{ [ns.seguidas, etapas | length - 1] | min / (etapas | length - 1) }}">
+    {% for etapa in etapas %}
+    {% set passo = PASSOS[etapa.chave] %}
+    <li class="etapa-{{ etapa.situacao }}" {% if etapa.situacao == 'atual' %}aria-current="step"{% endif %}
+        {% if empresa and aba == passo[0] %}data-aberta{% endif %}
+        title="{{ etapa.nome }}: {{ {'feita': 'feito', 'atual': 'é a próxima', 'pendente': 'pendente'}[etapa.situacao] }}">
+      {% if empresa %}<a href="/empresas/{{ empresa.id }}?aba={{ passo[0] }}&mes={{ competencia | valor_campo_mes }}" {% if aba == passo[0] %}aria-current="page"{% endif %}>{% else %}<span class="etapa-corpo">{% endif %}
+        <span class="etapa-marca">{% if etapa.situacao == 'feita' %}{{ icone('check') }}{% else %}{{ icone(passo[2]) }}{% endif %}</span>
+        <span class="etapa-nome">{{ passo[1] }}</span>
+        <small class="etapa-detalhe">{% if etapa.detalhe %}{{ etapa.detalhe }}{% elif etapa.situacao == 'atual' %}é a próxima{% else %}&nbsp;{% endif %}</small>
+      {% if empresa %}</a>{% else %}</span>{% endif %}
+    </li>
+    {% endfor %}
+  </ol>
+</nav>
+{% endmacro %}
+
+{# Versão compacta (lista de empresas e Painel): os lingotes + o próximo passo #}
 {% macro pontos_progresso(etapas, atual) %}
-<span class="pontos" title="{% for e in etapas %}{{ e.nome }}: {{ 'feito' if e.situacao == 'feita' else 'pendente' }}{{ ' · ' if not loop.last }}{% endfor %}">
-  {% for e in etapas %}<i class="ponto ponto-{{ e.situacao }}"></i>{% endfor %}
-</span>
+{{ lingotes(etapas) }}
 <small class="suave">{% if atual %}Próximo: {{ atual.nome }}{% else %}Mês concluído{% endif %}</small>
 {% endmacro %}
 

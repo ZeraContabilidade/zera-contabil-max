@@ -39,7 +39,7 @@ app/            sistema web
   servicos/       regras de negócio (sem HTTP); backup.py = pg_dump pelo Docker + espelho dos arquivos + restauração; classificacao.py = sugestão de lançamento para cada movimento do extrato; classificacao_ia.py = a IA no que as regras não resolveram; revisao.py = decisões do usuário na Revisão (aprovar, corrigir, ignorar, reabrir, parecidas) + aprendizado com cada uma; fornecedores.py = lista “Fornecedores a cadastrar no Domínio” (+ Excel); exportacao.py = o lanctos.txt (gerar e conferir); exportacao_automatica.py = gerar sozinho quando o mês fica pronto (§6.5); painel.py = Painel do Supervisor (números do mês por empresa) e uso da IA por empresa
   rotas/          telas (FastAPI APIRouter)
   templates/      HTML (Jinja2); _entrada.html = moldura com o emblema; _macros.html
-  static/         estilo.css (identidade Zera), tema.js, marca/ (logos, emblema, Cinzel), vendor/ (Pico, HTMX)
+  static/         estilo.css (identidade Zera), interface.js (toasts, confete, placar), tema.js, marcar.js, arrastar.js, aguarde.js, marca/ (logos, emblema, Cinzel), vendor/ (Pico, HTMX)
   ia/             cliente.py (Anthropic + falso), precos.py, servico.py (chamar_ia, limites, registro)
   leitores/       leitores de extrato como plug-ins: __init__ (tipos, ArquivoExtrato, LEITORES, ler_extrato), ferramentas.py, bb_conta_corrente.py, bb_poupanca.py, ofx.py; universal_ia.py (PDF de banco sem leitor: IA página por página, chamado pelo serviço quando `ler_extrato` levanta `NaoReconhecido`); planilha.py (Excel/CSV: só a leitura — títulos, valores, montagem; as colunas e a conta vêm de `servicos/planilha_extrato.py`)
 migracoes/      Alembic (0001 usuario+log; 0002 empresa+unaccent; 0003 conta_contabil+arquivo_original+importacao; 0004 chamada_ia; 0005 conta_chave; 0006 lancamento_historico+padrao+perfil; 0007 lançamento com um lado só; 0008 revisado_ia; 0009 conta_bancaria+extrato+movimento_extrato; 0010 modelo_planilha_banco + conta_bancaria.assinatura_planilha; 0011 sugestao; 0012 sugestao.revisado_ia; 0013 sugestao.conferido_por_id/conferido_em; 0014 empresa.limiar_aprovacao; 0015 fornecedor_a_cadastrar + sugestao.fornecedor_id; 0016 exportacao + sugestao.exportacao_id; 0017 exportacao reaberta; 0018 arquivo_original.excluido_em; 0019 exportação automática: empresa.exportacao_automatica + exportacao.automatica/baixado_em)
@@ -87,10 +87,25 @@ AMOSTRAS/       arquivos reais da Casa Criança (fora do Git)
 - Ao ver telas, usar o servidor de teste + Playwright (`browser_take_screenshot`); o painel do app não desenha com a janela minimizada.
 
 ## Identidade visual Zera (obrigatória em todas as telas)
-- Logos oficiais em `app/static/marca/` (copiadas de `Desktop\PrestacaoContas\PREVIA DA NOVA LOGO\`): `logo_escuro.png` (fundo escuro), `logo_claro.png` (fundo claro), `emblema.png` (círculo, usado na tela de entrada e como ícone). Z e E ligados pela base; R sem base; A sem travessão — **não redesenhar, usar os PNGs**.
+- Logos oficiais em `app/static/marca/` (copiadas de `Desktop\PrestacaoContas\PREVIA DA NOVA LOGO\`): `logo_escuro.png` (fundo escuro), `logo_claro.png` (fundo claro), `emblema.png` (só como favicon). Z e E ligados pela base; R sem base; A sem travessão — **não redesenhar, usar os PNGs**.
 - Paleta e fonte iguais às do PrestacaoContas (`prestacao/web/estilo.css`): fundo `#0A0A0B`, dourado `#C9A662` (claro `#A8843F`), degradê `--grad-ouro`, títulos em **Cinzel**, texto em Segoe UI.
-- Escuro por padrão; claro quando o Windows pede ou pelo botão ◐ (guardado no navegador). Off-white `#F6F3EC` no modo claro.
+- Escuro por padrão; claro quando o Windows pede ou pelo botão de tema no trilho (guardado no navegador). Off-white `#F6F3EC` no modo claro.
 - Botão principal = degradê dourado com texto escuro `#141107` (branco fica ilegível no dourado claro).
+- **Linguagem “Lingote & Livro-razão” (09/10, pedido do usuário: inovador, não genérico, SEM círculos):** nada redondo na
+  interface — cantos chanfrados (`clip-path: var(--corte)` / `--corte-p`), raios pequenos (`--raio` 10px, `--raio-p` 6px),
+  progresso em **lingotes** (macros `lingotes(etapas)` e `selo_mes(etapas)` em `_macros.html`), jornada do mês em **setas
+  encaixadas** (`barra_progresso(etapas, competencia, empresa, aba)` — cada passo abre a sua aba; manter `class="etapa-feita"`
+  exato e `aria-current="step"`, os testes conferem), fundo com pautas de livro-razão, trilho lateral (`.trilho`) sempre de
+  “couro preto” nos dois temas, orelha dourada nos `article`/cartões, logotipo (não o emblema) na entrada e telas vazias.
+- Moldura: `base.html` = trilho lateral + `.conteudo`; ícones de traço no sprite do `base.html` (`{{ icone('nome') }}`;
+  id `i-...` nunca com a palavra “backup”: o teste da assistente procura a palavra na página). Avisos viram **toasts**
+  (`avisar(request, texto, "ok"|"atencao"|"erro"|"festa")`; “festa” = conquista, solta confete dourado).
+  `static/interface.js`: toasts, menu do celular, `data-contar` (número que conta), `data-celebrar="chave"` (confete uma vez
+  por sessão), placar da Revisão ao vivo (`data-placar` + linhas com `data-status`: a linha decidida desconta do “faltam” e,
+  no filtro “Precisa de atenção”, sai da lista; zerou → “Tudo revisado!” + confete). `prefers-reduced-motion` desliga tudo.
+- Pico.css: `nav` vira flex com `space-between` e os links ganham margem negativa — em `nav` próprio zerar `margin`/`padding`
+  e definir `display`; `section` ganha margem embaixo. Conferir telas pelo Playwright (no robô, o botão dourado “sobe” no
+  hover e o clique automático pode falhar: clicar via `element.click()` no `browser_evaluate`).
 
 ## Armadilhas já conhecidas (Windows)
 - Conexões internas usam `127.0.0.1`, não `localhost` (o Windows tenta IPv6 antes e perde ~2 s).

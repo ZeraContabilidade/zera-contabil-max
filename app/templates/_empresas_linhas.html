@@ -1,17 +1,27 @@
-{% from "_macros.html" import pontos_progresso %}
+{% from "_macros.html" import pontos_progresso, aba_da_etapa, icone %}
 {% for linha in linhas %}
 {% set e = linha.empresa %}
-<tr class="{{ '' if e.ativa else 'inativa' }}">
-  <td>
-    <a href="/empresas/{{ e.id }}"><strong>{{ e.nome }}</strong></a>
+{% set feitas = linha.etapas | selectattr('situacao', 'equalto', 'feita') | list | length %}
+<a class="cartao-empresa{{ '' if e.ativa else ' inativa' }}{{ ' concluida' if not linha.atual else '' }}"
+   href="/empresas/{{ e.id }}?aba={{ aba_da_etapa(linha.atual) }}&mes={{ competencia | valor_campo_mes }}">
+  <div class="cartao-topo">
+    <div class="cartao-nome">
+      <strong>{{ e.nome }}</strong>
+      {% if e.nome_curto and e.razao_social %}<small class="suave">{{ e.razao_social }}</small>{% endif %}
+    </div>
     {% if not e.ativa %}<span class="etiqueta etiqueta-apagada">Inativa</span>{% endif %}
-    {% if e.nome_curto and e.razao_social %}<br><small class="suave">{{ e.razao_social }}</small>{% endif %}
-  </td>
-  <td class="num">{{ e.documento_formatado or '—' }}</td>
-  <td class="num">{{ e.codigo_dominio }}</td>
-  <td>{{ e.responsavel.nome if e.responsavel else '—' }}</td>
-  <td>{{ pontos_progresso(linha.etapas, linha.atual) }}</td>
-</tr>
+    <span class="cartao-placar" title="Etapas do mês feitas"><strong>{{ feitas }}</strong>/{{ linha.etapas | length }}</span>
+  </div>
+  <dl class="cartao-dados">
+    <div><dt>Domínio</dt><dd class="num">{{ e.codigo_dominio }}</dd></div>
+    <div><dt>CNPJ/CPF</dt><dd class="num">{{ e.documento_formatado or '—' }}</dd></div>
+  </dl>
+  <div class="cartao-pe">
+    {{ pontos_progresso(linha.etapas, linha.atual) }}
+    {% if e.responsavel %}<span class="cartao-responsavel" title="Responsável"><span class="avatar avatar-p">{{ e.responsavel.nome[:1] | upper }}</span>{{ e.responsavel.nome }}</span>{% endif %}
+    <span class="cartao-ir">{% if linha.atual %}Continuar{% else %}Ver mês{% endif %} {{ icone('seta') }}</span>
+  </div>
+</a>
 {% else %}
-<tr><td colspan="5" class="suave">Nenhuma empresa encontrada{% if q %} para “{{ q }}”{% endif %}.</td></tr>
+<p class="vazio-busca suave">Nenhuma empresa encontrada{% if q %} para “{{ q }}”{% endif %}.</p>
 {% endfor %}

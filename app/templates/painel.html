@@ -3,7 +3,7 @@
 {% block titulo %}Painel — {{ nome_sistema }}{% endblock %}
 {% block conteudo %}
 <div class="cabecalho-pagina">
-  <h1>Painel do Supervisor</h1>
+  <div><p class="sobretitulo">Visão do escritório</p><h1>Painel do Supervisor</h1></div>
   <div class="acoes-cabecalho">
     <form method="get" action="/painel" class="form-mes">
       <label>Mês
@@ -32,12 +32,12 @@
 <article>
   {% set t = dados.total %}
   <div class="resumo-painel">
-    <div><strong>{{ dados.linhas | length }}</strong><span>empresa(s) na lista</span></div>
-    <div><strong>{{ dados.concluidas }}</strong><span>com {{ competencia | nome_competencia }} concluído</span></div>
-    <div><strong>{{ t.automatico if t.automatico is not none else '—' }}{% if t.automatico is not none %}%{% endif %}</strong>
+    <div><strong data-contar>{{ dados.linhas | length }}</strong><span>empresa(s) na lista</span></div>
+    <div><strong data-contar>{{ dados.concluidas }}</strong><span>com {{ competencia | nome_competencia }} concluído</span></div>
+    <div><strong data-contar>{{ t.automatico if t.automatico is not none else '—' }}{% if t.automatico is not none %}%{% endif %}</strong>
       <span>classificado sozinho (meta: 85% no 1º mês, 95% depois)</span></div>
-    <div><strong>{{ t.pendentes | milhar }}</strong><span>linha(s) pendente(s)</span></div>
-    <div><strong>{{ t.correcoes | milhar }}</strong><span>correção(ões) à mão</span></div>
+    <div><strong data-contar>{{ t.pendentes | milhar }}</strong><span>linha(s) pendente(s)</span></div>
+    <div><strong data-contar>{{ t.correcoes | milhar }}</strong><span>correção(ões) à mão</span></div>
   </div>
   <form method="get" action="/painel" class="filtros filtros-painel">
     <input type="hidden" name="mes" value="{{ competencia | valor_campo_mes }}">

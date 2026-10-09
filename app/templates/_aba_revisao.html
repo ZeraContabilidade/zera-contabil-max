@@ -2,6 +2,21 @@
 <article>
   <header class="cabecalho-pagina"><strong>Revisão de {{ competencia | nome_competencia }}</strong>
     <span class="suave">{{ contagem.total }} movimento(s)</span></header>
+  {% set restam = contagem.amarela + contagem.vermelha %}
+  {% set chave_festa = 'revisao-' ~ empresa.id ~ '-' ~ (competencia | valor_campo_mes) %}
+  {% if contagem.total %}
+  <div class="placar-revisao" data-placar data-total="{{ contagem.total }}" data-restam="{{ restam }}" data-filtro="{{ filtro }}"
+       data-chave="{{ chave_festa }}">
+    <span class="contador" data-restam-texto>{{ restam }}</span>
+    <span class="contador-texto">para decidir · <strong data-prontas-texto>{{ contagem.total - restam }}</strong> de {{ contagem.total }} prontas
+      — cada decisão ensina o sistema para o mês que vem</span>
+    <div class="trilha" aria-hidden="true"><span data-barra style="width: {{ (100 * (contagem.total - restam) / contagem.total) | round | int }}%"></span></div>
+  </div>
+  {% endif %}
+  <div class="tudo-pronto" data-tudo-pronto {% if not (contagem.total and restam == 0) %}hidden{% else %}data-celebrar="{{ chave_festa }}"{% endif %}>
+    <p>🎉 Tudo revisado em {{ competencia | nome_competencia }}!</p>
+    <a href="/empresas/{{ empresa.id }}?aba=exportar&mes={{ competencia | valor_campo_mes }}" role="button">Ir para Exportar →</a>
+  </div>
   <div class="resumo-classificacao">
     <span class="etiqueta etiqueta-verde">✓ {{ contagem.verde }} aprovado(s)</span>
     <span class="etiqueta etiqueta-ambar">? {{ contagem.amarela }} para conferir</span>
@@ -22,7 +37,7 @@
     <input name="conta" value="{{ conta_filtro }}" placeholder="Por conta (código)" inputmode="numeric" aria-label="Filtrar pela conta" class="campo-curto">
     <button type="submit" class="secondary outline">Filtrar</button>
   </form>
-  <p class="suave">Escolha a conta digitando o código ou parte do nome (ex.: “agua” ou “355”) e clique em <strong>Salvar</strong>
+  <p class="dica">💡 Escolha a conta digitando o código ou parte do nome (ex.: “agua” ou “355”) e clique em <strong>Salvar</strong>
     — a linha fica aprovada e o sistema aprende para o próximo mês. <strong>Aprovar</strong> aceita a sugestão como está;
     <strong>Ignorar</strong> deixa a linha sem lançamento. Passe o mouse na situação para ver de onde veio a sugestão.
     Para várias linhas de uma vez, marque as caixinhas e use a barra acima da grade.</p>

@@ -1,8 +1,13 @@
 {% extends "base.html" %}
+{% from "_macros.html" import icone %}
 {% block titulo %}Empresas — {{ nome_sistema }}{% endblock %}
 {% block conteudo %}
+{% set concluidas = linhas | selectattr('atual', 'none') | list | length %}
 <div class="cabecalho-pagina">
-  <h1>Empresas</h1>
+  <div>
+    <p class="sobretitulo">Mesa de trabalho</p>
+    <h1>Empresas</h1>
+  </div>
   <div class="acoes-cabecalho">
     <form method="get" action="/" class="form-mes">
       <label>Mês
@@ -24,6 +29,8 @@
 
 {% if total == 0 %}
 <article class="vazio">
+  <img class="vazio-logo so-tema-escuro" src="{{ estatico('marca/logo_escuro.png') }}" alt="">
+  <img class="vazio-logo so-tema-claro" src="{{ estatico('marca/logo_claro.png') }}" alt="">
   <h2>Nenhuma empresa cadastrada ainda</h2>
   {% if usuario.e_supervisor %}
   <p>Clique em <strong>+ Nova empresa</strong>. Basta o <strong>código da empresa no Domínio</strong> —
@@ -34,26 +41,25 @@
   {% endif %}
 </article>
 {% else %}
-<article>
-  <form id="filtros" method="get" action="/" class="filtros">
-    <input type="search" name="q" value="{{ q }}" placeholder="Buscar por nome, CNPJ ou código…" aria-label="Buscar empresa"
-           hx-get="/empresas/linhas" hx-trigger="input changed delay:300ms, search" hx-target="#linhas-empresas" hx-include="#filtros">
-    <label class="so-minhas">
-      <input type="checkbox" role="switch" name="minhas" value="1" {% if minhas %}checked{% endif %}
-             hx-get="/empresas/linhas" hx-trigger="change" hx-target="#linhas-empresas" hx-include="#filtros">
-      Só as minhas
-    </label>
-  </form>
-  <div class="tabela-rolavel">
-    <table class="striped">
-      <thead>
-        <tr><th>Empresa</th><th>CNPJ/CPF</th><th>Cód. Domínio</th><th>Responsável</th><th>{{ competencia | nome_competencia | capitalize }}</th></tr>
-      </thead>
-      <tbody id="linhas-empresas">
-        {% include "_empresas_linhas.html" %}
-      </tbody>
-    </table>
+<section class="placar-mes" aria-label="{{ competencia | nome_competencia | capitalize }}">
+  <div class="placar-mes-texto">
+    <span class="sobretitulo">{{ competencia | nome_competencia | capitalize }}</span>
+    <p><strong data-contar>{{ concluidas }}</strong> de {{ linhas | length }} empresa(s) com o mês concluído</p>
   </div>
-</article>
+  <div class="trilha" aria-hidden="true"><span style="width: {{ (100 * concluidas / linhas | length) | round | int if linhas else 0 }}%"></span></div>
+</section>
+
+<form id="filtros" method="get" action="/" class="filtros filtros-empresas">
+  <input type="search" name="q" value="{{ q }}" placeholder="Buscar por nome, CNPJ ou código…" aria-label="Buscar empresa"
+         hx-get="/empresas/linhas" hx-trigger="input changed delay:300ms, search" hx-target="#linhas-empresas" hx-include="#filtros">
+  <label class="so-minhas">
+    <input type="checkbox" role="switch" name="minhas" value="1" {% if minhas %}checked{% endif %}
+           hx-get="/empresas/linhas" hx-trigger="change" hx-target="#linhas-empresas" hx-include="#filtros">
+    Só as minhas
+  </label>
+</form>
+<div class="grade-empresas" id="linhas-empresas">
+  {% include "_empresas_linhas.html" %}
+</div>
 {% endif %}
 {% endblock %}

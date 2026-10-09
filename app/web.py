@@ -118,7 +118,7 @@ templates.env.globals["tirar_avisos"] = _tirar_avisos
 
 
 def avisar(request: Request, texto: str, tipo: str = "ok") -> None:
-    """Mensagem mostrada no topo da próxima tela (tipo 'ok', 'atencao' ou 'erro')."""
+    """Mensagem mostrada na próxima tela (tipo 'ok', 'atencao', 'erro' ou 'festa' — conquista, com confete)."""
     request.session.setdefault("avisos", []).append({"texto": texto, "tipo": tipo})
 
 

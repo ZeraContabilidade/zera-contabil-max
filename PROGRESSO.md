@@ -63,6 +63,24 @@ Próximos possíveis (perguntar qual):
 
 ## Histórico
 
+### 09/10/2026 — Teste geral + visual novo “Lingote & Livro-razão”
+- Usuário: “teste tudo e finalize… visual limpo, intuitivo, identidade inovadora não genérica, navegação que gere dopamina”;
+  no meio: “tire esse formato de círculo e inove… seguindo a fonte e as cores”.
+- **Teste geral:** 341 testes passando (todos, inclusive com os arquivos reais) + os 7 com a **IA de verdade** passando;
+  medição real de agosto mantida em **91% aprovados sozinhos**.
+- **Moldura nova:** trilho lateral de couro preto com fio de ouro (logotipo, menu com ícones próprios, usuário, tema, sair);
+  no celular vira gaveta. Fundo com as pautas de um livro-razão e brilho dourado. Avisos viram **toasts** que somem sozinhos.
+- **Sem círculos:** progresso em **lingotes** de ouro; jornada do mês em **setas encaixadas** (feito = ouro, a próxima com
+  brilho correndo, a aberta com fio dourado) — clicar no passo abre a parte (barra e abas viraram uma coisa só; Cadastro
+  no botão do topo); botões principais e plaquinhas com **cantos chanfrados**; cartões com orelha dourada; logotipo na entrada.
+- **Empresas = mesa de trabalho:** cartões com “3/5”, lingotes, próximo passo e **Continuar →** que abre direto a etapa onde
+  a empresa parou; placar “X de N empresas com o mês concluído”.
+- **Dopamina com propósito:** placar da Revisão ao vivo (“N para decidir · X de Y prontas”, a barra enche e a linha decidida
+  sai da lista), **“🎉 Tudo revisado!”** com confete dourado e atalho para Exportar; confete ao gerar o lanctos.txt e ao fechar
+  o mês; números do Painel contam até o valor. Quem pede menos movimento no Windows não vê animações.
+- Conferido no servidor de teste (Playwright): entrada, empresas, cadastro, extratos, revisão (interação real), exportar,
+  painel, IA, backup — tema escuro e claro, computador e celular.
+
 ### 09/10/2026 — Etapa 4.1 concluída (exportação automática) — 1º item da Fase 4, escolhido pelo usuário
 - Usuário: “Exportação automática” (ainda não testou a importação no Domínio — a pendência de aceite da Fase 3 continua).
 - Cadastro da empresa: **“Exportar sozinho”** (desligado por padrão). Ligado, o `lanctos.txt` do mês é gerado sem ninguém

@@ -1,38 +1,39 @@
 {% extends "base.html" %}
-{% from "_macros.html" import lista_erros, selo_automatico, barra_progresso %}
+{% from "_macros.html" import lista_erros, selo_automatico, barra_progresso, selo_mes, icone %}
 {% block titulo %}{{ empresa.nome }} — {{ nome_sistema }}{% endblock %}
 
 {# valor do campo: o que foi digitado (quando houve erro) ou o que está gravado #}
 {% macro valor(campo, atual) %}{{ dados[campo] if dados is not none else (atual if atual is not none else '') }}{% endmacro %}
 
 {% block conteudo %}
-<p><a href="/">← Empresas</a></p>
-<div class="cabecalho-pagina">
-  <div>
+<a href="/" class="voltar">{{ icone('voltar') }} Empresas</a>
+<div class="empresa-cabeca">
+  {{ selo_mes(etapas) }}
+  <div class="empresa-titulo">
     <h1>{{ empresa.nome }}</h1>
     <p class="suave subtitulo">
       Código {{ empresa.codigo_dominio }}{% if empresa.documento_formatado %} · {{ empresa.documento_formatado }}{% endif %}
       {% if empresa.regime %} · {{ empresa.regime.rotulo }}{% endif %}
       {% if not empresa.ativa %} · <span class="etiqueta etiqueta-apagada">Inativa</span>{% endif %}
+      {% if empresa.exportacao_automatica %} · <span class="etiqueta" title="Exportação automática ligada">🤖 exporta sozinho</span>{% endif %}
     </p>
   </div>
-  <form method="get" action="/empresas/{{ empresa.id }}" class="form-mes">
-    <input type="hidden" name="aba" value="{{ aba }}">
-    <label>Mês
-      <input type="month" name="mes" value="{{ competencia | valor_campo_mes }}" onchange="this.form.requestSubmit()">
-    </label>
-  </form>
+  <div class="empresa-acoes">
+    <form method="get" action="/empresas/{{ empresa.id }}" class="form-mes">
+      <input type="hidden" name="aba" value="{{ aba }}">
+      <label>Mês
+        <input type="month" name="mes" value="{{ competencia | valor_campo_mes }}" onchange="this.form.requestSubmit()">
+      </label>
+    </form>
+    <a href="/empresas/{{ empresa.id }}?aba=cadastro" class="botao-cadastro" {% if aba == 'cadastro' %}aria-current="page"{% endif %}>
+      {{ icone('cadastro') }} Cadastro</a>
+  </div>
 </div>
 
-{{ barra_progresso(etapas, competencia) }}
-
-<nav class="abas" aria-label="Partes do trabalho da empresa">
-  {% for chave, nome in abas %}
-  <a href="/empresas/{{ empresa.id }}?aba={{ chave }}" {% if chave == aba %}aria-current="page"{% endif %}>
-    <span class="aba-numero">{{ loop.index }}</span> {{ nome }}
-  </a>
-  {% endfor %}
-</nav>
+{{ barra_progresso(etapas, competencia, empresa, aba) }}
+{% if etapas | rejectattr('situacao', 'equalto', 'feita') | list | length == 0 %}
+<span hidden data-celebrar="mes-{{ empresa.id }}-{{ competencia | valor_campo_mes }}"></span>{# mês todo concluído: confete uma vez #}
+{% endif %}
 
 {% if aba == 'cadastro' %}
 <article>
