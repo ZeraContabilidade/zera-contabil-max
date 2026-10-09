@@ -68,7 +68,7 @@
       {% for l in dados.linhas %}{% set n = l.numeros %}
       <tr>
         <td><a href="/empresas/{{ l.empresa.id }}?aba={{ l.aba }}&mes={{ competencia | valor_campo_mes }}">{{ l.empresa.nome }}</a>
-          <br><small class="suave">código {{ l.empresa.codigo_dominio }}</small></td>
+          <br><small class="suave">código {{ l.empresa.rotulo_codigo }}</small></td>
         <td>{{ l.empresa.responsavel.nome if l.empresa.responsavel else '—' }}</td>
         <td>{{ pontos_progresso(l.etapas, l.atual) }}</td>
         <td class="num">{{ n.movimentos or '—' }}</td>

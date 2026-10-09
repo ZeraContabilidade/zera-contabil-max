@@ -175,7 +175,7 @@ def baixar_resumo(
     if (exportacao := _exportacao_da_empresa(sessao, empresa, exportacao_id)) is None:
         avisar(request, "Exportação não encontrada.", "erro")
         return redirecionar(f"/empresas/{empresa.id}?aba=exportar")
-    nome = f"resumo_{empresa.codigo_dominio}_{exportacao.competencia:%Y-%m}.xlsx"
+    nome = f"resumo_{empresa.codigo_arquivo}_{exportacao.competencia:%Y-%m}.xlsx"
     return Response(
         resumo_excel(sessao, empresa, exportacao),
         media_type=TIPO_XLSX,

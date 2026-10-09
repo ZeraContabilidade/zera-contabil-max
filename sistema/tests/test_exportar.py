@@ -98,6 +98,20 @@ def test_gera_o_arquivo_conferido_e_trava_as_linhas(cliente, empresa, sessao):  
     assert (segunda.linhas, segunda.deixadas_de_fora) == (1, 4)
 
 
+def test_filial_vai_na_coluna_8_e_no_nome_do_arquivo(cliente, empresa, sessao):  # noqa: F811
+    empresa.codigo_filial = 231  # filial da matriz 230 no Domínio
+    sessao.commit()
+    gerar(cliente, empresa, deixar_pendentes="on")
+    exportacao = sessao.scalar(select(Exportacao))
+    resposta = cliente.get(f"/empresas/{empresa.id}/exportacoes/{exportacao.id}/lanctos.txt")
+    assert 'filename="lanctos_230-filial231_2026-08.txt"' in resposta.headers["content-disposition"]
+    linhas = [linha for linha in resposta.content.decode("cp1252").split("\r\n") if linha]
+    assert linhas and all(linha.endswith(";1;231;;") for linha in linhas)  # “Código Matriz/Filial” = a filial
+    assert conferir_txt(resposta.content, codigo_empresa=231) == []
+    resumo = cliente.get(f"/empresas/{empresa.id}/exportacoes/{exportacao.id}/resumo.xlsx")
+    assert "resumo_230-filial231_2026-08.xlsx" in resumo.headers["content-disposition"]
+
+
 def test_problemas_bloqueiam_e_mostram_a_linha(cliente, empresa, sessao):  # noqa: F811
     agua = sugestao_de(sessao, "COMPANHIA DE AGUA EXEMPL")
     agua.complemento = "COMPANHIA DE AGUA; CONTA DE AGUA"

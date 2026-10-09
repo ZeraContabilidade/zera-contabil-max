@@ -113,6 +113,7 @@ def tela_nova_empresa(
 def criar_empresa(
     request: Request,
     codigo_dominio: str = Form(""),
+    codigo_filial: str = Form(""),
     cnpj_cpf: str = Form(""),
     razao_social: str = Form(""),
     nome_curto: str = Form(""),
@@ -124,6 +125,7 @@ def criar_empresa(
 ):
     form = {
         "codigo_dominio": codigo_dominio,
+        "codigo_filial": codigo_filial,
         "cnpj_cpf": cnpj_cpf,
         "razao_social": razao_social,
         "nome_curto": nome_curto,
@@ -139,7 +141,7 @@ def criar_empresa(
     resultado = completar_pelo_cnpj(empresa)
     sessao.add(empresa)
     sessao.commit()
-    avisar(request, f"Empresa {empresa.nome} (código {empresa.codigo_dominio}) cadastrada.")
+    avisar(request, f"Empresa {empresa.nome} (código {empresa.rotulo_codigo}) cadastrada.")
     avisar_consulta(request, resultado)
     return redirecionar(f"/empresas/{empresa.id}")
 
@@ -213,6 +215,7 @@ def editar_empresa(
     request: Request,
     empresa_id: int,
     codigo_dominio: str = Form(""),
+    codigo_filial: str = Form(""),
     cnpj_cpf: str = Form(""),
     razao_social: str = Form(""),
     nome_curto: str = Form(""),
@@ -234,6 +237,7 @@ def editar_empresa(
         return redirecionar("/")
     form = {
         "codigo_dominio": codigo_dominio,
+        "codigo_filial": codigo_filial,
         "cnpj_cpf": cnpj_cpf,
         "razao_social": razao_social,
         "nome_curto": nome_curto,

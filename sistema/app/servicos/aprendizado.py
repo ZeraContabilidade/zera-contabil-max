@@ -166,13 +166,14 @@ def _ler_lanctos(empresa: Empresa, conteudo: bytes, contas: list[ContaContabil])
         )
     linhas, avisos = ler_lanctos(texto)
     codigos = Counter(linha.codigo_empresa for linha in linhas if linha.codigo_empresa)
-    if codigos and empresa.codigo_dominio not in codigos:
+    proprio = empresa.codigo_no_lanctos  # o da filial, se a empresa for filial
+    if codigos and proprio not in codigos:
         outro = codigos.most_common(1)[0][0]
         raise ErroLeitura(
-            f"Este arquivo é da empresa de código {outro} no Domínio, e esta é a {empresa.codigo_dominio}. "
-            "Confira se escolheu a empresa certa."
+            f"Este arquivo é da empresa de código {outro} no Domínio, e esta usa o código {proprio}. "
+            "Confira se escolheu a empresa certa (ou o código da filial no cadastro)."
         )
-    de_outra = [linha for linha in linhas if linha.codigo_empresa not in (None, empresa.codigo_dominio)]
+    de_outra = [linha for linha in linhas if linha.codigo_empresa not in (None, proprio)]
     if de_outra:
         avisos.append(
             Aviso(
@@ -233,7 +234,7 @@ def _conferir_empresa(sessao: Session, empresa: Empresa, lido: DiarioLido) -> li
         if outra:
             raise ErroLeitura(
                 f"Este Diário é do CNPJ {formatar_documento(lido.cnpj)}, que está cadastrado na empresa "
-                f"{outra.nome} (código {outra.codigo_dominio}). Confira se escolheu a empresa certa."
+                f"{outra.nome} (código {outra.rotulo_codigo}). Confira se escolheu a empresa certa."
             )
         empresa.cnpj_cpf = lido.cnpj
         preenchidos.append("cnpj_cpf")

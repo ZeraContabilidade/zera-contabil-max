@@ -3,7 +3,7 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Any
 
-from sqlalchemy import DateTime, Enum, ForeignKey, Numeric, String, Text, false, func, true
+from sqlalchemy import DateTime, Enum, ForeignKey, Numeric, String, Text, UniqueConstraint, false, func, true
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -41,9 +41,12 @@ class Empresa(Auditavel, Base):
     """Empresa-cliente do escritório. Só o código no Domínio é obrigatório: o resto o sistema descobre."""
 
     __tablename__ = "empresa"
+    # cada filial é um cadastro: o código da matriz pode repetir, a filial não (sem filial também conta como valor)
+    __table_args__ = (UniqueConstraint("codigo_dominio", "codigo_filial", postgresql_nulls_not_distinct=True),)
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    codigo_dominio: Mapped[int] = mapped_column(unique=True)  # campo 8 do lanctos.txt
+    codigo_dominio: Mapped[int] = mapped_column()  # código da empresa (da matriz, se for filial) no Domínio
+    codigo_filial: Mapped[int | None] = mapped_column()  # preenchido → vai no campo 8 do lanctos.txt no lugar do acima
     razao_social: Mapped[str | None] = mapped_column(String(200))
     nome_curto: Mapped[str | None] = mapped_column(String(80))
     cnpj_cpf: Mapped[str | None] = mapped_column(String(14), unique=True)  # só letras e números
@@ -77,7 +80,24 @@ class Empresa(Auditavel, Base):
 
     @property
     def nome(self) -> str:
-        return self.nome_curto or self.razao_social or f"Empresa {self.codigo_dominio}"
+        return self.nome_curto or self.razao_social or f"Empresa {self.rotulo_codigo}"
+
+    @property
+    def codigo_no_lanctos(self) -> int:
+        """Campo 8 do lanctos.txt (“Código Matriz/Filial”): o da filial, se houver; senão o da empresa."""
+        return self.codigo_filial or self.codigo_dominio
+
+    @property
+    def rotulo_codigo(self) -> str:
+        """Como o código aparece nas telas e mensagens: “230” ou “230 · filial 231”."""
+        if self.codigo_filial:
+            return f"{self.codigo_dominio} · filial {self.codigo_filial}"
+        return str(self.codigo_dominio)
+
+    @property
+    def codigo_arquivo(self) -> str:
+        """Código nos nomes dos arquivos baixados: “230” ou “230-filial231”."""
+        return f"{self.codigo_dominio}-filial{self.codigo_filial}" if self.codigo_filial else str(self.codigo_dominio)
 
     @property
     def documento_formatado(self) -> str:

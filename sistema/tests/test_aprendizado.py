@@ -279,6 +279,16 @@ def test_arquivos_com_problema(cliente, empresa, sessao, conteudo, trecho):
 
 
 @pytest.mark.banco
+def test_historico_da_filial_usa_o_codigo_da_filial(cliente, empresa, sessao):
+    empresa.codigo_filial = 231  # o lanctos.txt da filial traz 231 na coluna 8
+    sessao.commit()
+    assert "e esta usa o código 231" in enviar(cliente, empresa).text  # o arquivo da matriz (230) é recusado
+    assert sessao.scalar(select(LancamentoHistorico)) is None
+    enviar(cliente, empresa, LANCTOS.replace(b";230;", b";231;"))
+    assert sessao.scalar(select(LancamentoHistorico)) is not None
+
+
+@pytest.mark.banco
 def test_sem_plano_pede_o_plano_antes(sessao):
     vazia = Empresa(codigo_dominio=500)
     sessao.add(vazia)

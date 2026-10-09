@@ -12,7 +12,7 @@
   <div class="empresa-titulo">
     <h1>{{ empresa.nome }}</h1>
     <p class="suave subtitulo">
-      Código {{ empresa.codigo_dominio }}{% if empresa.documento_formatado %} · {{ empresa.documento_formatado }}{% endif %}
+      Código {{ empresa.rotulo_codigo }}{% if empresa.documento_formatado %} · {{ empresa.documento_formatado }}{% endif %}
       {% if empresa.regime %} · {{ empresa.regime.rotulo }}{% endif %}
       {% if not empresa.ativa %} · <span class="etiqueta etiqueta-apagada">Inativa</span>{% endif %}
       {% if empresa.exportacao_automatica %} · <span class="etiqueta" title="Exportação automática ligada">🤖 exporta sozinho</span>{% endif %}
@@ -44,8 +44,12 @@
   <form method="post" action="/empresas/{{ empresa.id }}">
     <fieldset {% if not usuario.e_supervisor %}disabled{% endif %}>
       <div class="grid">
-        <label>Código no Domínio
+        <label>Código no Domínio <small class="suave">(da matriz, se for filial)</small>
           <input name="codigo_dominio" value="{{ valor('codigo_dominio', empresa.codigo_dominio) }}" inputmode="numeric" required>
+        </label>
+        <label>Código da filial <small class="suave">(só se for filial)</small>
+          <input name="codigo_filial" value="{{ valor('codigo_filial', empresa.codigo_filial) }}" inputmode="numeric" placeholder="ex.: 231">
+          <small class="suave">Vai na coluna 8 do lanctos.txt no lugar do código da matriz.</small>
         </label>
         <label>CNPJ ou CPF {{ selo_automatico(empresa, 'cnpj_cpf') }}
           <input name="cnpj_cpf" value="{{ valor('cnpj_cpf', empresa.documento_formatado) }}" placeholder="00.000.000/0000-00">

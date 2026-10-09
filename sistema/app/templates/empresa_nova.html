@@ -10,7 +10,11 @@
     <div class="grid">
       <label>Código da empresa no Domínio
         <input name="codigo_dominio" value="{{ dados.codigo_dominio or '' }}" inputmode="numeric" placeholder="ex.: 230" required autofocus>
-        <small class="suave">É o único campo obrigatório. Vai em todas as linhas do lanctos.txt.</small>
+        <small class="suave">É o único campo obrigatório. Filial? Aqui vai o código da matriz.</small>
+      </label>
+      <label>Código da filial <small class="suave">(só se for filial)</small>
+        <input name="codigo_filial" value="{{ dados.codigo_filial or '' }}" inputmode="numeric" placeholder="ex.: 231">
+        <small class="suave">Vai em todas as linhas do lanctos.txt no lugar do código da matriz. Cada filial é um cadastro.</small>
       </label>
       <label>CNPJ ou CPF <small class="suave">(opcional)</small>
         <input name="cnpj_cpf" value="{{ dados.cnpj_cpf or '' }}" placeholder="00.000.000/0000-00">

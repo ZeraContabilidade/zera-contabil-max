@@ -6,10 +6,15 @@ Atualizado em: **09/10/2026**
 **SISTEMA CONCLUÍDO E EM USO (09/10/2026).** Fases 1, 2 e 3 completas e **aceitas pelo usuário** — o `lanctos.txt`
 gerado pelo sistema foi importado no Domínio com sucesso (critério da Fase 3). Visual final “Lingote & Livro-razão”.
 Pasta organizada em 09/10 (código em `sistema\`, ferramentas em `Ferramentas\`, manuais em `Manuais\`).
-346 testes + 7 com IA real passando.
+351 testes + 7 com IA real passando.
 
-Não há etapa obrigatória pendente. Ao voltar: perguntar o que o usuário quer (ajuste pedido no uso diário ou um item
-da **Fase 4 — um item por vez, só quando o usuário pedir** (§ etapas, §6.5, §7.4)). Feito: 4.1 exportação automática.
+**Em andamento (pedido de 09/10):** 4.2 código da filial ✔ (feito) → **4.3 trabalhar por período** (“de 01/2025 a
+12/2025”: Extratos, Revisão, barra e Exportar pelo período; um lanctos.txt do período inteiro para importar no Domínio).
+Decisões do usuário: coluna 8 = código da filial; cada filial é um cadastro; “tudo pelo período”.
+
+Depois disso não há etapa obrigatória pendente. Ao voltar: perguntar o que o usuário quer (ajuste pedido no uso diário
+ou um item da **Fase 4 — um item por vez, só quando o usuário pedir** (§ etapas, §6.5, §7.4)). Feito: 4.1 exportação
+automática, 4.2 filial.
 Próximos possíveis:
 - Leitores próprios de PDF dos bancos mais usados pelo escritório (perguntar quais) — reduz o custo da IA.
 - Relação de pagamentos (aba DADOS da planilha antiga) cruzada com o extrato.
@@ -62,8 +67,24 @@ Próximos possíveis:
 
 ### Fase 4 — Extras (um por vez, quando pedido)
 - [x] 4.1 Exportação automática por empresa (§6.5)
+- [x] 4.2 Código da filial no cadastro e na coluna 8 do lanctos.txt (cada filial é um cadastro)
+- [ ] 4.3 Trabalhar por período (de mês/ano a mês/ano) e exportar o período num arquivo só
 
 ## Histórico
+
+### 09/10/2026 — Etapa 4.2: código da filial
+- Pedido do usuário: campo do código da filial no cadastro e o número da filial no TXT. Respostas: a coluna 8
+  (“Código Matriz/Filial”, §11.1) leva o **código da filial** quando houver (senão o da empresa, como antes) e **cada
+  filial é um cadastro** — o código da matriz pode repetir entre cadastros, o par código + filial não.
+- `empresa.codigo_filial` (migração 0020: a restrição única passou a ser `(codigo_dominio, codigo_filial)` com
+  `NULLS NOT DISTINCT`, então dois cadastros “sem filial” com o mesmo código continuam proibidos). Propriedades:
+  `codigo_no_lanctos` (campo 8), `rotulo_codigo` (“230 · filial 231” nas telas e mensagens) e `codigo_arquivo`
+  (“230-filial231” nos nomes dos arquivos baixados).
+- Cadastro novo e edição com o campo; mensagens de repetição dizem o que fazer (“se esta for uma filial, preencha também
+  o código da filial”); busca acha pelo código da filial; o lanctos.txt e a conferência usam `codigo_no_lanctos`;
+  importar histórico (lanctos.txt) de filial confere a coluna 8 com o código da filial.
+- Testes: cadastro/edição/busca, a regra do banco (sem filial repetido barra), coluna 8 e nome do arquivo na
+  exportação, histórico da filial.
 
 ### 09/10/2026 — Outra máquina: Controle de Aplicativo Inteligente bloqueou
 - Usuário: “o Controle de Aplicativo Inteligente da outra máquina bloqueou”. É o Smart App Control do Windows 11: bloqueia

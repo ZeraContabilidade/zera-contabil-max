@@ -65,7 +65,7 @@ def _conta_bancaria(
         dona = sessao.get(Empresa, de_outra.empresa_id)
         raise ErroLeitura(
             f"Este extrato é da conta {de_outra.rotulo}, que é da empresa {dona.nome} "
-            f"(código {dona.codigo_dominio}). Confira se escolheu a empresa certa."
+            f"(código {dona.rotulo_codigo}). Confira se escolheu a empresa certa."
         )
     conta = next((c for c in iguais if c.empresa_id == empresa.id), None)
     if conta is not None and not conta.agencia and lido.agencia:

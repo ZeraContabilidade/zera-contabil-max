@@ -12,7 +12,7 @@
 <form method="post" action="/empresas/{{ empresa.id }}/plano/copiar" class="form-envio" data-aguarde="Copiando e configurando…">
   <select name="origem_id" required aria-label="Empresa de onde copiar o plano">
     <option value="">Copiar o plano de outra empresa…</option>
-    {% for outra in plano_outras_empresas %}<option value="{{ outra.id }}">{{ outra.codigo_dominio }} – {{ outra.nome }}</option>{% endfor %}
+    {% for outra in plano_outras_empresas %}<option value="{{ outra.id }}">{{ outra.rotulo_codigo }} – {{ outra.nome }}</option>{% endfor %}
   </select>
   <button type="submit" class="secondary outline">Copiar plano</button>
 </form>

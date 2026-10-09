@@ -274,7 +274,7 @@ há alternativas; abaixo de 50 quando é um palpite.
 def contexto_do_plano(plano: PlanoCarregado, empresa: Empresa) -> str:
     publicos = empresa.dados_publicos or {}
     linhas = [
-        f"EMPRESA: {empresa.nome} (código {empresa.codigo_dominio})",
+        f"EMPRESA: {empresa.nome} (código {empresa.rotulo_codigo})",
         f"REGIME: {empresa.regime.rotulo if empresa.regime else 'não informado'}",
         f"NATUREZA JURÍDICA: {publicos.get('natureza_juridica', 'não informada')}",
         f"ATIVIDADE: {publicos.get('atividade', 'não informada')}",

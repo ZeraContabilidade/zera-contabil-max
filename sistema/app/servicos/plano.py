@@ -352,7 +352,7 @@ def plano_de_outra_empresa(sessao: Session, origem: Empresa) -> PlanoPronto:
     if not contas:
         raise ErroLeitura(f"A empresa {origem.nome} ainda não tem plano de contas para copiar.")
     lidas = [ContaLida(c.reduzido, c.classificacao, c.descricao, c.tipo, 0) for c in contas]
-    return preparar(lidas, f"Cópia do plano de {origem.nome} (código {origem.codigo_dominio})", [])
+    return preparar(lidas, f"Cópia do plano de {origem.nome} (código {origem.rotulo_codigo})", [])
 
 
 # ---------------------------------------------------------------- importação

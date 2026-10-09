@@ -280,7 +280,7 @@ def planilha(sessao: Session, empresa: Empresa) -> bytes:
     livro = Workbook()
     folha = livro.active
     folha.title = "Fornecedores a cadastrar"
-    folha.append([f"Fornecedores a cadastrar no Domínio — {empresa.nome} (código {empresa.codigo_dominio})"])
+    folha.append([f"Fornecedores a cadastrar no Domínio — {empresa.nome} (código {empresa.rotulo_codigo})"])
     folha["A1"].font = Font(bold=True, size=13)
     folha.append([f"Gerado em {datetime.now():%d/%m/%Y %H:%M}. Crie as contas e reimporte o plano no sistema."])
     folha.append([])

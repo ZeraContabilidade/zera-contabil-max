@@ -337,11 +337,11 @@ def exportar(
             "“Deixar as pendentes de fora”."
         )
     inicio, fim = limites_do_mes(competencia)
-    conteudo = gerar_txt([linha_da_sugestao(s) for s in preparo.prontas], empresa.codigo_dominio)
+    conteudo = gerar_txt([linha_da_sugestao(s) for s in preparo.prontas], empresa.codigo_no_lanctos)
     plano = {c.reduzido: c for c in sessao.scalars(select(ContaContabil).where(ContaContabil.empresa_id == empresa.id))}
-    if falhas := conferir_txt(conteudo, plano, inicio, fim, empresa.codigo_dominio):
+    if falhas := conferir_txt(conteudo, plano, inicio, fim, empresa.codigo_no_lanctos):
         raise ErroExportacao(f"O arquivo gerado não passou na conferência ({falhas[0].texto}). Avise o suporte.")
-    nome = f"lanctos_{empresa.codigo_dominio}_{competencia:%Y-%m}.txt"
+    nome = f"lanctos_{empresa.codigo_arquivo}_{competencia:%Y-%m}.txt"
     arquivo = guardar_arquivo(sessao, empresa, "EXPORTACAO", nome, conteudo, usuario)
     exportacao = Exportacao(
         empresa_id=empresa.id,
@@ -439,7 +439,7 @@ def resumo_excel(sessao: Session, empresa: Empresa, exportacao: Exportacao) -> b
     livro = Workbook()
     folha = livro.active
     folha.title = "Resumo por conta"
-    folha.append([f"{empresa.nome} (código {empresa.codigo_dominio}) — {nome_competencia(exportacao.competencia)}"])
+    folha.append([f"{empresa.nome} (código {empresa.rotulo_codigo}) — {nome_competencia(exportacao.competencia)}"])
     folha["A1"].font = Font(bold=True, size=13)
     folha.append([f"{exportacao.linhas} lançamento(s) exportado(s) em {exportacao.criado_em:%d/%m/%Y %H:%M}"])
     folha.append([])

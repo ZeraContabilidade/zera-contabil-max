@@ -69,7 +69,7 @@ def baixar_fornecedores(
 ):
     if (empresa := buscar_empresa(sessao, request, empresa_id)) is None:
         return redirecionar("/")
-    nome = f"fornecedores_a_cadastrar_{empresa.codigo_dominio}.xlsx"
+    nome = f"fornecedores_a_cadastrar_{empresa.codigo_arquivo}.xlsx"
     return Response(
         planilha(sessao, empresa),
         media_type=TIPO_XLSX,

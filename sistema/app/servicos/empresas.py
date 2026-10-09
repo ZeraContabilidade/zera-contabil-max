@@ -27,10 +27,37 @@ def ler_formulario(sessao: Session, form: dict[str, str | None], empresa: Empres
     if not codigo.isdigit() or not 0 < int(codigo) < 10_000_000:
         erros.append("Informe o código da empresa no Domínio (só números, ex.: 230).")
     else:
-        outra = sessao.scalar(select(Empresa).where(Empresa.codigo_dominio == int(codigo), Empresa.id != ignorar_id))
-        if outra:
-            erros.append(f"O código {int(codigo)} já é da empresa {outra.nome}. Confira o código no Domínio.")
         valores["codigo_dominio"] = int(codigo)
+
+    filial = empresa.codigo_filial if empresa else None
+    if "codigo_filial" in form:
+        texto = (form.get("codigo_filial") or "").strip()
+        if texto and (not texto.isdigit() or not 0 < int(texto) < 10_000_000):
+            erros.append(
+                "O código da filial é o código dela no Domínio (só números, ex.: 231). Sem filial, deixe vazio."
+            )
+        else:
+            filial = int(texto) if texto else None
+            valores["codigo_filial"] = filial
+
+    if "codigo_dominio" in valores:  # cada filial é um cadastro: o par código + filial não pode repetir
+        outra = sessao.scalar(
+            select(Empresa).where(
+                Empresa.codigo_dominio == valores["codigo_dominio"],
+                Empresa.codigo_filial.is_(None) if filial is None else Empresa.codigo_filial == filial,
+                Empresa.id != ignorar_id,
+            )
+        )
+        if outra and filial:
+            erros.append(
+                f"A filial {filial} do código {valores['codigo_dominio']} já é da empresa {outra.nome}. "
+                "Confira os códigos no Domínio."
+            )
+        elif outra:
+            erros.append(
+                f"O código {valores['codigo_dominio']} já é da empresa {outra.nome}. Confira o código no Domínio — "
+                "se esta for uma filial, preencha também o código da filial."
+            )
 
     for campo, tamanho in TAMANHOS.items():
         texto = " ".join((form.get(campo) or "").split())
@@ -46,7 +73,7 @@ def ler_formulario(sessao: Session, form: dict[str, str | None], empresa: Empres
         if outra:
             erros.append(
                 f"O CNPJ/CPF {formatar_documento(documento)} já está na empresa {outra.nome} "
-                f"(código {outra.codigo_dominio})."
+                f"(código {outra.rotulo_codigo})."
             )
     valores["cnpj_cpf"] = documento or None
 
@@ -171,7 +198,7 @@ def descrever_campos(campos: list[str]) -> str:
 
 
 def buscar_empresas(sessao: Session, texto: str = "", responsavel_id: int | None = None) -> list[Empresa]:
-    """Busca por nome (sem ligar para acentos), CNPJ ou código no Domínio."""
+    """Busca por nome (sem ligar para acentos), CNPJ ou código no Domínio (da empresa ou da filial)."""
     consulta = select(Empresa).options(joinedload(Empresa.responsavel))
     texto = texto.strip()
     if texto:
@@ -180,6 +207,7 @@ def buscar_empresas(sessao: Session, texto: str = "", responsavel_id: int | None
             func.unaccent(Empresa.razao_social).ilike(padrao),
             func.unaccent(Empresa.nome_curto).ilike(padrao),
             cast(Empresa.codigo_dominio, String) == texto,
+            cast(Empresa.codigo_filial, String) == texto,
         ]
         if documento := normalizar_documento(texto):
             condicoes.append(Empresa.cnpj_cpf.like(f"%{documento}%"))
@@ -187,4 +215,8 @@ def buscar_empresas(sessao: Session, texto: str = "", responsavel_id: int | None
     if responsavel_id:
         consulta = consulta.where(Empresa.responsavel_id == responsavel_id)
     ordem = func.unaccent(func.coalesce(Empresa.nome_curto, Empresa.razao_social, ""))
-    return list(sessao.scalars(consulta.order_by(Empresa.ativa.desc(), ordem, Empresa.codigo_dominio)))
+    return list(
+        sessao.scalars(
+            consulta.order_by(Empresa.ativa.desc(), ordem, Empresa.codigo_dominio, Empresa.codigo_filial.nulls_first())
+        )
+    )

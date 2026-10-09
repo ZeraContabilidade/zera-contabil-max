@@ -40,6 +40,51 @@ def test_codigo_obrigatorio_e_sem_repeticao(cliente, supervisor_logado):
     assert "O código 230 já é da empresa Casa Criança" in resposta.text
 
 
+def test_cada_filial_e_um_cadastro_com_o_codigo_da_matriz(cliente, supervisor_logado, sessao):
+    cadastrar(cliente, codigo_dominio="230", nome_curto="Matriz")
+    resposta = cadastrar(cliente, codigo_dominio="230", codigo_filial="231", nome_curto="Filial Centro")
+    assert "Empresa Filial Centro (código 230 · filial 231) cadastrada." in resposta.text
+    cadastrar(cliente, codigo_dominio="230", codigo_filial="232", nome_curto="Filial Norte")
+    filiais = {e.nome_curto: e for e in sessao.scalars(select(Empresa))}
+    assert filiais["Filial Centro"].codigo_filial == 231 and filiais["Filial Centro"].codigo_no_lanctos == 231
+    assert filiais["Matriz"].codigo_filial is None and filiais["Matriz"].codigo_no_lanctos == 230
+    assert filiais["Filial Norte"].codigo_arquivo == "230-filial232"
+
+    repetida = cadastrar(cliente, codigo_dominio="230", codigo_filial="231")
+    assert repetida.status_code == 400
+    assert "A filial 231 do código 230 já é da empresa Filial Centro" in repetida.text
+    sem_filial = cadastrar(cliente, codigo_dominio="230")
+    assert "se esta for uma filial, preencha também o código da filial" in sem_filial.text
+    errada = cadastrar(cliente, codigo_dominio="230", codigo_filial="x")
+    assert "O código da filial é o código dela no Domínio" in errada.text
+
+
+def test_filial_na_edicao_e_na_busca(cliente, supervisor_logado, sessao):
+    cadastrar(cliente, codigo_dominio="230", nome_curto="Casa Criança")
+    empresa = sessao.scalar(select(Empresa))
+    dados = {"codigo_dominio": "230", "codigo_filial": "231", "nome_curto": "Casa Criança", "ativa": "on"}
+    resposta = cliente.post(
+        f"/empresas/{empresa.id}",
+        data={**dados, "modelo_complemento": empresa.modelo_complemento},
+        follow_redirects=True,
+    )
+    assert "Código 230 · filial 231" in resposta.text
+    sessao.refresh(empresa)
+    assert empresa.codigo_filial == 231
+    assert "Casa Criança" in cliente.get("/empresas/linhas", params={"q": "231"}).text  # acha pela filial
+
+
+def test_banco_nao_aceita_o_mesmo_codigo_sem_filial_duas_vezes(sessao):
+    from sqlalchemy.exc import IntegrityError
+
+    sessao.add_all([Empresa(codigo_dominio=230), Empresa(codigo_dominio=230, codigo_filial=231)])
+    sessao.commit()
+    sessao.add(Empresa(codigo_dominio=230))  # “sem filial” também conta como valor repetido
+    with pytest.raises(IntegrityError):
+        sessao.commit()
+    sessao.rollback()
+
+
 def test_cnpj_errado_ou_repetido_explica_o_problema(cliente, supervisor_logado):
     resposta = cadastrar(cliente, codigo_dominio="230", cnpj_cpf="06.101.084/0001-37")
     assert "O CNPJ/CPF 06.101.084/0001-37 não é válido" in resposta.text
