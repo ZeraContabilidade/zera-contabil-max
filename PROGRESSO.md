@@ -64,6 +64,12 @@ Próximos possíveis:
 
 ## Histórico
 
+### 09/10/2026 — Guia para instalar e usar em outra máquina
+- `docs/instalar_em_outra_maquina.md`: (A) outros computadores usando pelo navegador (`LIBERAR_REDE.bat`), (B) mudar o
+  sistema de computador levando os dados (backup → pendrive com a pasta + `.env` → `PREPARAR_COMPUTADOR.bat` →
+  `INSTALAR.bat` → `RESTAURAR.bat` → `INICIAR.bat`), (C) instalar do zero (Primeiro acesso cria o Supervisor) e problemas
+  comuns. Links em `como_usar.md` e `restaurar_backup.md`.
+
 ### 09/10/2026 — Aceite da Fase 3 e sistema finalizado
 - Usuário: “o teste da fase 3 está ok, pode finalizar” — o `lanctos.txt` gerado pela aba Exportar foi importado no
   Domínio sem erro. Fases 1–3 concluídas e aceitas; Fase 4 segue sob demanda (4.1 exportação automática já feita).

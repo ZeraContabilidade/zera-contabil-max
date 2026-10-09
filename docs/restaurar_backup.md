@@ -43,7 +43,7 @@ Mudou de ideia? Rode o `RESTAURAR.bat` de novo e escolha o backup “Antes de re
 ## Restaurar num computador novo (o antigo estragou)
 
 1. Prepare o computador: `ferramentas\preparar_computador\PREPARAR_COMPUTADOR.bat`.
-2. Copie a pasta do sistema (do GitHub ou de um pendrive) e rode o **`INSTALAR.bat`**.
+2. Copie a pasta do sistema (de um pendrive) e rode o **`INSTALAR.bat`** — passo a passo completo em `instalar_em_outra_maquina.md`.
 3. Instale o **Google Drive para computador**, entre na conta do escritório e espere a pasta
    `Meu Drive\Backups ZERA CONTABIL MAX` aparecer.
 4. Dê dois cliques no **`RESTAURAR.bat`** e escolha o backup mais recente (Enter), depois digite **RESTAURAR**.

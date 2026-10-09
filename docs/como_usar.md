@@ -33,5 +33,6 @@ Para cada empresa, uma vez por mês. A barra no topo da empresa mostra onde voc�
 - **IA**: quanto a IA gastou e quantas linhas resolveu.
 - **Backup**: automático uma vez por dia; restaurar pelo `RESTAURAR.bat` (veja `restaurar_backup.md`).
 - **Rede do escritório**: `LIBERAR_REDE.bat` (veja `acesso_pela_rede.md`).
+- **Outra máquina** (outros computadores usando, mudar o sistema de computador ou instalar do zero): veja `instalar_em_outra_maquina.md`.
 - **Guarda**: extratos, planos e arquivos gerados ficam guardados por 5 anos e depois são apagados sozinhos
   (o registro fica no Log).
