@@ -71,6 +71,11 @@ mudou, antivírus). Para desfazer: botão direito no `Ferramentas\FECHAR_REDE.ba
    - **Reinicie o computador.**
    - Abra o **Docker Desktop** uma vez pelo menu Iniciar e aceite os termos (pode pular o login da Docker).
    > Se preferir instalar à mão: **Python 3.12 ou mais novo** (marque “Add python.exe to PATH”) e **Docker Desktop**.
+   > **Windows 11 com “Controle de Aplicativo Inteligente” ligado** (Segurança do Windows → Controle de aplicativos e do
+   > navegador): ele bloqueia partes do Python que o sistema usa e não deixa liberar arquivo por arquivo — o sistema
+   > **não roda** com ele ligado. Ou use a **Parte A** (não instala nada no outro computador), ou desligue-o nesse
+   > computador antes do passo 6 (decisão de quem cuida da segurança dos computadores do escritório; o antivírus do
+   > Windows continua ligado).
 6. Na pasta `Ferramentas`, dê dois cliques no **`INSTALAR.bat`** e espere “Instalação concluída!”
    (ele aproveita o `sistema\.env` que veio do pendrive e cria o banco de dados vazio).
 7. Ainda na pasta `Ferramentas`, dê dois cliques no **`RESTAURAR_BACKUP.bat`**: aparece a lista de backups (os que vieram
@@ -143,6 +148,7 @@ Pelo ZIP o `ATUALIZAR.bat` não funciona: para atualizar, baixe o ZIP de novo e 
 | O que aparece | O que fazer |
 |---|---|
 | “Não encontrei o Python 3.12 ou mais novo” | Rode o `PREPARAR_COMPUTADOR.bat`, reinicie e rode o `INSTALAR.bat` de novo. |
+| “O Controle de Aplicativo Inteligente bloqueou…” / “Parte deste aplicativo foi bloqueada” | É a proteção do Windows 11 bloqueando partes do Python que o sistema usa (exceção no antivírus não resolve). Se o outro computador só vai **usar** o sistema, faça a **Parte A** (nada é instalado nele). Se o sistema precisa **rodar** nele, o Controle de Aplicativo Inteligente tem que ficar desligado nesse computador (veja a nota do passo 5). |
 | O `INSTALAR.bat` ou o `INICIAR.bat` fica esperando o Docker | Abra o **Docker Desktop** pelo menu Iniciar, espere ficar “Running” e tente de novo. Se pedir para ativar a virtualização/WSL, reinicie o computador. |
 | “O sistema ainda não foi instalado” | Na pasta `Ferramentas`, dê dois cliques no `INSTALAR.bat`. |
 | “Banco de dados desligado” no navegador | Feche a janela preta e abra de novo pelo `INICIAR.bat` (ele liga o Docker e o banco sozinho). |

@@ -65,6 +65,15 @@ Próximos possíveis:
 
 ## Histórico
 
+### 09/10/2026 — Outra máquina: Controle de Aplicativo Inteligente bloqueou
+- Usuário: “o Controle de Aplicativo Inteligente da outra máquina bloqueou”. É o Smart App Control do Windows 11: bloqueia
+  binários sem assinatura conhecida — as bibliotecas compiladas do pip (`.pyd`/`.dll`: pydantic-core, psycopg, argon2/cffi…)
+  não são assinadas; exceção no antivírus não resolve e não há “liberar este arquivo”. O sistema não roda com ele ligado.
+- Caminhos: (A) só usar → liberar a rede NESTE computador (`LIBERAR_REDE.bat`, hoje `HOST=127.0.0.1`; endereço na rede
+  provavelmente 192.168.18.32) e abrir pelo navegador lá; (B) rodar lá → o usuário desliga o Controle de Aplicativo
+  Inteligente naquele computador (desde a atualização de abril/2026, KB5083769, dá para religar sem reinstalar o Windows,
+  mas religado ele volta a bloquear o sistema). Manual 4 ganhou a nota no passo 5 e a linha em “Problemas comuns”.
+
 ### 09/10/2026 — Pasta do sistema organizada
 - Pedido do usuário: “organize essa pasta, está muito bagunçada”. Antes: 20 itens soltos (código, .bat, documentos
   técnicos). Agora a pasta principal tem só **`INICIAR.bat`**, **`LEIA-ME.txt`** e as pastas **`Ferramentas`** (INSTALAR,
