@@ -10,6 +10,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.modelos import ChamadaIA, Empresa, Exportacao, MovimentoExtrato, Sugestao
+from app.servicos.competencia import Periodo, como_periodo
 from app.servicos.exportacao_automatica import motivo_para_esperar, prontos_para_importar
 from app.servicos.extratos import limites_do_mes
 from app.servicos.progresso import Etapa, etapa_atual, progresso_do_mes
@@ -48,7 +49,7 @@ class NumerosMes:
             setattr(self, campo, getattr(self, campo) + getattr(outro, campo))
 
 
-def numeros_do_mes(sessao: Session, competencia: date) -> dict[int, NumerosMes]:
+def numeros_do_mes(sessao: Session, competencia: date | Periodo) -> dict[int, NumerosMes]:
     inicio, fim = limites_do_mes(competencia)
     numeros: dict[int, NumerosMes] = defaultdict(NumerosMes)
     consulta = (
@@ -98,19 +99,26 @@ class LinhaPainel:
 
 @dataclass
 class Painel:
-    competencia: date
+    competencia: Periodo
     prontos: list[Exportacao] = field(default_factory=list)  # gerados sozinhos e ainda não baixados
     linhas: list[LinhaPainel] = field(default_factory=list)
     total: NumerosMes = field(default_factory=NumerosMes)
     concluidas: int = 0
 
 
-def painel(sessao: Session, competencia: date, responsavel_id: int | None = None, so_pendencia: bool = False) -> Painel:
+def painel(
+    sessao: Session, competencia: date | Periodo, responsavel_id: int | None = None, so_pendencia: bool = False
+) -> Painel:
+    competencia = como_periodo(competencia)  # o mês ou o período escolhido na tela
     numeros = numeros_do_mes(sessao, competencia)
     exportacoes: dict[int, Exportacao] = {}
     for exportacao in sessao.scalars(
         select(Exportacao)
-        .where(Exportacao.competencia == competencia, Exportacao.reaberta_em.is_(None))
+        .where(
+            Exportacao.competencia <= competencia.fim,  # exportações que tocam o mês ou o período
+            func.coalesce(Exportacao.competencia_fim, Exportacao.competencia) >= competencia.inicio,
+            Exportacao.reaberta_em.is_(None),
+        )
         .order_by(Exportacao.criado_em)
     ):
         exportacoes[exportacao.empresa_id] = exportacao  # fica a mais recente
@@ -122,8 +130,8 @@ def painel(sessao: Session, competencia: date, responsavel_id: int | None = None
         linha = LinhaPainel(
             empresa, progresso_do_mes(sessao, empresa, competencia), numeros[empresa.id], exportacoes.get(empresa.id)
         )
-        if empresa.exportacao_automatica and linha.atual is not None:
-            linha.espera_automatica = motivo_para_esperar(sessao, empresa, competencia)
+        if empresa.exportacao_automatica and linha.atual is not None and competencia.um_mes:  # a automática é mensal
+            linha.espera_automatica = motivo_para_esperar(sessao, empresa, competencia.inicio)
         if linha.atual is None:  # mês concluído (tudo exportado)
             resultado.concluidas += 1
             if so_pendencia:

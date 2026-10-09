@@ -14,7 +14,7 @@ from app.db import obter_sessao
 from app.modelos import ContaContabil, Empresa, Sugestao, Usuario
 from app.rotas.comum import buscar_empresa
 from app.rotas.exportar import exportar_sozinho
-from app.servicos.competencia import valor_campo_mes
+from app.servicos.competencia import Periodo, valor_campo_mes
 from app.servicos.contas_chave import normalizar
 from app.servicos.exportacao_automatica import meses_das_sugestoes
 from app.servicos.fornecedores import lista, pela_linha
@@ -33,7 +33,7 @@ from app.servicos.revisao import (
     reabrir,
     sugestoes_do_mes,
 )
-from app.web import avisar, pagina, redirecionar
+from app.web import avisar, competencia_da_tela, pagina, redirecionar
 
 router = APIRouter()
 ORIGENS = {
@@ -61,7 +61,12 @@ def contas_para_escolher(sessao: Session, empresa: Empresa) -> list[tuple[str, s
 
 
 def contexto_aba_revisao(
-    sessao: Session, empresa: Empresa, competencia: date, filtro: str = "atencao", busca: str = "", conta: str = ""
+    sessao: Session,
+    empresa: Empresa,
+    competencia: date | Periodo,
+    filtro: str = "atencao",
+    busca: str = "",
+    conta: str = "",
 ) -> dict:
     filtro = filtro if filtro in FILTROS else "atencao"
     reduzido = int(conta) if conta.strip().isdigit() else None
@@ -88,6 +93,7 @@ def _linha(request: Request, empresa: Empresa, sugestao: Sugestao, erro: str = "
         erro=erro,
         digitado=digitado,  # com erro, a linha volta com o que foi digitado
         parecidas=outras or [],
+        competencia=competencia_da_tela(request, None),  # “neste mês” ou “neste período”
         origens=ORIGENS,
         contrapartida=contrapartida,
     )
@@ -173,7 +179,7 @@ def conferir_linha(
         if escolhida is not None:
             mudou = contrapartida(sugestao) != escolhida
             corrigir(sessao, sugestao, escolhida, complemento, usuario)
-            outras = parecidas(sessao, sugestao) if mudou else []
+            outras = parecidas(sessao, sugestao, competencia_da_tela(request, None)) if mudou else []
     elif acao == "aprovar":
         erro = aprovar(sessao, sugestao, usuario) or ""
     elif acao == "ignorar":
@@ -214,11 +220,13 @@ def aplicar_as_parecidas(
     if (empresa := buscar_empresa(sessao, request, empresa_id)) is None:
         return redirecionar("/")
     sugestao = _sugestao_da_empresa(sessao, empresa, sugestao_id)
-    mes = valor_campo_mes(sugestao.movimento.data.replace(day=1)) if sugestao else ""
-    destino = f"/empresas/{empresa.id}?aba=revisao&mes={mes}"
+    periodo = competencia_da_tela(request, None)  # as parecidas do período da tela (o ano, se for o caso)
+    if sugestao and not periodo.contem(sugestao.movimento.data):
+        periodo = Periodo.do_mes(sugestao.movimento.data.replace(day=1))
+    destino = f"/empresas/{empresa.id}?aba=revisao&mes={valor_campo_mes(periodo)}"
     escolhida = contrapartida(sugestao) if sugestao else None
     if escolhida is not None:
-        outras = parecidas(sessao, sugestao)
+        outras = parecidas(sessao, sugestao, periodo)
         with aprender_no_fim(sessao):
             for outra in outras:
                 corrigir(sessao, outra, escolhida, "", usuario)

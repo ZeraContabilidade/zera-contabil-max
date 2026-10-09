@@ -6,6 +6,9 @@ Para cada empresa, uma vez por mês. A barra no topo da empresa mostra onde voc�
 ## Uma vez só, ao cadastrar a empresa (Supervisor)
 
 1. **Empresas → + Nova empresa**: basta o código da empresa no Domínio; o CNPJ completa o resto.
+   - **Filial:** cada filial é um cadastro. Em “Código da empresa no Domínio” vai o código da **matriz** e em
+     “Código da filial” o código da filial no Domínio. O `lanctos.txt` dessa filial sai com o código da filial
+     (coluna 8 do arquivo).
 2. **Plano de Contas**: envie o plano exportado do Domínio. O sistema descobre sozinho as contas-chave
    (banco, rendimentos, tarifas…) e se a empresa usa conta individual por fornecedor.
 3. **Aprendizado**: envie o histórico (o `lanctos.txt` dos anos anteriores e/ou o Diário em Excel).
@@ -25,6 +28,19 @@ Para cada empresa, uma vez por mês. A barra no topo da empresa mostra onde voc�
      “Fornecedores a cadastrar no Domínio” (baixe em Excel, crie as contas no Domínio e reimporte o plano).
 4. **Exportar**: confira o total por conta e clique em **Gerar lanctos.txt**. Baixe o arquivo e importe no Domínio.
    As linhas exportadas ficam travadas; só o Supervisor reabre (com o motivo).
+
+## Por período (ex.: o ano todo de uma vez)
+
+Para trabalhar vários meses juntos — por exemplo, de 01/2025 a 12/2025 — e gerar **um só** `lanctos.txt`:
+
+1. Ao lado do mês, clique em **Vários meses**, escolha **De** (ex.: janeiro de 2025) e **Até** (ex.: dezembro de 2025)
+   e clique em **Ver período**. O período fica escolhido em todas as telas até você trocar.
+2. **Extratos**: arraste os extratos de todos os meses (pode ser de uma vez). A lista mostra o período inteiro.
+3. **Revisão**: mostra as linhas do período inteiro. “Aplicar às parecidas” vale para o período todo.
+4. **Exportar**: gera um único arquivo com todos os meses (ex.: `lanctos_230_2025-01_a_2025-12.txt`).
+5. Para voltar a um mês só, clique em **Um mês só**.
+
+A exportação automática (quando ligada no cadastro) continua sendo feita mês a mês.
 
 ## Para o Supervisor
 

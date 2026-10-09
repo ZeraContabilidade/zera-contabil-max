@@ -72,6 +72,39 @@
 <small class="suave">{% if atual %}Próximo: {{ atual.nome }}{% else %}Mês concluído{% endif %}</small>
 {% endmacro %}
 
+{# Período de trabalho: um mês (o de sempre) ou “vários meses” (de/até, ex.: o ano todo). Fica guardado para as outras
+   telas. `ocultos` = campos que a tela precisa manter (ex.: a aba aberta). #}
+{% macro seletor_periodo(periodo, acao, ocultos={}) %}
+{% set campos %}{% for nome, valor in ocultos.items() if valor %}<input type="hidden" name="{{ nome }}" value="{{ valor }}">{% endfor %}{% endset %}
+<div class="seletor-periodo">
+  {% if periodo.um_mes %}
+  <form method="get" action="{{ acao }}" class="form-mes">
+    {{ campos }}
+    <label>Mês
+      <input type="month" name="mes" value="{{ periodo.inicio | valor_campo_mes }}" onchange="this.form.requestSubmit()">
+    </label>
+  </form>
+  <details class="periodo-mais">
+    <summary>Vários meses</summary>
+    <form method="get" action="{{ acao }}" class="form-mes form-periodo">
+      {{ campos }}
+      <label>De <input type="month" name="mes" value="{{ periodo.inicio | valor_campo_mes }}" required></label>
+      <label>Até <input type="month" name="ate" value="{{ periodo.fim | valor_campo_mes }}" required></label>
+      <button type="submit">Ver período</button>
+    </form>
+  </details>
+  {% else %}
+  <form method="get" action="{{ acao }}" class="form-mes form-periodo" aria-label="Período">
+    {{ campos }}
+    <label>De <input type="month" name="mes" value="{{ periodo.inicio | valor_campo_mes }}" required></label>
+    <label>Até <input type="month" name="ate" value="{{ periodo.fim | valor_campo_mes }}" required></label>
+    <button type="submit">Ver</button>
+  </form>
+  <a class="um-mes" href="{{ acao }}?mes={{ periodo.fim | valor_campo_mes }}{% for nome, valor in ocultos.items() if valor %}&amp;{{ nome }}={{ valor | urlencode }}{% endfor %}">Um mês só</a>
+  {% endif %}
+</div>
+{% endmacro %}
+
 {% macro etiqueta_situacao(ativo) %}
 {% if ativo %}<span class="etiqueta etiqueta-verde">Ativo</span>{% else %}<span class="etiqueta etiqueta-apagada">Inativo</span>{% endif %}
 {% endmacro %}

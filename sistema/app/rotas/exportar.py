@@ -1,4 +1,5 @@
-"""Aba “6 Exportar”: o lanctos.txt do mês para importar no Domínio (§3.6) + resumo em Excel + histórico."""
+"""Aba “6 Exportar”: o lanctos.txt do mês ou do período (ex.: o ano todo) para importar no Domínio (§3.6) + resumo
+em Excel + histórico."""
 
 from collections.abc import Iterable
 from datetime import UTC, date, datetime
@@ -13,7 +14,14 @@ from app.db import obter_sessao
 from app.modelos import Empresa, Exportacao, Usuario
 from app.rotas.comum import buscar_empresa
 from app.servicos.armazenamento import ArquivoApagado, ler_arquivo
-from app.servicos.competencia import ler_competencia, nome_competencia, valor_campo_mes
+from app.servicos.competencia import (
+    Periodo,
+    como_periodo,
+    ler_periodo,
+    nome_competencia,
+    periodo_no_arquivo,
+    valor_campo_mes,
+)
 from app.servicos.exportacao import (
     ErroExportacao,
     exportacoes,
@@ -33,14 +41,15 @@ def ler_ids(valores: list[str]) -> list[int]:
     return [int(v) for v in valores if v.strip().isdigit()]
 
 
-def contexto_aba_exportar(sessao: Session, empresa: Empresa, competencia: date, bancos: list[int]) -> dict:
-    preparo = preparar(sessao, empresa, competencia, bancos)
+def contexto_aba_exportar(sessao: Session, empresa: Empresa, competencia: date | Periodo, bancos: list[int]) -> dict:
+    periodo = como_periodo(competencia)
+    preparo = preparar(sessao, empresa, periodo, bancos)
     return {
         "preparo": preparo,
         "escolhidas_ids": [c.id for c in preparo.escolhidas],
         "exportacoes": exportacoes(sessao, empresa),
-        "espera_automatica": motivo_para_esperar(sessao, empresa, competencia)
-        if empresa.exportacao_automatica
+        "espera_automatica": motivo_para_esperar(sessao, empresa, periodo.inicio)
+        if empresa.exportacao_automatica and periodo.um_mes  # a automática é sempre mês a mês
         else None,
     }
 
@@ -77,13 +86,13 @@ def gerar_lanctos(
 ):
     if (empresa := buscar_empresa(sessao, request, empresa_id)) is None:
         return redirecionar("/")
-    competencia = ler_competencia(mes) or competencia_da_tela(request, None)
+    periodo = ler_periodo(mes) or competencia_da_tela(request, None)
     ids = ler_ids(bancos)
     voltar = f"/empresas/{empresa.id}?" + urlencode(
-        [("aba", "exportar"), ("mes", valor_campo_mes(competencia)), *[("bancos", i) for i in ids]]
+        [("aba", "exportar"), ("mes", valor_campo_mes(periodo)), *[("bancos", i) for i in ids]]
     )
     try:
-        exportacao = exportar(sessao, empresa, competencia, ids, usuario, deixar_pendentes is not None)
+        exportacao = exportar(sessao, empresa, periodo, ids, usuario, deixar_pendentes is not None)
     except ErroExportacao as erro:
         sessao.rollback()
         avisar(request, str(erro), "erro")
@@ -112,7 +121,7 @@ def reabrir(
     if (exportacao := _exportacao_da_empresa(sessao, empresa, exportacao_id)) is None:
         avisar(request, "Exportação não encontrada.", "erro")
         return redirecionar(f"/empresas/{empresa.id}?aba=exportar")
-    voltar = f"/empresas/{empresa.id}?" + urlencode({"aba": "exportar", "mes": valor_campo_mes(exportacao.competencia)})
+    voltar = f"/empresas/{empresa.id}?" + urlencode({"aba": "exportar", "mes": valor_campo_mes(exportacao.periodo)})
     try:
         linhas = reabrir_exportacao(sessao, exportacao, supervisor, motivo)
     except ErroExportacao as erro:
@@ -175,7 +184,7 @@ def baixar_resumo(
     if (exportacao := _exportacao_da_empresa(sessao, empresa, exportacao_id)) is None:
         avisar(request, "Exportação não encontrada.", "erro")
         return redirecionar(f"/empresas/{empresa.id}?aba=exportar")
-    nome = f"resumo_{empresa.codigo_arquivo}_{exportacao.competencia:%Y-%m}.xlsx"
+    nome = f"resumo_{empresa.codigo_arquivo}_{periodo_no_arquivo(exportacao.periodo)}.xlsx"
     return Response(
         resumo_excel(sessao, empresa, exportacao),
         media_type=TIPO_XLSX,

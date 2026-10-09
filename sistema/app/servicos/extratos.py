@@ -1,7 +1,6 @@
 """Importação de extratos (§3.4): lê o arquivo (app/leitores), liga à conta bancária da empresa,
 grava os movimentos sem duplicar e confere o saldo (inicial + entradas − saídas = final)."""
 
-import calendar
 import hashlib
 import re
 from collections import Counter
@@ -28,6 +27,7 @@ from app.modelos import (
 )
 from app.servicos.armazenamento import guardar_arquivo
 from app.servicos.classificacao import classificar
+from app.servicos.competencia import Periodo, como_periodo
 from app.servicos.contas_chave import identificar_banco, ligar_conta_bancaria, referencia_bancaria
 from app.servicos.planilha_extrato import ler_planilha_extrato
 from app.servicos.plano import Aviso, ErroLeitura
@@ -295,10 +295,9 @@ def importar_extrato(
 # ---------------------------------------------------------------- consultas da tela
 
 
-def limites_do_mes(competencia: date) -> tuple[date, date]:
-    return competencia, date(
-        competencia.year, competencia.month, calendar.monthrange(competencia.year, competencia.month)[1]
-    )
+def limites_do_mes(competencia: date | Periodo) -> tuple[date, date]:
+    """1º e último dia do mês — ou do período inteiro (de um mês até outro)."""
+    return como_periodo(competencia).limites
 
 
 def contas_bancarias(sessao: Session, empresa: Empresa) -> list[ContaBancaria]:
@@ -311,7 +310,7 @@ def contas_bancarias(sessao: Session, empresa: Empresa) -> list[ContaBancaria]:
     )
 
 
-def extratos_do_mes(sessao: Session, empresa: Empresa, competencia: date) -> list[Extrato]:
+def extratos_do_mes(sessao: Session, empresa: Empresa, competencia: date | Periodo) -> list[Extrato]:
     inicio, fim = limites_do_mes(competencia)
     return list(
         sessao.scalars(
@@ -322,7 +321,7 @@ def extratos_do_mes(sessao: Session, empresa: Empresa, competencia: date) -> lis
     )
 
 
-def movimentos_do_mes(sessao: Session, empresa: Empresa, competencia: date) -> list[MovimentoExtrato]:
+def movimentos_do_mes(sessao: Session, empresa: Empresa, competencia: date | Periodo) -> list[MovimentoExtrato]:
     inicio, fim = limites_do_mes(competencia)
     return list(
         sessao.scalars(
@@ -338,7 +337,7 @@ def movimentos_do_mes(sessao: Session, empresa: Empresa, competencia: date) -> l
     )
 
 
-def contar_movimentos_do_mes(sessao: Session, empresa: Empresa, competencia: date) -> int:
+def contar_movimentos_do_mes(sessao: Session, empresa: Empresa, competencia: date | Periodo) -> int:
     inicio, fim = limites_do_mes(competencia)
     return (
         sessao.scalar(

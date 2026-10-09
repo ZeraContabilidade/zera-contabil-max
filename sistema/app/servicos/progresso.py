@@ -1,4 +1,4 @@
-"""Barra de progresso do mês de cada empresa: Plano → Aprendizado → Extrato → Revisão → Exportado."""
+"""Barra de progresso do mês (ou do período) de cada empresa: Plano → Aprendizado → Extrato → Revisão → Exportado."""
 
 from dataclasses import dataclass
 from datetime import date
@@ -7,6 +7,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.modelos import Empresa, Padrao
+from app.servicos.competencia import Periodo
 from app.servicos.exportacao import situacao_do_mes
 from app.servicos.extratos import contar_movimentos_do_mes
 from app.servicos.plano import contar_contas
@@ -29,7 +30,7 @@ class Etapa:
     detalhe: str = ""
 
 
-def _concluidas(sessao: Session, empresa: Empresa, competencia: date) -> dict[str, str]:
+def _concluidas(sessao: Session, empresa: Empresa, competencia: date | Periodo) -> dict[str, str]:
     """Etapas já feitas → detalhe. Cada parte do sistema acrescenta a sua conferência aqui:
     plano (1.4), aprendizado (1.7), extrato (2.1), revisão (2.8) e exportado (3.1)."""
     feitas = {}
@@ -52,7 +53,7 @@ def _concluidas(sessao: Session, empresa: Empresa, competencia: date) -> dict[st
     return feitas
 
 
-def progresso_do_mes(sessao: Session, empresa: Empresa, competencia: date) -> list[Etapa]:
+def progresso_do_mes(sessao: Session, empresa: Empresa, competencia: date | Periodo) -> list[Etapa]:
     feitas = _concluidas(sessao, empresa, competencia)
     etapas, achou_atual = [], False
     for chave, nome in ETAPAS:

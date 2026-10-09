@@ -9,7 +9,7 @@ sempre exportado à mão). `motivo_para_esperar` diz por que ainda não gerou (a
 
 from datetime import date
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.modelos import Empresa, Exportacao, MovimentoExtrato, Sugestao
@@ -37,7 +37,8 @@ def motivo_para_esperar(sessao: Session, empresa: Empresa, competencia: date) ->
     reaberta = sessao.scalar(
         select(Exportacao.id).where(
             Exportacao.empresa_id == empresa.id,
-            Exportacao.competencia == competencia,
+            Exportacao.competencia <= competencia,  # o mês ou um período que o inclui
+            func.coalesce(Exportacao.competencia_fim, Exportacao.competencia) >= competencia,
             Exportacao.reaberta_em.is_not(None),
         )
     )

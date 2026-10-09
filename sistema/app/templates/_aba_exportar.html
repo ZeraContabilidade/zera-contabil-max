@@ -86,7 +86,7 @@
       <tbody>
         {% for e in exportacoes %}
         <tr{% if e.reaberta_em %} class="exportacao-reaberta"{% endif %}>
-          <td>{{ e.competencia | nome_competencia }}</td>
+          <td>{{ e.periodo | nome_competencia }}</td>
           <td>{{ e.criado_em | data_hora }}<br><small class="suave">{% if e.automatica %}🤖 gerado sozinho{% elif e.usuario %}{{ e.usuario.nome }}{% endif %}</small>
             {% if e.automatica and not e.baixado_em and not e.reaberta_em %}<br><span class="etiqueta etiqueta-ambar">novo — ainda não baixado</span>{% endif %}</td>
           <td class="num">{{ e.linhas }}</td>

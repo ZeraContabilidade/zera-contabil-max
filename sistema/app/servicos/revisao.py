@@ -26,6 +26,7 @@ from app.modelos import (
     Usuario,
 )
 from app.servicos.aprendizado import CNPJ_NO_TEXTO, aprender, normalizar_nome, separar_complemento
+from app.servicos.competencia import Periodo
 from app.servicos.contas_chave import achar_conta_analitica
 from app.servicos.documentos import normalizar_documento, tipo_documento
 from app.servicos.extratos import limites_do_mes
@@ -54,7 +55,7 @@ def contrapartida(sugestao: Sugestao) -> ContaContabil | None:
 def sugestoes_do_mes(
     sessao: Session,
     empresa: Empresa,
-    competencia: date,
+    competencia: date | Periodo,
     filtro: str = "atencao",
     busca: str = "",
     conta: int | None = None,
@@ -103,7 +104,7 @@ class Contagem:
         return self.verde + self.amarela + self.vermelha + self.cinza
 
 
-def contagem_do_mes(sessao: Session, empresa: Empresa, competencia: date) -> Contagem:
+def contagem_do_mes(sessao: Session, empresa: Empresa, competencia: date | Periodo) -> Contagem:
     contagem = Contagem()
     for sugestao in sugestoes_do_mes(sessao, empresa, competencia, "todos"):
         setattr(contagem, sugestao.cor, getattr(contagem, sugestao.cor) + 1)
@@ -195,12 +196,15 @@ def reabrir(sessao: Session, sugestao: Sugestao) -> None:
     _aprender_com(sessao, sugestao)
 
 
-def parecidas(sessao: Session, sugestao: Sugestao) -> list[Sugestao]:
-    """Outras linhas do mesmo mês, ainda não conferidas, com o mesmo favorecido do banco (ou o mesmo CNPJ)."""
+def parecidas(sessao: Session, sugestao: Sugestao, periodo: Periodo | None = None) -> list[Sugestao]:
+    """Outras linhas do mesmo mês (ou do período da tela, se a linha está nele), ainda não conferidas, com o mesmo
+    favorecido do banco (ou o mesmo CNPJ)."""
     movimento = sugestao.movimento
     nome = normalizar_nome(movimento.complemento or movimento.historico)
     documentos = {normalizar_documento(m.group(0)) for m in CNPJ_NO_TEXTO.finditer(movimento.complemento or "")}
-    inicio, fim = limites_do_mes(movimento.data.replace(day=1))
+    if periodo is None or not periodo.contem(movimento.data):
+        periodo = Periodo.do_mes(movimento.data.replace(day=1))
+    inicio, fim = periodo.limites
     candidatas = sessao.scalars(
         select(Sugestao)
         .join(MovimentoExtrato, Sugestao.movimento_id == MovimentoExtrato.id)

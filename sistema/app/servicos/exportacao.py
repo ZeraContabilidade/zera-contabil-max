@@ -26,7 +26,7 @@ from sqlalchemy.orm import Session
 from app.auditoria import registrar_evento
 from app.modelos import ContaBancaria, ContaContabil, Empresa, Exportacao, MovimentoExtrato, Sugestao, Usuario
 from app.servicos.armazenamento import guardar_arquivo
-from app.servicos.competencia import nome_competencia
+from app.servicos.competencia import Periodo, como_periodo, nome_competencia, periodo_no_arquivo
 from app.servicos.extratos import limites_do_mes
 
 SEPARADOR = ";"
@@ -210,8 +210,8 @@ class TotalConta:
 
 @dataclass
 class Preparo:
-    competencia: date
-    disponiveis: list[ContaBancaria]  # contas com movimento no mês
+    periodo: Periodo  # um mês ou vários (de um mês até outro)
+    disponiveis: list[ContaBancaria]  # contas com movimento no período
     escolhidas: list[ContaBancaria]
     prontas: list[Sugestao] = field(default_factory=list)  # aprovadas: vão para o arquivo
     pendentes: list[Sugestao] = field(default_factory=list)
@@ -239,7 +239,7 @@ def totais_por_conta(sugestoes: list[Sugestao]) -> list[TotalConta]:
     return [totais[chave] for chave in sorted(totais)]
 
 
-def contas_do_mes(sessao: Session, empresa: Empresa, competencia: date) -> list[ContaBancaria]:
+def contas_do_mes(sessao: Session, empresa: Empresa, competencia: date | Periodo) -> list[ContaBancaria]:
     inicio, fim = limites_do_mes(competencia)
     com_movimento = select(MovimentoExtrato.conta_bancaria_id).where(
         MovimentoExtrato.empresa_id == empresa.id, MovimentoExtrato.data.between(inicio, fim)
@@ -271,12 +271,16 @@ def _problemas(sugestao: Sugestao) -> list[str]:
     return erros
 
 
-def preparar(sessao: Session, empresa: Empresa, competencia: date, contas_ids: list[int] | None = None) -> Preparo:
-    """O que vai para o arquivo (aprovadas), o que fica de fora (pendentes) e o que impede a exportação."""
-    inicio, fim = limites_do_mes(competencia)
-    disponiveis = contas_do_mes(sessao, empresa, competencia)
+def preparar(
+    sessao: Session, empresa: Empresa, competencia: date | Periodo, contas_ids: list[int] | None = None
+) -> Preparo:
+    """O que vai para o arquivo (aprovadas), o que fica de fora (pendentes) e o que impede a exportação —
+    de um mês ou de um período inteiro (ex.: o ano, para importar no Domínio de uma vez)."""
+    periodo = como_periodo(competencia)
+    inicio, fim = periodo.limites
+    disponiveis = contas_do_mes(sessao, empresa, periodo)
     escolhidas = [c for c in disponiveis if not contas_ids or c.id in contas_ids]
-    preparo = Preparo(competencia, disponiveis, escolhidas)
+    preparo = Preparo(periodo, disponiveis, escolhidas)
     if not escolhidas:
         return preparo
     sugestoes = sessao.scalars(
@@ -316,15 +320,16 @@ def linha_da_sugestao(sugestao: Sugestao) -> LinhaLancto:
 def exportar(
     sessao: Session,
     empresa: Empresa,
-    competencia: date,
+    competencia: date | Periodo,
     contas_ids: list[int] | None,
     usuario: Usuario | None,
     deixar_pendentes_de_fora: bool = False,
     automatica: bool = False,
 ) -> Exportacao:
-    """Gera o lanctos.txt do mês, guarda o arquivo, registra e trava as linhas exportadas."""
-    preparo = preparar(sessao, empresa, competencia, contas_ids)
-    mes = nome_competencia(competencia)
+    """Gera o lanctos.txt do mês (ou do período), guarda o arquivo, registra e trava as linhas exportadas."""
+    periodo = como_periodo(competencia)
+    preparo = preparar(sessao, empresa, periodo, contas_ids)
+    mes = nome_competencia(periodo)
     if not preparo.prontas:
         raise ErroExportacao(f"Nada aprovado para exportar em {mes}: confira a aba Revisão.")
     if preparo.problemas:
@@ -336,16 +341,17 @@ def exportar(
             f"Há {len(preparo.pendentes)} linha(s) pendente(s) em {mes}: aprove na Revisão ou marque "
             "“Deixar as pendentes de fora”."
         )
-    inicio, fim = limites_do_mes(competencia)
+    inicio, fim = periodo.limites
     conteudo = gerar_txt([linha_da_sugestao(s) for s in preparo.prontas], empresa.codigo_no_lanctos)
     plano = {c.reduzido: c for c in sessao.scalars(select(ContaContabil).where(ContaContabil.empresa_id == empresa.id))}
     if falhas := conferir_txt(conteudo, plano, inicio, fim, empresa.codigo_no_lanctos):
         raise ErroExportacao(f"O arquivo gerado não passou na conferência ({falhas[0].texto}). Avise o suporte.")
-    nome = f"lanctos_{empresa.codigo_arquivo}_{competencia:%Y-%m}.txt"
+    nome = f"lanctos_{empresa.codigo_arquivo}_{periodo_no_arquivo(periodo)}.txt"
     arquivo = guardar_arquivo(sessao, empresa, "EXPORTACAO", nome, conteudo, usuario)
     exportacao = Exportacao(
         empresa_id=empresa.id,
-        competencia=competencia,
+        competencia=periodo.inicio,
+        competencia_fim=None if periodo.um_mes else periodo.fim,
         contas_bancarias=[c.id for c in preparo.escolhidas],
         linhas=len(preparo.prontas),
         total=preparo.total,
@@ -397,7 +403,7 @@ def reabrir_exportacao(sessao: Session, exportacao: Exportacao, usuario: Usuario
         sessao.info.pop("auditoria_em_bloco", None)
     empresa = sessao.get(Empresa, exportacao.empresa_id)
     detalhe = (
-        f"{empresa.nome}, {nome_competencia(exportacao.competencia)}: {len(sugestoes)} linha(s) reaberta(s) "
+        f"{empresa.nome}, {nome_competencia(exportacao.periodo)}: {len(sugestoes)} linha(s) reaberta(s) "
         f"({exportacao.arquivo.nome_original}). Motivo: {motivo}"
     )
     registrar_evento(sessao, "REABRIR_EXPORTACAO", usuario.id, detalhe)
@@ -412,8 +418,8 @@ def exportacoes(sessao: Session, empresa: Empresa) -> list[Exportacao]:
     )
 
 
-def situacao_do_mes(sessao: Session, empresa: Empresa, competencia: date) -> tuple[int, int]:
-    """(lançamentos exportados no mês, aprovados que ainda não foram) — para a barra do mês."""
+def situacao_do_mes(sessao: Session, empresa: Empresa, competencia: date | Periodo) -> tuple[int, int]:
+    """(lançamentos exportados no mês ou período, aprovados que ainda não foram) — para a barra de progresso."""
     inicio, fim = limites_do_mes(competencia)
     contagem = dict(
         sessao.execute(
@@ -439,7 +445,7 @@ def resumo_excel(sessao: Session, empresa: Empresa, exportacao: Exportacao) -> b
     livro = Workbook()
     folha = livro.active
     folha.title = "Resumo por conta"
-    folha.append([f"{empresa.nome} (código {empresa.rotulo_codigo}) — {nome_competencia(exportacao.competencia)}"])
+    folha.append([f"{empresa.nome} (código {empresa.rotulo_codigo}) — {nome_competencia(exportacao.periodo)}"])
     folha["A1"].font = Font(bold=True, size=13)
     folha.append([f"{exportacao.linhas} lançamento(s) exportado(s) em {exportacao.criado_em:%d/%m/%Y %H:%M}"])
     folha.append([])

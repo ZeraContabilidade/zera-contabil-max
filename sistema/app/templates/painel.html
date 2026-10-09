@@ -1,17 +1,11 @@
 {% extends "base.html" %}
-{% from "_macros.html" import pontos_progresso %}
+{% from "_macros.html" import pontos_progresso, seletor_periodo %}
 {% block titulo %}Painel — {{ nome_sistema }}{% endblock %}
 {% block conteudo %}
 <div class="cabecalho-pagina">
   <div><p class="sobretitulo">Visão do escritório</p><h1>Painel do Supervisor</h1></div>
   <div class="acoes-cabecalho">
-    <form method="get" action="/painel" class="form-mes">
-      <label>Mês
-        <input type="month" name="mes" value="{{ competencia | valor_campo_mes }}" onchange="this.form.requestSubmit()">
-      </label>
-      {% if responsavel_id %}<input type="hidden" name="responsavel" value="{{ responsavel_id }}">{% endif %}
-      {% if pendencia %}<input type="hidden" name="pendencia" value="1">{% endif %}
-    </form>
+    {{ seletor_periodo(competencia, '/painel', {'responsavel': responsavel_id, 'pendencia': '1' if pendencia else ''}) }}
   </div>
 </div>
 
@@ -21,8 +15,8 @@
     <span class="suave">gerados sozinhos pela exportação automática e ainda não baixados</span></header>
   <ul>
     {% for e in dados.prontos %}
-    <li><a href="/empresas/{{ e.empresa_id }}?aba=exportar&mes={{ e.competencia | valor_campo_mes }}">{{ nomes_empresas[e.empresa_id] }}</a>
-      — {{ e.competencia | nome_competencia }} pronto para importar ({{ e.linhas }} lançamento(s), gerado em {{ e.criado_em | data_hora }})
+    <li><a href="/empresas/{{ e.empresa_id }}?aba=exportar&mes={{ e.periodo | valor_campo_mes }}">{{ nomes_empresas[e.empresa_id] }}</a>
+      — {{ e.periodo | nome_competencia }} pronto para importar ({{ e.linhas }} lançamento(s), gerado em {{ e.criado_em | data_hora }})
       <a href="/empresas/{{ e.empresa_id }}/exportacoes/{{ e.id }}/lanctos.txt" role="button" class="botao-pequeno">Baixar lanctos.txt</a></li>
     {% endfor %}
   </ul>

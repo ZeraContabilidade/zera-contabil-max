@@ -1,4 +1,5 @@
-"""Aba “4 Extratos”: arrastar e soltar os extratos do mês, contas bancárias da empresa e movimentos lidos.
+"""Aba “4 Extratos”: arrastar e soltar os extratos do mês (ou do período), contas bancárias da empresa e movimentos
+lidos.
 Planilha (Excel/CSV) de layout novo: tela para confirmar as colunas e a conta, uma vez por layout."""
 
 from collections import Counter
@@ -19,14 +20,13 @@ from app.rotas.exportar import exportar_sozinho
 from app.servicos.armazenamento import obter_armazenamento
 from app.servicos.classificacao import classificar
 from app.servicos.classificacao_ia import classificar_com_ia
-from app.servicos.competencia import hoje, valor_campo_mes
+from app.servicos.competencia import Periodo, hoje, valor_campo_mes
 from app.servicos.contas_chave import BANCOS
 from app.servicos.exportacao_automatica import meses_entre
 from app.servicos.extratos import (
     contas_bancarias,
     extratos_do_mes,
     importar_extrato,
-    limites_do_mes,
     mesma_conta,
     movimentos_do_mes,
 )
@@ -71,7 +71,7 @@ def planilhas_esperando(sessao: Session, empresa: Empresa) -> list[ArquivoOrigin
     )
 
 
-def contexto_aba_extratos(sessao: Session, empresa: Empresa, competencia: date) -> dict:
+def contexto_aba_extratos(sessao: Session, empresa: Empresa, competencia: date | Periodo) -> dict:
     movimentos = movimentos_do_mes(sessao, empresa, competencia)
     return {
         "contas_bancarias": contas_bancarias(sessao, empresa),
@@ -97,13 +97,13 @@ def classificar_de_novo(
 ):
     if (empresa := buscar_empresa(sessao, request, empresa_id)) is None:
         return redirecionar("/")
-    competencia = competencia_da_tela(request, mes)
-    resultado = classificar(sessao, empresa, *limites_do_mes(competencia))
+    periodo = competencia_da_tela(request, mes)
+    resultado = classificar(sessao, empresa, *periodo.limites)
     sessao.commit()
     avisar(request, resultado.resumo())
-    _ia_no_que_sobrou(request, sessao, empresa, usuario, *limites_do_mes(competencia), avisar_desligada=True)
-    exportar_sozinho(request, sessao, empresa, [competencia])
-    return redirecionar(f"/empresas/{empresa.id}?aba=extratos&mes={valor_campo_mes(competencia)}")
+    _ia_no_que_sobrou(request, sessao, empresa, usuario, *periodo.limites, avisar_desligada=True)
+    exportar_sozinho(request, sessao, empresa, periodo.meses)
+    return redirecionar(f"/empresas/{empresa.id}?aba=extratos&mes={valor_campo_mes(periodo)}")
 
 
 def _ia_no_que_sobrou(request, sessao, empresa, usuario, inicio: date, fim: date, avisar_desligada=False) -> None:
@@ -150,7 +150,7 @@ def enviar_extratos(
         avisar(request, "Escolha (ou arraste) os arquivos dos extratos antes de enviar.", "erro")
         return redirecionar(destino)
 
-    ultimo_mes, confirmar, meses = None, [], set()
+    confirmar, meses = [], set()
     for arquivo in arquivos:
         conteudo = arquivo.file.read(TAMANHO_MAXIMO + 1)
         if len(conteudo) > TAMANHO_MAXIMO:
@@ -170,13 +170,14 @@ def enviar_extratos(
         sessao.commit()
         _avisar_importado(request, arquivo.filename, extrato)
         _ia_no_que_sobrou(request, sessao, empresa, usuario, extrato.inicio, extrato.fim)
-        ultimo_mes = extrato.fim.replace(day=1)
         meses.update(meses_entre(extrato.inicio, extrato.fim))
     exportar_sozinho(request, sessao, empresa, meses)
     if len(confirmar) == 1 and len(arquivos) == 1:
         return redirecionar(f"/empresas/{empresa.id}/extratos/planilha/{confirmar[0]}")
-    if ultimo_mes:
-        destino += f"&mes={valor_campo_mes(ultimo_mes)}"  # mostra o mês do extrato enviado
+    if meses:  # mostra os meses dos extratos enviados (fica no período da tela se eles estão dentro dele)
+        atual = competencia_da_tela(request, None)
+        if not all(atual.contem(mes) for mes in meses):
+            destino += f"&mes={valor_campo_mes(Periodo.entre(min(meses), max(meses)))}"
     return redirecionar(destino)
 
 

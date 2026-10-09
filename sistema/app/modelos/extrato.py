@@ -10,6 +10,7 @@ from app.modelos.conta_chave import ContaChave
 from app.modelos.importacao import ArquivoOriginal, Importacao
 from app.modelos.plano import ContaContabil
 from app.modelos.usuario import Usuario
+from app.servicos.competencia import Periodo
 
 TIPOS_CONTA = {"BANCO": "Conta corrente", "POUPANCA": "Poupança", "APLICACAO": "Aplicação"}
 
@@ -146,7 +147,8 @@ class FornecedorACadastrar(Auditavel, Base):
 
 
 class Exportacao(Base):
-    """Um lanctos.txt gerado (§3.6): quem, quando, mês, contas bancárias, quantas linhas e o arquivo (guardado 5 anos).
+    """Um lanctos.txt gerado (§3.6): quem, quando, mês ou período, contas bancárias, quantas linhas e o arquivo
+    (guardado 5 anos).
 
     As sugestões exportadas ficam EXPORTADO (travadas) e ligadas a esta exportação; só o Supervisor reabre (3.2).
     Não é Auditavel: a exportação inteira vira um evento no log."""
@@ -155,7 +157,8 @@ class Exportacao(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     empresa_id: Mapped[int] = mapped_column(ForeignKey("empresa.id"), index=True)
-    competencia: Mapped[date] = mapped_column(Date)  # 1º dia do mês exportado
+    competencia: Mapped[date] = mapped_column(Date)  # 1º dia do mês exportado (o 1º mês, num período)
+    competencia_fim: Mapped[date | None] = mapped_column(Date)  # último mês de um período; vazio = um mês só
     contas_bancarias: Mapped[list[int]] = mapped_column(JSONB, default=list)  # ids das contas escolhidas
     linhas: Mapped[int]
     total: Mapped[Decimal] = mapped_column(Numeric(14, 2))
@@ -173,6 +176,10 @@ class Exportacao(Base):
     arquivo: Mapped[ArquivoOriginal] = relationship()
     usuario: Mapped[Usuario | None] = relationship(foreign_keys=[usuario_id])
     reaberta_por: Mapped[Usuario | None] = relationship(foreign_keys=[reaberta_por_id])
+
+    @property
+    def periodo(self) -> Periodo:
+        return Periodo(self.competencia, self.competencia_fim or self.competencia)
 
 
 STATUS_SUGESTAO = {

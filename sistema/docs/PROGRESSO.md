@@ -6,15 +6,14 @@ Atualizado em: **09/10/2026**
 **SISTEMA CONCLUÍDO E EM USO (09/10/2026).** Fases 1, 2 e 3 completas e **aceitas pelo usuário** — o `lanctos.txt`
 gerado pelo sistema foi importado no Domínio com sucesso (critério da Fase 3). Visual final “Lingote & Livro-razão”.
 Pasta organizada em 09/10 (código em `sistema\`, ferramentas em `Ferramentas\`, manuais em `Manuais\`).
-351 testes + 7 com IA real passando.
+Filial (4.2) e período (4.3) feitos em 09/10. 359 testes + 7 com IA real passando.
 
-**Em andamento (pedido de 09/10):** 4.2 código da filial ✔ (feito) → **4.3 trabalhar por período** (“de 01/2025 a
-12/2025”: Extratos, Revisão, barra e Exportar pelo período; um lanctos.txt do período inteiro para importar no Domínio).
-Decisões do usuário: coluna 8 = código da filial; cada filial é um cadastro; “tudo pelo período”.
+**Falta o usuário conferir no Domínio:** importar um lanctos.txt de filial (coluna 8 = código da filial) e um de
+período (vários meses num arquivo só).
 
-Depois disso não há etapa obrigatória pendente. Ao voltar: perguntar o que o usuário quer (ajuste pedido no uso diário
+Não há etapa obrigatória pendente. Ao voltar: perguntar o que o usuário quer (ajuste pedido no uso diário
 ou um item da **Fase 4 — um item por vez, só quando o usuário pedir** (§ etapas, §6.5, §7.4)). Feito: 4.1 exportação
-automática, 4.2 filial.
+automática, 4.2 filial, 4.3 período.
 Próximos possíveis:
 - Leitores próprios de PDF dos bancos mais usados pelo escritório (perguntar quais) — reduz o custo da IA.
 - Relação de pagamentos (aba DADOS da planilha antiga) cruzada com o extrato.
@@ -68,9 +67,26 @@ Próximos possíveis:
 ### Fase 4 — Extras (um por vez, quando pedido)
 - [x] 4.1 Exportação automática por empresa (§6.5)
 - [x] 4.2 Código da filial no cadastro e na coluna 8 do lanctos.txt (cada filial é um cadastro)
-- [ ] 4.3 Trabalhar por período (de mês/ano a mês/ano) e exportar o período num arquivo só
+- [x] 4.3 Trabalhar por período (de mês/ano a mês/ano) e exportar o período num arquivo só
 
 ## Histórico
+
+### 09/10/2026 — Etapa 4.3: trabalhar por período
+- Pedido do usuário: “precisa ser por período para adicionar os extratos bancários, por exemplo de 01/2025 a
+  12/2025, para que eu possa gerar os arquivos anualmente para importar na Domínio”. Resposta: “tudo pelo período”.
+- `Periodo` em `app/servicos/competencia.py` (de um mês até outro, máx. 24 meses); `competencia_da_tela` devolve um
+  período (mês só = o caso de sempre); nos endereços vai como `mes=2025-01_2025-12`. Extratos, Revisão, barra de
+  progresso, lista de empresas e Painel seguem o período; “Classificar de novo” e a IA rodam no período inteiro.
+- Exportar: um `lanctos.txt` do período (`lanctos_230_2025-01_a_2025-12.txt`), conferido com as datas do período;
+  migração 0021 (`exportacao.competencia_fim`); reabrir uma exportação de período vale para os meses dela (a
+  automática não gera sozinha mês reaberto). A exportação automática continua mês a mês.
+- Enviar extratos: se os meses do arquivo estão dentro do período da tela, fica nele; senão abre os meses do arquivo.
+- “Aplicar às parecidas” vale para o período da tela (“neste período?”).
+- Tela: seletor “Mês” + “Vários meses” (quadro De/Até) e, no modo período, De/Até/Ver + “Um mês só”. Conferido no
+  navegador (servidor de teste): o quadro precisou subir de camada (o cabeçalho tem animação) e o botão perder o
+  `min-width` geral.
+- Testes: `tests/test_periodo.py` (tela, arquivo do período, parecidas, envio de extrato, Painel) + contas do período em
+  `test_competencia.py`.
 
 ### 09/10/2026 — Etapa 4.2: código da filial
 - Pedido do usuário: campo do código da filial no cadastro e o número da filial no TXT. Respostas: a coluna 8

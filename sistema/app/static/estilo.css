@@ -285,6 +285,24 @@ form button.btn-icone[type="submit"] { min-width: 0; width: 38px; }
 .form-mes { margin: 0; }
 .form-mes label { font-size: .75rem; color: var(--suave); letter-spacing: 1.2px; text-transform: uppercase; margin: 0; }
 .form-mes input { width: auto; margin: .2rem 0 0; padding-block: .45rem; }
+/* período de trabalho: um mês ou “vários meses” (de/até) */
+.seletor-periodo { display: flex; align-items: flex-end; gap: .75rem; flex-wrap: wrap; }
+.acoes-cabecalho, .empresa-acoes { position: relative; } /* o quadro “vários meses” abre alinhado à direita deles */
+.form-periodo { display: flex; align-items: flex-end; gap: .6rem; flex-wrap: wrap; }
+.seletor-periodo .form-periodo button[type="submit"] { width: auto; min-width: 0; margin: 0; padding: .48rem 1.1rem; font-size: .85rem; }
+.periodo-mais { margin: 0; }
+.periodo-mais > summary, .um-mes { margin: 0; padding: 0 0 .6rem; font-size: .74rem; color: var(--suave); letter-spacing: 1px;
+  text-transform: uppercase; text-decoration: none; cursor: pointer; list-style: none; transition: color var(--rapido); }
+.periodo-mais > summary::-webkit-details-marker { display: none; }
+.periodo-mais > summary::after { display: none; }
+.periodo-mais > summary::before { content: "⇢ "; color: var(--ouro); }
+.periodo-mais > summary:hover, .periodo-mais[open] > summary, .um-mes:hover { color: var(--ouro); }
+/* o cabeçalho tem animação de entrada (cria camada própria): com o quadro aberto, ele passa por cima do que vem depois */
+:is(.cabecalho-pagina, .empresa-cabeca):has(.periodo-mais[open]) { position: relative; z-index: 40; }
+.periodo-mais[open] > .form-periodo { position: absolute; right: 0; top: calc(100% + .45rem); z-index: 30; width: max-content;
+  max-width: calc(100vw - 2rem);
+  padding: .9rem 1rem; background: var(--cartao); border: 1px solid var(--borda); border-top: 2px solid var(--ouro);
+  border-radius: var(--raio-p); box-shadow: 0 14px 34px rgb(0 0 0 / .35); }
 .voltar { display: inline-flex; align-items: center; gap: .4rem; color: var(--suave); text-decoration: none; font-size: .9rem;
   margin-bottom: .9rem; transition: color var(--rapido), gap var(--rapido); }
 .voltar:hover { color: var(--ouro); gap: .6rem; }
@@ -393,7 +411,7 @@ fieldset[disabled] { opacity: .75; }
 .empresa-cabeca { display: flex; align-items: center; gap: 1.1rem; flex-wrap: wrap; margin-bottom: .4rem; }
 .empresa-titulo { flex: 1 1 280px; min-width: 0; }
 .empresa-titulo h1 { margin: 0; }
-.empresa-acoes { display: flex; align-items: flex-end; gap: .7rem; flex-wrap: wrap; }
+.empresa-acoes { display: flex; align-items: flex-end; gap: .7rem; flex-wrap: wrap; margin-left: auto; }
 .botao-cadastro { display: inline-flex; align-items: center; gap: .45rem; padding: .5rem .95rem; border-radius: var(--raio-p);
   border: 1px solid var(--borda-forte); color: var(--suave); text-decoration: none; font-size: .92rem; transition: all var(--rapido); }
 .botao-cadastro:hover { color: var(--ouro); border-color: var(--ouro-borda); }

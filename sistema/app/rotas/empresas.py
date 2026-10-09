@@ -14,6 +14,7 @@ from app.rotas.extratos import contexto_aba_extratos
 from app.rotas.plano import contexto_aba_plano
 from app.rotas.revisao import contexto_aba_revisao
 from app.servicos import backup
+from app.servicos.competencia import valor_campo_mes
 from app.servicos.complemento import EXEMPLO, montar_complemento
 from app.servicos.empresas import (
     ResultadoConsulta,
@@ -42,8 +43,10 @@ def _usuarios_ativos(sessao: Session) -> list[Usuario]:
     return list(sessao.scalars(select(Usuario).where(Usuario.ativo).order_by(Usuario.nome)))
 
 
-def _linhas(sessao: Session, request: Request, q: str, minhas: str, usuario: Usuario, mes: str | None):
-    competencia = competencia_da_tela(request, mes)
+def _linhas(
+    sessao: Session, request: Request, q: str, minhas: str, usuario: Usuario, mes: str | None, ate: str | None = None
+):
+    competencia = competencia_da_tela(request, mes, ate)
     empresas = buscar_empresas(sessao, q, usuario.id if minhas else None)
     linhas = []
     for empresa in empresas:
@@ -58,10 +61,11 @@ def lista_empresas(
     q: str = "",
     minhas: str = "",
     mes: str | None = None,
+    ate: str | None = None,
     usuario: Usuario = Depends(usuario_logado),
     sessao: Session = Depends(obter_sessao),
 ):
-    linhas, competencia = _linhas(sessao, request, q, minhas, usuario, mes)
+    linhas, competencia = _linhas(sessao, request, q, minhas, usuario, mes, ate)
     total = sessao.scalar(select(func.count()).select_from(Empresa))
     return pagina(
         request,
@@ -185,6 +189,7 @@ def tela_empresa(
     empresa_id: int,
     aba: str = "cadastro",
     mes: str | None = None,
+    ate: str | None = None,
     q: str = "",
     analiticas: str = "",
     ambiguos: str = "",
@@ -196,18 +201,19 @@ def tela_empresa(
 ):
     if (empresa := buscar_empresa(sessao, request, empresa_id)) is None:
         return redirecionar("/")
+    periodo = competencia_da_tela(request, mes, ate)  # um mês ou de um mês até outro
     extras = {}
     if aba == "plano":
         extras = contexto_aba_plano(sessao, empresa, q, bool(analiticas))
     elif aba == "aprendizado":
         extras = contexto_aba_aprendizado(sessao, empresa, q, bool(ambiguos))
     elif aba == "extratos":
-        extras = contexto_aba_extratos(sessao, empresa, competencia_da_tela(request, mes))
+        extras = contexto_aba_extratos(sessao, empresa, periodo)
     elif aba == "revisao":
-        extras = contexto_aba_revisao(sessao, empresa, competencia_da_tela(request, mes), filtro, q, conta)
+        extras = contexto_aba_revisao(sessao, empresa, periodo, filtro, q, conta)
     elif aba == "exportar":
-        extras = contexto_aba_exportar(sessao, empresa, competencia_da_tela(request, mes), ler_ids(bancos))
-    return _tela_empresa(request, sessao, empresa, aba, mes, **extras)
+        extras = contexto_aba_exportar(sessao, empresa, periodo, ler_ids(bancos))
+    return _tela_empresa(request, sessao, empresa, aba, valor_campo_mes(periodo), **extras)
 
 
 @router.post("/empresas/{empresa_id}")
@@ -264,7 +270,7 @@ def editar_empresa(
     avisar(request, f"Cadastro de {empresa.nome} salvo.")
     avisar_consulta(request, resultado)
     if ligou_automatica:  # o mês da tela pode já estar pronto
-        exportar_sozinho(request, sessao, empresa, [competencia_da_tela(request, None)])
+        exportar_sozinho(request, sessao, empresa, competencia_da_tela(request, None).meses)
     return redirecionar(f"/empresas/{empresa.id}")
 
 

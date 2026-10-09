@@ -11,7 +11,7 @@ from fastapi.templating import Jinja2Templates
 
 from app.config import obter_config
 from app.ia.servico import dolar
-from app.servicos.competencia import ler_competencia, mes_anterior, nome_competencia, valor_campo_mes
+from app.servicos.competencia import Periodo, ler_periodo, mes_anterior, nome_competencia, valor_campo_mes
 from app.servicos.documentos import formatar_documento
 
 FUSO = ZoneInfo("America/Sao_Paulo")
@@ -123,11 +123,12 @@ def avisar(request: Request, texto: str, tipo: str = "ok") -> None:
     request.session.setdefault("avisos", []).append({"texto": texto, "tipo": tipo})
 
 
-def competencia_da_tela(request: Request, mes: str | None) -> date:
-    """Mês escolhido na tela; fica guardado para as próximas telas. Padrão: mês passado."""
-    competencia = ler_competencia(mes) or ler_competencia(request.session.get("competencia")) or mes_anterior()
-    request.session["competencia"] = valor_campo_mes(competencia)
-    return competencia
+def competencia_da_tela(request: Request, mes: str | None, ate: str | None = None) -> Periodo:
+    """Mês ou período escolhido na tela (“mes” sozinho, “mes” + “ate”, ou “2025-01_2025-12” vindo de um endereço);
+    fica guardado para as próximas telas. Padrão: o mês passado."""
+    periodo = ler_periodo(mes, ate) or ler_periodo(request.session.get("competencia")) or Periodo.do_mes(mes_anterior())
+    request.session["competencia"] = valor_campo_mes(periodo)
+    return periodo
 
 
 def pagina(request: Request, nome: str, status_code: int = 200, **contexto):

@@ -43,7 +43,7 @@
     {% if parecidas %}
     <form method="post" action="/empresas/{{ empresa.id }}/revisao/{{ s.id }}/parecidas" class="form-parecidas"
           hx-post="/empresas/{{ empresa.id }}/revisao/{{ s.id }}/parecidas">
-      <small>Aplicar <strong>{{ cp.rotulo }}</strong> às outras {{ parecidas | length }} linha(s) de “{{ m.complemento or m.historico }}” neste mês?</small>
+      <small>Aplicar <strong>{{ cp.rotulo }}</strong> às outras {{ parecidas | length }} linha(s) de “{{ m.complemento or m.historico }}” {{ 'neste mês' if not competencia or competencia.um_mes else 'neste período' }}?</small>
       <button type="submit" class="secondary">Aplicar às {{ parecidas | length }}</button>
     </form>
     {% endif %}

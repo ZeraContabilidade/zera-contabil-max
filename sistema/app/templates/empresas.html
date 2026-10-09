@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "_macros.html" import icone %}
+{% from "_macros.html" import icone, seletor_periodo %}
 {% block titulo %}Empresas — {{ nome_sistema }}{% endblock %}
 {% block conteudo %}
 {% set concluidas = linhas | selectattr('atual', 'none') | list | length %}
@@ -9,11 +9,7 @@
     <h1>Empresas</h1>
   </div>
   <div class="acoes-cabecalho">
-    <form method="get" action="/" class="form-mes">
-      <label>Mês
-        <input type="month" name="mes" value="{{ competencia | valor_campo_mes }}" onchange="this.form.requestSubmit()">
-      </label>
-    </form>
+    {{ seletor_periodo(competencia, '/') }}
     {% if usuario.e_supervisor %}<a href="/empresas/nova" role="button">+ Nova empresa</a>{% endif %}
   </div>
 </div>

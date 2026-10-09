@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "_macros.html" import lista_erros, selo_automatico, barra_progresso, selo_mes, icone %}
+{% from "_macros.html" import lista_erros, selo_automatico, barra_progresso, selo_mes, icone, seletor_periodo %}
 {% block titulo %}{{ empresa.nome }} — {{ nome_sistema }}{% endblock %}
 
 {# valor do campo: o que foi digitado (quando houve erro) ou o que está gravado #}
@@ -19,12 +19,7 @@
     </p>
   </div>
   <div class="empresa-acoes">
-    <form method="get" action="/empresas/{{ empresa.id }}" class="form-mes">
-      <input type="hidden" name="aba" value="{{ aba }}">
-      <label>Mês
-        <input type="month" name="mes" value="{{ competencia | valor_campo_mes }}" onchange="this.form.requestSubmit()">
-      </label>
-    </form>
+    {{ seletor_periodo(competencia, '/empresas/' ~ empresa.id, {'aba': aba}) }}
     <a href="/empresas/{{ empresa.id }}?aba=cadastro" class="botao-cadastro" {% if aba == 'cadastro' %}aria-current="page"{% endif %}>
       {{ icone('cadastro') }} Cadastro</a>
   </div>
