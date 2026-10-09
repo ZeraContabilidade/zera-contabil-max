@@ -4,12 +4,15 @@ from urllib.parse import urlencode
 
 from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import Response
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.auth import usuario_logado
 from app.db import obter_sessao
-from app.modelos import FornecedorACadastrar, Usuario
+from app.modelos import FornecedorACadastrar, Sugestao, Usuario
 from app.rotas.comum import buscar_empresa
+from app.rotas.exportar import exportar_sozinho
+from app.servicos.exportacao_automatica import meses_das_sugestoes
 from app.servicos.fornecedores import descartar, ja_cadastrei, planilha
 from app.servicos.revisao import achar_conta_digitada
 from app.web import avisar, redirecionar
@@ -41,8 +44,10 @@ def resolver_fornecedor(
         if erro:
             avisar(request, f"{fornecedor.nome}: {erro}", "erro")
             return redirecionar(voltar)
+        ids = list(sessao.scalars(select(Sugestao.id).where(Sugestao.fornecedor_id == fornecedor.id)))
         linhas = ja_cadastrei(sessao, empresa, fornecedor, escolhida, usuario)
         sessao.commit()
+        exportar_sozinho(request, sessao, empresa, meses_das_sugestoes(sessao, ids))
         avisar(
             request, f"{fornecedor.nome}: conta {escolhida.rotulo} gravada em {linhas} linha(s), que ficaram aprovadas."
         )

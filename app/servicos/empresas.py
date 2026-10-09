@@ -73,6 +73,8 @@ def ler_formulario(sessao: Session, form: dict[str, str | None], empresa: Empres
         valores["ativa"] = form["ativa"] is not None
     if "ia_ligada" in form:
         valores["ia_ligada"] = form["ia_ligada"] is not None
+    if "exportacao_automatica" in form:
+        valores["exportacao_automatica"] = form["exportacao_automatica"] is not None
     if "usa_conta_individual" in form:
         valores["usa_conta_individual"] = form["usa_conta_individual"] is not None
     if "grupo_fornecedores" in form:

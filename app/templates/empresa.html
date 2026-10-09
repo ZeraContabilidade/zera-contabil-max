@@ -109,6 +109,11 @@
                  value="{{ valor('ia_limite_mensal_usd', (empresa.ia_limite_mensal_usd | string).replace('.', ',') if empresa.ia_limite_mensal_usd is not none else '') }}">
         </label>
       </div>
+      <label>
+        <input type="checkbox" role="switch" name="exportacao_automatica" {% if (dados.exportacao_automatica if dados is not none else empresa.exportacao_automatica) %}checked{% endif %}>
+        Exportar sozinho: quando o mês estiver todo aprovado e o saldo dos extratos conferir, o lanctos.txt é gerado
+        sem ninguém clicar e o Painel avisa <small class="suave">(ligue quando confiar nas sugestões desta empresa)</small>
+      </label>
       {% if usuario.e_supervisor %}<button type="submit">Salvar cadastro</button>{% endif %}
     </fieldset>
   </form>

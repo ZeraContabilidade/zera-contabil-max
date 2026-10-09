@@ -1,6 +1,7 @@
 """Aba “6 Exportar”: o lanctos.txt do mês para importar no Domínio (§3.6) + resumo em Excel + histórico."""
 
-from datetime import date
+from collections.abc import Iterable
+from datetime import UTC, date, datetime
 from urllib.parse import urlencode
 
 from fastapi import APIRouter, Depends, Form, Request
@@ -12,7 +13,7 @@ from app.db import obter_sessao
 from app.modelos import Empresa, Exportacao, Usuario
 from app.rotas.comum import buscar_empresa
 from app.servicos.armazenamento import ArquivoApagado, ler_arquivo
-from app.servicos.competencia import ler_competencia, valor_campo_mes
+from app.servicos.competencia import ler_competencia, nome_competencia, valor_campo_mes
 from app.servicos.exportacao import (
     ErroExportacao,
     exportacoes,
@@ -21,6 +22,7 @@ from app.servicos.exportacao import (
     reabrir_exportacao,
     resumo_excel,
 )
+from app.servicos.exportacao_automatica import exportar_se_pronto, motivo_para_esperar
 from app.web import avisar, competencia_da_tela, redirecionar
 
 router = APIRouter()
@@ -37,7 +39,29 @@ def contexto_aba_exportar(sessao: Session, empresa: Empresa, competencia: date, 
         "preparo": preparo,
         "escolhidas_ids": [c.id for c in preparo.escolhidas],
         "exportacoes": exportacoes(sessao, empresa),
+        "espera_automatica": motivo_para_esperar(sessao, empresa, competencia)
+        if empresa.exportacao_automatica
+        else None,
     }
+
+
+def exportar_sozinho(request: Request, sessao: Session, empresa: Empresa, competencias: Iterable[date]) -> None:
+    """Depois de uma mudança no mês: exportação automática ligada + mês pronto → o lanctos.txt sai sozinho (§6.5)."""
+    if not empresa.exportacao_automatica:
+        return
+    for competencia in sorted(set(competencias)):
+        try:
+            exportacao = exportar_se_pronto(sessao, empresa, competencia)
+        except ErroExportacao:
+            sessao.rollback()
+            continue
+        if exportacao is not None:
+            sessao.commit()
+            avisar(
+                request,
+                f"🤖 Exportação automática: o lanctos.txt de {nome_competencia(competencia)} foi gerado sozinho "
+                f"({exportacao.linhas} lançamento(s)). Baixe na aba Exportar e importe no Domínio.",
+            )
 
 
 @router.post("/empresas/{empresa_id}/exportar")
@@ -126,6 +150,9 @@ def baixar_lanctos(
     except ArquivoApagado as erro:
         avisar(request, str(erro), "erro")
         return redirecionar(f"/empresas/{empresa.id}?aba=exportar")
+    if exportacao.baixado_em is None:  # o aviso “pronto para importar” do Painel some
+        exportacao.baixado_em = datetime.now(UTC)
+        sessao.commit()
     return Response(
         conteudo,
         media_type="text/plain; charset=windows-1252",

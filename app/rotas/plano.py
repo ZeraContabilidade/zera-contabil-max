@@ -1,13 +1,15 @@
 """Aba “2 Plano de Contas” da empresa: importar, reimportar, copiar e pesquisar."""
 
 from fastapi import APIRouter, Depends, File, Form, Request, UploadFile
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.auth import usuario_logado
 from app.db import obter_sessao
-from app.modelos import Empresa, Usuario
+from app.modelos import Empresa, Sugestao, Usuario
 from app.rotas.comum import buscar_empresa
 from app.rotas.contas_chave import avisar_auto_configuracao
+from app.rotas.exportar import exportar_sozinho
 from app.servicos.armazenamento import guardar_arquivo
 from app.servicos.contas_chave import (
     CONFIANCA_ALTA,
@@ -16,6 +18,7 @@ from app.servicos.contas_chave import (
     contas_chave_da_empresa,
     nome_do_tipo,
 )
+from app.servicos.exportacao_automatica import meses_das_sugestoes
 from app.servicos.fornecedores import dar_baixa
 from app.servicos.plano import (
     ErroLeitura,
@@ -109,6 +112,8 @@ def _configurar_sozinho(request: Request, sessao: Session, empresa: Empresa, usu
             f"{len(baixados)} fornecedor(es) ganharam conta no plano e saíram da lista “Fornecedores a cadastrar”: "
             f"{nomes}. As linhas deles já receberam a conta.",
         )
+        ids = sessao.scalars(select(Sugestao.id).where(Sugestao.fornecedor_id.in_([f.id for f in baixados])))
+        exportar_sozinho(request, sessao, empresa, meses_das_sugestoes(sessao, list(ids)))
 
 
 @router.post("/empresas/{empresa_id}/plano/copiar")

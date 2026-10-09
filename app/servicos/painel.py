@@ -10,6 +10,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.modelos import ChamadaIA, Empresa, Exportacao, MovimentoExtrato, Sugestao
+from app.servicos.exportacao_automatica import motivo_para_esperar, prontos_para_importar
 from app.servicos.extratos import limites_do_mes
 from app.servicos.progresso import Etapa, etapa_atual, progresso_do_mes
 
@@ -84,6 +85,7 @@ class LinhaPainel:
     etapas: list[Etapa]
     numeros: NumerosMes
     exportacao: Exportacao | None  # a última válida (não reaberta) do mês
+    espera_automatica: str | None = None  # exportação automática ligada: o que falta para gerar sozinho
 
     @property
     def atual(self) -> Etapa | None:
@@ -97,6 +99,7 @@ class LinhaPainel:
 @dataclass
 class Painel:
     competencia: date
+    prontos: list[Exportacao] = field(default_factory=list)  # gerados sozinhos e ainda não baixados
     linhas: list[LinhaPainel] = field(default_factory=list)
     total: NumerosMes = field(default_factory=NumerosMes)
     concluidas: int = 0
@@ -114,11 +117,13 @@ def painel(sessao: Session, competencia: date, responsavel_id: int | None = None
     consulta = select(Empresa).where(Empresa.ativa).order_by(func.coalesce(Empresa.nome_curto, Empresa.razao_social))
     if responsavel_id:
         consulta = consulta.where(Empresa.responsavel_id == responsavel_id)
-    resultado = Painel(competencia)
+    resultado = Painel(competencia, prontos_para_importar(sessao))
     for empresa in sessao.scalars(consulta):
         linha = LinhaPainel(
             empresa, progresso_do_mes(sessao, empresa, competencia), numeros[empresa.id], exportacoes.get(empresa.id)
         )
+        if empresa.exportacao_automatica and linha.atual is not None:
+            linha.espera_automatica = motivo_para_esperar(sessao, empresa, competencia)
         if linha.atual is None:  # mês concluído (tudo exportado)
             resultado.concluidas += 1
             if so_pendencia:

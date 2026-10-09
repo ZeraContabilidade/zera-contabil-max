@@ -15,11 +15,13 @@ from app.ia.servico import IAIndisponivel
 from app.leitores.planilha import NOMES_PAPEIS, PAPEIS, texto_celula
 from app.modelos import TIPOS_CONTA, ArquivoOriginal, ContaBancaria, Empresa, Extrato, Importacao, Usuario
 from app.rotas.comum import buscar_empresa
+from app.rotas.exportar import exportar_sozinho
 from app.servicos.armazenamento import obter_armazenamento
 from app.servicos.classificacao import classificar
 from app.servicos.classificacao_ia import classificar_com_ia
 from app.servicos.competencia import hoje, valor_campo_mes
 from app.servicos.contas_chave import BANCOS
+from app.servicos.exportacao_automatica import meses_entre
 from app.servicos.extratos import (
     contas_bancarias,
     extratos_do_mes,
@@ -100,6 +102,7 @@ def classificar_de_novo(
     sessao.commit()
     avisar(request, resultado.resumo())
     _ia_no_que_sobrou(request, sessao, empresa, usuario, *limites_do_mes(competencia), avisar_desligada=True)
+    exportar_sozinho(request, sessao, empresa, [competencia])
     return redirecionar(f"/empresas/{empresa.id}?aba=extratos&mes={valor_campo_mes(competencia)}")
 
 
@@ -147,7 +150,7 @@ def enviar_extratos(
         avisar(request, "Escolha (ou arraste) os arquivos dos extratos antes de enviar.", "erro")
         return redirecionar(destino)
 
-    ultimo_mes, confirmar = None, []
+    ultimo_mes, confirmar, meses = None, [], set()
     for arquivo in arquivos:
         conteudo = arquivo.file.read(TAMANHO_MAXIMO + 1)
         if len(conteudo) > TAMANHO_MAXIMO:
@@ -168,6 +171,8 @@ def enviar_extratos(
         _avisar_importado(request, arquivo.filename, extrato)
         _ia_no_que_sobrou(request, sessao, empresa, usuario, extrato.inicio, extrato.fim)
         ultimo_mes = extrato.fim.replace(day=1)
+        meses.update(meses_entre(extrato.inicio, extrato.fim))
+    exportar_sozinho(request, sessao, empresa, meses)
     if len(confirmar) == 1 and len(arquivos) == 1:
         return redirecionar(f"/empresas/{empresa.id}/extratos/planilha/{confirmar[0]}")
     if ultimo_mes:

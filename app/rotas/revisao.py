@@ -13,8 +13,10 @@ from app.auth import usuario_logado
 from app.db import obter_sessao
 from app.modelos import ContaContabil, Empresa, Sugestao, Usuario
 from app.rotas.comum import buscar_empresa
+from app.rotas.exportar import exportar_sozinho
 from app.servicos.competencia import valor_campo_mes
 from app.servicos.contas_chave import normalizar
+from app.servicos.exportacao_automatica import meses_das_sugestoes
 from app.servicos.fornecedores import lista, pela_linha
 from app.servicos.revisao import (
     ACOES_LOTE,
@@ -128,6 +130,7 @@ def conferir_marcadas(
         return redirecionar(voltar)
     resultado = decidir_em_lote(sessao, empresa, marcadas, acao, escolhida, usuario)
     sessao.commit()
+    exportar_sozinho(request, sessao, empresa, meses_das_sugestoes(sessao, marcadas))
     if acao == "conta":
         avisar(request, f"{escolhida.rotulo} aplicada a {resultado.feitas} linha(s).")
     else:
@@ -191,6 +194,7 @@ def conferir_linha(
         sugestao = sessao.get(Sugestao, sugestao_id)
     else:
         sessao.commit()
+        exportar_sozinho(request, sessao, empresa, [sugestao.movimento.data.replace(day=1)])
     if request.headers.get("HX-Request"):
         digitado = {"conta": conta, "complemento": complemento} if erro and acao == "salvar" else None
         return _linha(request, empresa, sugestao, erro or "", outras, digitado)
@@ -220,6 +224,7 @@ def aplicar_as_parecidas(
                 corrigir(sessao, outra, escolhida, "", usuario)
         sessao.commit()
         avisar(request, f"{escolhida.rotulo} aplicada a mais {len(outras)} linha(s) parecida(s).")
+        exportar_sozinho(request, sessao, empresa, [sugestao.movimento.data.replace(day=1)])
     if request.headers.get("HX-Request"):
         return Response(headers={"HX-Redirect": destino})
     return redirecionar(destino)

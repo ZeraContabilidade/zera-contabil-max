@@ -167,6 +167,8 @@ class Exportacao(Base):
     reaberta_em: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     reaberta_por_id: Mapped[int | None] = mapped_column(ForeignKey("usuario.id"))
     motivo_reabertura: Mapped[str | None] = mapped_column(Text)
+    automatica: Mapped[bool] = mapped_column(default=False, server_default=false())  # gerada sozinha (§6.5)
+    baixado_em: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))  # 1ª vez que alguém baixou o TXT
 
     arquivo: Mapped[ArquivoOriginal] = relationship()
     usuario: Mapped[Usuario | None] = relationship(foreign_keys=[usuario_id])

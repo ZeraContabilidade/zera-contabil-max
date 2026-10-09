@@ -9,7 +9,7 @@ from app.db import obter_sessao
 from app.modelos import Empresa, Regime, Usuario
 from app.rotas.aprendizado import contexto_aba_aprendizado
 from app.rotas.comum import avisar_consulta, buscar_empresa
-from app.rotas.exportar import contexto_aba_exportar, ler_ids
+from app.rotas.exportar import contexto_aba_exportar, exportar_sozinho, ler_ids
 from app.rotas.extratos import contexto_aba_extratos
 from app.rotas.plano import contexto_aba_plano
 from app.rotas.revisao import contexto_aba_revisao
@@ -226,6 +226,7 @@ def editar_empresa(
     usa_conta_individual: str | None = Form(None),
     grupo_fornecedores: str = Form(""),
     limiar_aprovacao: str = Form(""),
+    exportacao_automatica: str | None = Form(None),
     supervisor: Usuario = Depends(exigir_supervisor),
     sessao: Session = Depends(obter_sessao),
 ):
@@ -246,16 +247,20 @@ def editar_empresa(
         "usa_conta_individual": usa_conta_individual,
         "grupo_fornecedores": grupo_fornecedores,
         "limiar_aprovacao": limiar_aprovacao,
+        "exportacao_automatica": exportacao_automatica,
     }
     valores, erros = ler_formulario(sessao, form, empresa)
     if erros:
         return _tela_empresa(request, sessao, empresa, "cadastro", erros=erros, dados=form, status_code=400)
     cnpj_mudou = valores["cnpj_cpf"] != empresa.cnpj_cpf
+    ligou_automatica = valores.get("exportacao_automatica") and not empresa.exportacao_automatica
     aplicar_edicao(empresa, valores)
     resultado = completar_pelo_cnpj(empresa) if cnpj_mudou else ResultadoConsulta("sem_cnpj")
     sessao.commit()
     avisar(request, f"Cadastro de {empresa.nome} salvo.")
     avisar_consulta(request, resultado)
+    if ligou_automatica:  # o mês da tela pode já estar pronto
+        exportar_sozinho(request, sessao, empresa, [competencia_da_tela(request, None)])
     return redirecionar(f"/empresas/{empresa.id}")
 
 

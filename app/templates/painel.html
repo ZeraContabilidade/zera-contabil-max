@@ -15,6 +15,20 @@
   </div>
 </div>
 
+{% if dados.prontos %}
+<article class="prontos-importar">
+  <header><strong>🤖 Prontos para importar no Domínio ({{ dados.prontos | length }})</strong>
+    <span class="suave">gerados sozinhos pela exportação automática e ainda não baixados</span></header>
+  <ul>
+    {% for e in dados.prontos %}
+    <li><a href="/empresas/{{ e.empresa_id }}?aba=exportar&mes={{ e.competencia | valor_campo_mes }}">{{ nomes_empresas[e.empresa_id] }}</a>
+      — {{ e.competencia | nome_competencia }} pronto para importar ({{ e.linhas }} lançamento(s), gerado em {{ e.criado_em | data_hora }})
+      <a href="/empresas/{{ e.empresa_id }}/exportacoes/{{ e.id }}/lanctos.txt" role="button" class="botao-pequeno">Baixar lanctos.txt</a></li>
+    {% endfor %}
+  </ul>
+</article>
+{% endif %}
+
 <article>
   {% set t = dados.total %}
   <div class="resumo-painel">
@@ -63,7 +77,8 @@
         <td class="num">{% if n.automatico is not none %}<span class="{{ 'meta-ok' if n.automatico >= 85 else 'meta-abaixo' }}">{{ n.automatico }}%</span>{% else %}—{% endif %}</td>
         <td class="num">{{ n.correcoes or '—' }}</td>
         <td class="num">{{ n.pela_ia or '—' }}</td>
-        <td>{% if l.exportacao %}{{ l.exportacao.criado_em | data_hora }}<br><small class="suave">{{ l.exportacao.usuario.nome if l.exportacao.usuario else '' }} · {{ n.exportados }} linha(s)</small>{% else %}<span class="suave">—</span>{% endif %}</td>
+        <td>{% if l.exportacao %}{{ l.exportacao.criado_em | data_hora }}<br><small class="suave">{% if l.exportacao.automatica %}🤖 sozinho{% else %}{{ l.exportacao.usuario.nome if l.exportacao.usuario else '' }}{% endif %} · {{ n.exportados }} linha(s)</small>{% else %}<span class="suave">—</span>{% endif %}
+          {% if l.espera_automatica %}<br><small class="suave" title="Exportação automática ligada">🤖 esperando: {{ l.espera_automatica }}</small>{% endif %}</td>
       </tr>
       {% endfor %}
     </tbody>

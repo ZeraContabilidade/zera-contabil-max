@@ -1,15 +1,14 @@
 # PROGRESSO — ZERA CONTÁBIL MAX
 
-Atualizado em: **08/10/2026**
+Atualizado em: **09/10/2026**
 
 ## Próximo passo exato
 **Fase 3 concluída — falta o aceite do usuário:** gerar o `lanctos.txt` de um mês real pela aba Exportar e **importar
 no Domínio** (critério da Fase 3: “importo no Domínio com sucesso”). Se o Domínio reclamar, corrigir o formato com a
 mensagem exata dele.
 
-Depois, **Fase 4 — um item por vez, só quando o usuário pedir** (§ etapas, §6.5, §7.4):
-- Exportação automática por empresa (§6.5): mês todo verde + saldo conferido → gera sozinho e avisa no Painel
-  (desligado por padrão; o Supervisor liga por empresa).
+**Fase 4 — um item por vez, só quando o usuário pedir** (§ etapas, §6.5, §7.4). Feito: 4.1 exportação automática.
+Próximos possíveis (perguntar qual):
 - Leitores próprios de PDF dos bancos mais usados pelo escritório (perguntar quais) — reduz o custo da IA.
 - Relação de pagamentos (aba DADOS da planilha antiga) cruzada com o extrato.
 - Nuvem: Supabase (São Paulo) + Render; trocar `DATABASE_URL` e criar `ArmazenamentoSupabase`; antes, CSRF e HTTPS.
@@ -60,8 +59,22 @@ Depois, **Fase 4 — um item por vez, só quando o usuário pedir** (§ etapas, 
 - [x] 3.4 Guarda de arquivos por 5 anos + acesso pela rede
 
 ### Fase 4 — Extras (um por vez, quando pedido)
+- [x] 4.1 Exportação automática por empresa (§6.5)
 
 ## Histórico
+
+### 09/10/2026 — Etapa 4.1 concluída (exportação automática) — 1º item da Fase 4, escolhido pelo usuário
+- Usuário: “Exportação automática” (ainda não testou a importação no Domínio — a pendência de aceite da Fase 3 continua).
+- Cadastro da empresa: **“Exportar sozinho”** (desligado por padrão). Ligado, o `lanctos.txt` do mês é gerado sem ninguém
+  clicar assim que o mês fica pronto — e só então: nada pendente nem com problema, saldo de **todos** os extratos do mês
+  conferindo e cada extrato indo até o último dia do mês, nenhuma conta que teve extrato no mês anterior sem extrato
+  neste, e o mês **nunca reaberto** pelo Supervisor (mês reaberto é sempre à mão). O sistema confere depois de enviar
+  extratos, “Classificar de novo”, decidir linhas na Revisão, “Já cadastrei” de fornecedor, reimportar o plano e ao
+  ligar a opção.
+- **Painel**: bloco “🤖 Prontos para importar no Domínio” com os arquivos gerados sozinhos ainda não baixados (somem
+  quando alguém baixa); em cada empresa com a opção ligada, “🤖 esperando: …” diz o que falta. Aba Exportar: aviso do
+  que falta, “🤖 gerado sozinho” e “novo — ainda não baixado”. Log: “(exportação automática)”. Migração 0019.
+- Testes (9 novos): 341 passando.
 
 ### 08/10/2026 — Etapa 3.4 concluída (guarda de 5 anos + rede) — Fase 3 completa
 - **Guarda de 5 anos (§7.3):** extratos, planos, Diários e os lanctos.txt gerados ficam guardados por 5 anos; depois o

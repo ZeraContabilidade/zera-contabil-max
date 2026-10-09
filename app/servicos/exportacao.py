@@ -320,6 +320,7 @@ def exportar(
     contas_ids: list[int] | None,
     usuario: Usuario | None,
     deixar_pendentes_de_fora: bool = False,
+    automatica: bool = False,
 ) -> Exportacao:
     """Gera o lanctos.txt do mês, guarda o arquivo, registra e trava as linhas exportadas."""
     preparo = preparar(sessao, empresa, competencia, contas_ids)
@@ -351,6 +352,7 @@ def exportar(
         deixadas_de_fora=len(preparo.pendentes),
         arquivo_id=arquivo.id,
         usuario_id=usuario.id if usuario else None,
+        automatica=automatica,
     )
     sessao.add(exportacao)
     sessao.flush()
@@ -365,6 +367,8 @@ def exportar(
     fora = f", {len(preparo.pendentes)} pendente(s) de fora" if preparo.pendentes else ""
     total = formatar_valor(exportacao.total)
     detalhe = f"{empresa.nome}, {mes}: {exportacao.linhas} lançamento(s), R$ {total}{fora} — {nome}"
+    if automatica:
+        detalhe += " (exportação automática)"
     registrar_evento(sessao, "EXPORTAR", usuario.id if usuario else None, detalhe)
     return exportacao
 

@@ -367,3 +367,9 @@ button.botao-atualizar[type="submit"] { width: auto; min-width: 0; padding: .3re
 .filtros-painel select { max-width: 300px; margin: 0; }
 .tabela-painel { font-size: .88rem; }
 .tabela-painel td:first-child { min-width: 160px; }
+.aviso-automatica { margin: .2rem 0 .8rem; padding: .5rem .8rem; border-radius: var(--raio-p); background: var(--ouro-vidro);
+  border: 1px solid var(--ouro-borda); font-size: .92rem; }
+.prontos-importar { border-left: 3px solid var(--verde); }
+.prontos-importar ul { margin: 0; padding-left: 1.1rem; }
+.prontos-importar li { margin: .3rem 0; }
+.prontos-importar .botao-pequeno { margin-left: .5rem; padding: .2rem .7rem; font-size: .82rem; }
