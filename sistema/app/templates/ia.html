@@ -1,0 +1,116 @@
+{% extends "base.html" %}
+{% block titulo %}IA — {{ nome_sistema }}{% endblock %}
+{% block conteudo %}
+<h1>Inteligência artificial</h1>
+
+<article>
+  <header><strong>Situação</strong></header>
+  <p>
+    {% if situacao.disponivel %}<span class="etiqueta etiqueta-verde">Ligada</span>
+    {% else %}<span class="etiqueta etiqueta-apagada">Desligada</span>{% endif %}
+    {% if situacao.simulada %}<span class="etiqueta">Modo simulado (sem custo)</span>{% endif %}
+    {{ situacao.motivo }}
+  </p>
+  <p class="suave">Modelo rápido (lotes): <code>{{ situacao.modelo_rapido }}</code> ·
+    Modelo forte (configuração, PDF, casos difíceis): <code>{{ situacao.modelo_forte }}</code></p>
+
+  <p>Gasto estimado neste mês:
+    <strong>{{ situacao.gasto_mes | dolar }}</strong> de {{ situacao.limite | dolar }}</p>
+  <progress value="{{ situacao.percentual }}" max="100" aria-label="Gasto do mês em relação ao limite"></progress>
+  <small class="suave">Valor estimado pelo sistema. A cobrança oficial fica em console.anthropic.com → Billing.
+    O limite mensal está em IA_LIMITE_MENSAL_USD no arquivo sistema\.env.</small>
+
+  {% if not situacao.disponivel and not situacao.simulada and 'chave' in situacao.motivo %}
+  <details class="aviso aviso-atencao" open>
+    <summary>Como ligar a IA</summary>
+    <ol>
+      <li>Na pasta <strong>Ferramentas</strong>, dê dois cliques no <strong>CONFIGURAR_IA.bat</strong> e cole a chave quando ele pedir.</li>
+      <li>A chave fica guardada no arquivo <code>sistema\.env</code> (ela nunca aparece nas telas nem no Log).</li>
+      <li>Feche a janela preta do sistema e abra de novo pelo <strong>INICIAR.bat</strong>.</li>
+      <li>Volte aqui e clique em <strong>Testar conexão com a IA</strong>.</li>
+    </ol>
+  </details>
+  {% endif %}
+
+  <form method="post" action="/ia/testar">
+    <button type="submit" class="secondary outline">Testar conexão com a IA</button>
+  </form>
+</article>
+
+<article>
+  <header><strong>Gasto por empresa neste mês</strong></header>
+  {% if por_empresa or sem_empresa[0] %}
+  <div class="tabela-rolavel">
+    <table class="striped">
+      <thead><tr><th>Empresa</th><th class="num">Chamadas</th><th class="num">Com sucesso</th><th class="num">Custo estimado</th><th>Limite próprio</th></tr></thead>
+      <tbody>
+        {% for empresa, chamadas, sucesso, custo in por_empresa %}
+        <tr>
+          <td><a href="/empresas/{{ empresa.id }}">{{ empresa.nome }}</a>{% if not empresa.ia_ligada %} <span class="etiqueta etiqueta-apagada">IA desligada</span>{% endif %}</td>
+          <td class="num">{{ chamadas }}</td>
+          <td class="num">{{ sucesso }}</td>
+          <td class="num">{{ custo | dolar(4) }}</td>
+          <td>{{ empresa.ia_limite_mensal_usd | dolar if empresa.ia_limite_mensal_usd is not none else '—' }}</td>
+        </tr>
+        {% endfor %}
+        {% if sem_empresa[0] %}
+        <tr><td class="suave">Testes de conexão</td><td class="num">{{ sem_empresa[0] }}</td><td></td><td class="num">{{ sem_empresa[1] | dolar(4) }}</td><td></td></tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <p class="suave">Nenhuma chamada à IA neste mês.</p>
+  {% endif %}
+</article>
+
+{% if uso %}
+<article>
+  <header><strong>O que a IA resolveu — desde o início</strong></header>
+  <p class="suave">Linhas resolvidas = movimentos aprovados com a conta que a IA deu (a IA de agosto é chamada em setembro,
+    por isso o custo é comparado com tudo o que ela já resolveu).</p>
+  <div class="tabela-rolavel">
+    <table class="striped">
+      <thead><tr><th>Empresa</th><th class="num">Chamadas</th><th class="num">Custo estimado</th><th class="num">Linhas resolvidas</th><th class="num">Custo por linha</th></tr></thead>
+      <tbody>
+        {% for u in uso %}
+        <tr>
+          <td><a href="/empresas/{{ u.empresa.id }}">{{ u.empresa.nome }}</a></td>
+          <td class="num">{{ u.chamadas | milhar }}</td>
+          <td class="num">{{ u.custo | dolar(4) }}</td>
+          <td class="num">{{ u.linhas | milhar }}</td>
+          <td class="num">{{ u.custo_por_linha | dolar(4) if u.custo_por_linha is not none else '—' }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</article>
+{% endif %}
+
+<article>
+  <header><strong>Últimas chamadas</strong></header>
+  {% if ultimas %}
+  <div class="tabela-rolavel">
+    <table class="striped">
+      <thead><tr><th>Quando</th><th>Empresa</th><th>Para quê</th><th>Modelo</th><th class="num">Tokens (entrada/saída/cache)</th><th class="num">Custo</th><th>Resultado</th></tr></thead>
+      <tbody>
+        {% for c in ultimas %}
+        <tr>
+          <td class="num">{{ c.quando | data_hora }}</td>
+          <td>{{ c.empresa.nome if c.empresa else '—' }}</td>
+          <td>{{ c.finalidade }}</td>
+          <td><code>{{ c.modelo }}</code></td>
+          <td class="num">{{ c.tokens_entrada | milhar }} / {{ c.tokens_saida | milhar }} / {{ (c.tokens_cache_escrita + c.tokens_cache_leitura) | milhar }}</td>
+          <td class="num">{{ c.custo_usd | dolar(4) }}</td>
+          <td>{% if c.sucesso %}<span class="etiqueta etiqueta-verde">OK</span>{% else %}<span class="etiqueta etiqueta-apagada" title="{{ c.erro }}">Falhou</span> <small class="suave">{{ c.erro | truncate(90) }}</small>{% endif %}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <p class="suave">Nenhuma chamada ainda.</p>
+  {% endif %}
+</article>
+{% endblock %}

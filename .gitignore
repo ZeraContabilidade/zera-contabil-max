@@ -1,6 +1,6 @@
 # Dados reais e segredos — NUNCA vão para o Git
-/AMOSTRAS/
-/amostras/
+AMOSTRAS/
+amostras/
 .env
 /dados/
 *.log
@@ -16,5 +16,5 @@ __pycache__/
 .ruff_cache/
 
 # Instalador do computador: só os scripts vão para o Git (logs e zip ficam fora)
-ferramentas/preparar_computador/*.zip
-ferramentas/preparar_computador/*.txt
+Ferramentas/Preparar computador/*.zip
+Ferramentas/Preparar computador/*.txt

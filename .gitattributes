@@ -1,6 +1,7 @@
 # Arquivos do Windows precisam de quebra de linha CRLF
 *.bat text eol=crlf
 *.ps1 text eol=crlf
+LEIA-ME.txt text eol=crlf
 
 # Arquivos de teste no formato exato do Domínio (Windows-1252 + CRLF): nunca converter
-tests/dados/** -text
+sistema/tests/dados/** -text

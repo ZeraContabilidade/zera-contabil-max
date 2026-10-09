@@ -1,0 +1,30 @@
+ZERA CONTÁBIL MAX — o que tem nesta pasta
+==========================================
+
+INICIAR.bat
+    Abre o sistema (dois cliques). É o único que você usa no dia a dia.
+    Deixe a janela preta aberta enquanto usa o sistema.
+
+Ferramentas
+    INSTALAR.bat          instala o sistema (ou reinstala as bibliotecas)
+    ATUALIZAR.bat         baixa a versão mais nova do GitHub
+    RESTAURAR_BACKUP.bat  volta os dados de um backup
+    CONFIGURAR_IA.bat     coloca ou troca a chave da IA
+    LIBERAR_REDE.bat      deixa os outros computadores do escritório usarem
+                          (botão direito > Executar como administrador)
+    FECHAR_REDE.bat       volta a abrir só neste computador
+    Preparar computador   instala Python, Docker e Git num computador novo
+
+Manuais
+    Passo a passo em português: o roteiro do mês, backup, rede e
+    instalação em outra máquina.
+
+dados
+    Os dados do escritório: backups e arquivos enviados (extratos, planos).
+    NÃO apague nem mexa nesta pasta.
+
+sistema
+    O programa em si. Não precisa abrir.
+
+As pastas ocultas (.git, .venv, .claude) e os arquivos .gitignore e
+.gitattributes são do programa: deixe como estão.
