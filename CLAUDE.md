@@ -24,6 +24,7 @@ A especificação completa está em `PROMPT_Claude_Code_ZeraConcilia.md` (citada
 | Banco | `docker compose up -d banco` · contêiner `zera-contabil-max-banco` · porta `127.0.0.1:5433` |
 | Nova migração | `.venv\Scripts\alembic revision --autogenerate -m "descricao" --rev-id 0002` → revisar o arquivo (Enum gera CHECK em dobro: apagar o explícito) |
 | Backup / restaurar | automático pelo `INICIAR.bat` (1 por dia) ou tela **Backup**; restaurar: `RESTAURAR.bat` (passo a passo em `docs/restaurar_backup.md`) |
+| GitHub | Repositório **PRIVADO** <https://github.com/ZeraContabilidade/zera-contabil-max> (remote `origin`, `gh` logado na conta ZeraContabilidade). Depois do commit de cada etapa: `git push` — é por ele que outra máquina atualiza (`ATUALIZAR.bat` = `git pull --ff-only` + `INSTALAR.bat`). Nunca enviar `.env`, `dados/`, `AMOSTRAS/` (já no `.gitignore`). |
 | Rede do escritório | `LIBERAR_REDE.bat` / `FECHAR_REDE.bat` como administrador (`scripts/rede.py`: regra do Firewall só para rede privada + `HOST` do `.env`); passo a passo em `docs/acesso_pela_rede.md`. Nunca rodar nos testes (netsh simulado). |
 | Ver as telas | `.venv\Scripts\python -m scripts.servidor_teste` → http://127.0.0.1:8001 (banco `_teste`, usuários ana/carla/davi; senha em `scripts/servidor_teste.py`). Também em `.claude/launch.json` (`zera-teste`). Rodar o pytest apaga esses dados: reinicie o servidor. |
 

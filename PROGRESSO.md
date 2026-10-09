@@ -64,6 +64,14 @@ Próximos possíveis:
 
 ## Histórico
 
+### 09/10/2026 — Sistema no GitHub (repositório privado) + ATUALIZAR.bat
+- Usuário perguntou se dá para baixar pelo GitHub e autorizou: criado o repositório **PRIVADO**
+  `ZeraContabilidade/zera-contabil-max` e enviado o histórico inteiro (conferido antes: nenhuma chave/senha no histórico;
+  `.env`, `dados/` e `AMOSTRAS/` ficam fora pelo `.gitignore`).
+- `ATUALIZAR.bat`: na outra máquina, baixa a versão nova (`git pull --ff-only`) e roda o `INSTALAR.bat` (dados e `.env`
+  intactos). Testado aqui.
+- Guia `docs/instalar_em_outra_maquina.md`: seção “Baixar pelo GitHub” (com Git + `gh auth login` + `gh repo clone`, ou ZIP).
+
 ### 09/10/2026 — Guia para instalar e usar em outra máquina
 - `docs/instalar_em_outra_maquina.md`: (A) outros computadores usando pelo navegador (`LIBERAR_REDE.bat`), (B) mudar o
   sistema de computador levando os dados (backup → pendrive com a pasta + `.env` → `PREPARAR_COMPUTADOR.bat` →

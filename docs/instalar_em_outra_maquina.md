@@ -8,6 +8,11 @@ Primeiro, escolha a sua situação:
 | **B.** O sistema vai **mudar de computador** (computador novo, servidor, o antigo estragou) levando todos os dados | [Parte B](#b-mudar-o-sistema-para-outro-computador-levando-os-dados) |
 | **C.** Instalar **do zero**, sem dados (outro escritório, computador de teste) | [Parte C](#c-instalar-do-zero-sem-dados) |
 
+> **O programa está no GitHub (repositório PRIVADO):** <https://github.com/ZeraContabilidade/zera-contabil-max>.
+> Só a conta **ZeraContabilidade** (e quem ela convidar) enxerga. Lá vai **só o programa**: o `.env` (senhas e chave
+> da IA), a pasta `dados` (banco, backups, extratos) e a `AMOSTRAS` **nunca** vão para o GitHub — os dados viajam pelo
+> backup (pendrive ou Google Drive). Veja [Baixar pelo GitHub](#baixar-pelo-github).
+
 > **Importante:** os dados ficam em **um computador só** (o que roda o `INICIAR.bat`). Não use o sistema instalado em dois
 > computadores ao mesmo tempo achando que eles se falam: cada instalação tem o seu próprio banco de dados.
 > Para várias pessoas trabalharem juntas, use a **Parte A**.
@@ -54,7 +59,8 @@ mudou, antivírus). Para desfazer: botão direito no `FECHAR_REDE.bat` → Execu
 ### No computador NOVO
 
 5. **Preparar o computador** (Windows 10 ou 11, 64 bits, com internet; recomendado 8 GB de memória):
-   - Copie a pasta do pendrive para `C:\ZERA CONTABIL MAX` (pode ser outra pasta, se preferir).
+   - Copie a pasta do pendrive para `C:\ZERA CONTABIL MAX` (pode ser outra pasta, se preferir) — ou baixe o programa
+     pelo GitHub (veja [Baixar pelo GitHub](#baixar-pelo-github)) e copie do pendrive só a pasta `dados` e o `.env`.
    - Dê dois cliques em `ferramentas\preparar_computador\PREPARAR_COMPUTADOR.bat` e clique **Sim** quando o Windows
      pedir permissão. Ele instala o **Python** e o **Docker Desktop** (e também ferramentas usadas na manutenção).
    - **Reinicie o computador.**
@@ -79,7 +85,8 @@ mudou, antivírus). Para desfazer: botão direito no `FECHAR_REDE.bat` → Execu
 
 ## C. Instalar do zero (sem dados)
 
-1. Copie a pasta do sistema para o computador **sem** as subpastas `.venv` e `dados` e **sem** o arquivo `.env`.
+1. Baixe o programa pelo GitHub (veja [Baixar pelo GitHub](#baixar-pelo-github)) — ou copie a pasta do sistema
+   **sem** as subpastas `.venv` e `dados` e **sem** o arquivo `.env`.
 2. Faça os passos **5 e 6** da Parte B (preparar o computador e `INSTALAR.bat`): o `INSTALAR.bat` cria um `.env` novo
    com senhas novas.
 3. Abra o `.env` no Bloco de Notas e cole a chave da IA em `ANTHROPIC_API_KEY=` (sem ela o sistema funciona só com regras
@@ -88,6 +95,41 @@ mudou, antivírus). Para desfazer: botão direito no `FECHAR_REDE.bat` → Execu
    (nome, usuário e senha).
 5. Pronto: cadastre os usuários (menu **Usuários**) e as empresas (**+ Nova empresa**). O roteiro do mês está em
    [como_usar.md](como_usar.md).
+
+---
+
+## Baixar pelo GitHub
+
+O repositório é **privado**: é preciso entrar na conta **ZeraContabilidade** do GitHub.
+
+### Jeito 1 — com o Git (recomendado: depois dá para atualizar com um clique)
+
+1. No computador novo, rode `ferramentas\preparar_computador\PREPARAR_COMPUTADOR.bat` **antes** (ele instala o Git e o
+   GitHub CLI) — se ainda não tem a pasta, instale o Git em <https://git-scm.com> e o GitHub CLI em <https://cli.github.com>.
+2. Abra o **PowerShell** e entre na conta do GitHub (abre o navegador para confirmar):
+   ```
+   gh auth login
+   ```
+   Escolha **GitHub.com** → **HTTPS** → **Login with a web browser** e siga as instruções.
+3. Baixe o sistema para `C:\ZERA CONTABIL MAX`:
+   ```
+   gh repo clone ZeraContabilidade/zera-contabil-max "C:\ZERA CONTABIL MAX"
+   ```
+4. Continue pela **Parte B** (passo 5 em diante) ou **Parte C** (passo 2 em diante).
+
+**Atualizar depois** (quando houver melhorias no sistema): feche a janela preta do sistema e dê dois cliques no
+**`ATUALIZAR.bat`**. Ele baixa a versão nova do GitHub e reinstala as bibliotecas; **os dados e o `.env` não são
+alterados**. Depois abra pelo `INICIAR.bat` (o banco é atualizado sozinho ao abrir).
+
+### Jeito 2 — sem instalar o Git (baixar o ZIP)
+
+1. Entre em <https://github.com> com a conta **ZeraContabilidade** e abra o repositório **zera-contabil-max**.
+2. Botão verde **Code** → **Download ZIP**.
+3. Extraia o ZIP e renomeie a pasta extraída (`zera-contabil-max-main`) para `C:\ZERA CONTABIL MAX`.
+4. Continue pela **Parte B** ou **Parte C**.
+
+Pelo ZIP o `ATUALIZAR.bat` não funciona: para atualizar, baixe o ZIP de novo e copie por cima **sem apagar** a pasta
+`dados` nem o arquivo `.env`.
 
 ---
 
@@ -101,5 +143,7 @@ mudou, antivírus). Para desfazer: botão direito no `FECHAR_REDE.bat` → Execu
 | O `RESTAURAR.bat` não acha nenhum backup | Confira se os arquivos `zera_….dump` estão em `dados\backups` da pasta do sistema, ou arraste o `.dump` para cima do `RESTAURAR.bat`. |
 | Entrou, mas as empresas não aparecem | O backup não foi restaurado: feche o sistema e faça o passo 7 da Parte B. |
 | Os outros computadores não abrem o endereço | Veja a Parte A e [acesso_pela_rede.md](acesso_pela_rede.md). |
+| O `ATUALIZAR.bat` diz que não conseguiu baixar | Confira a internet e o login no GitHub (`gh auth login` no PowerShell). |
+| O GitHub mostra “404” ao abrir o repositório | Você não está na conta **ZeraContabilidade** (o repositório é privado). |
 
 > **Nunca** troque as senhas `POSTGRES_…` dentro do `.env` depois que o banco foi criado: o sistema deixa de conectar.
