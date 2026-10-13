@@ -19,6 +19,12 @@ Para cada empresa, uma vez por mês. A barra no topo da empresa mostra onde voc�
 1. Escolha o **mês** no canto da tela da empresa.
 2. **Extratos**: arraste os extratos do mês (PDF, OFX ou Excel; pode ser vários de uma vez). O sistema confere o saldo,
    não duplica nada e já classifica cada movimento (regras + IA).
+   - **Pasta do cliente:** informe no **Cadastro** a pasta onde o cliente deixa os extratos (ex.: no Z:\) e use o botão
+     **Buscar extratos novos**: o sistema lê sozinho os OFX e os PDFs do Banco do Brasil novos daquela pasta e das
+     subpastas dos meses (só lê — nunca mexe na pasta). Cópias repetidas e o que já entrou são pulados. PDFs de outros
+     bancos e planilhas ficam listados para você arrastar (aí a IA lê).
+   - **Extrato faltando:** se uma conta teve extrato no mês anterior e não neste (ou o extrato não chega ao fim do mês),
+     aparece um aviso na aba Extratos, no cartão da empresa (“⚠ falta 1 extrato”) e no Painel.
 3. **Revisão**: a tela já abre só no que precisa de atenção.
    - Troque a conta digitando o código ou parte do nome (ex.: “agua” ou “355”) e clique em **Salvar** — o sistema
      aprende para o mês seguinte.
@@ -26,8 +32,16 @@ Para cada empresa, uma vez por mês. A barra no topo da empresa mostra onde voc�
    - Para várias linhas: marque as caixinhas e use a barra acima da grade.
    - Fornecedor sem conta no plano (empresas com conta individual): **Fornecedor novo** → ele vai para a lista
      “Fornecedores a cadastrar no Domínio” (baixe em Excel, crie as contas no Domínio e reimporte o plano).
+   - **Perguntar ao cliente:** **Baixar perguntas** gera uma planilha com o que o sistema não reconheceu. O cliente
+     responde na coluna amarela (“o que é?”); depois clique em **Enviar respostas do cliente** e escolha a planilha.
+     A resposta aparece na linha (💬), vai para o histórico do lançamento e a IA usa para sugerir a conta.
+   - **Regras do escritório** (aba Aprendizado): “se a descrição do banco contém TARIFA → conta 535”. A regra vale na
+     hora, antes do que o sistema aprendeu, e aprova sozinha as linhas que combinam (as que você conferiu não mudam).
 4. **Exportar**: confira o total por conta e clique em **Gerar lanctos.txt**. Baixe o arquivo e importe no Domínio.
    As linhas exportadas ficam travadas; só o Supervisor reabre (com o motivo).
+5. **Conferir com o Domínio** (fim da aba Exportar): depois de importar, digite o saldo de cada conta banco no Domínio
+   no último dia do mês, como ele mostra (ex.: `12.345,67D`). O sistema compara com o saldo do extrato e mostra se
+   bate ou quanto o Domínio tem a mais ou a menos.
 
 ## Por período (ex.: o ano todo de uma vez)
 

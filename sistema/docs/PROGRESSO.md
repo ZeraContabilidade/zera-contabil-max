@@ -6,7 +6,7 @@ Atualizado em: **09/10/2026**
 **SISTEMA CONCLUÍDO E EM USO (09/10/2026).** Fases 1, 2 e 3 completas e **aceitas pelo usuário** — o `lanctos.txt`
 gerado pelo sistema foi importado no Domínio com sucesso (critério da Fase 3). Visual final “Lingote & Livro-razão”.
 Pasta organizada em 09/10 (código em `sistema\`, ferramentas em `Ferramentas\`, manuais em `Manuais\`).
-Filial (4.2) e período (4.3) feitos em 09/10; visual V1–V4 (navegação, Ctrl+K, atalhos) em 13/10. 367 testes + 7 com IA real passando.
+Filial (4.2) e período (4.3) feitos em 09/10; visual V1–V4 (navegação, Ctrl+K, atalhos) e as 5 sugestões em 13/10. 390 testes + 7 com IA real passando.
 
 **Falta o usuário conferir no Domínio:** importar um lanctos.txt de filial (coluna 8 = código da filial) e um de
 período (vários meses num arquivo só).
@@ -14,16 +14,11 @@ período (vários meses num arquivo só).
 Não há etapa obrigatória pendente. Ao voltar: perguntar o que o usuário quer (ajuste pedido no uso diário
 ou um item da **Fase 4 — um item por vez, só quando o usuário pedir** (§ etapas, §6.5, §7.4)). Feito: 4.1 exportação
 automática, 4.2 filial, 4.3 período.
-Próximos possíveis (sugestões levadas ao usuário em 13/10 — fazer só o que ele escolher):
-- **Pasta de entrada:** ler sozinho os OFX/PDF que aparecem na pasta de extratos de cada cliente no Z:\ (só leitura)
-  — ex.: os 36 OFX mensais da APAE sem arrastar um por um.
-- **Extratos faltando:** avisar, por empresa, as contas que tiveram extrato no mês anterior e não neste (Painel e
-  mesa de trabalho).
-- **Perguntas ao cliente:** Excel/PDF com as linhas não identificadas (“o que é este Pix de R$ 77?”) para mandar ao
-  cliente; a resposta volta e o sistema aprende.
-- **Regras do escritório:** tela para criar regra na hora (“contém TARIFA → 535”), sem esperar o aprendizado.
-- **Conferir com o Domínio:** importar o razão/balancete da conta banco e comparar o saldo final com o extrato.
-- Leitores próprios de PDF dos bancos mais usados pelo escritório (perguntar quais) — reduz o custo da IA.
+Sugestões de 13/10 feitas (pasta de entrada, extrato faltando, perguntas ao cliente, regras do escritório,
+conferir com o Domínio). Próximos possíveis (só quando o usuário pedir):
+- **Leitores de PDF de outros bancos** (Caixa, Itaú, Bradesco, Sicredi…): precisa de PDFs de exemplo de cada banco —
+  perguntar quais bancos e onde há exemplos (Z:\ só leitura → copiar para `sistema/AMOSTRAS/EXTRATOS/<banco>`).
+- **Ler o Razão do Domínio sozinho** na conferência de saldo: precisa de um exemplo do relatório (hoje é digitado).
 - Relação de pagamentos (aba DADOS da planilha antiga) cruzada com o extrato.
 - Nuvem: Supabase (São Paulo) + Render; trocar `DATABASE_URL` e criar `ArmazenamentoSupabase`; antes, CSRF e HTTPS.
 

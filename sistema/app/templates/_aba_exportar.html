@@ -143,7 +143,7 @@
             <td>{% if l.saldo_extrato is not none %}<input name="saldo-{{ l.chave }}" value="{{ (l.informado.saldo_dominio | reais) if l.informado else '' }}"
                    placeholder="ex.: 12.345,67D" inputmode="decimal" autocomplete="off" aria-label="Saldo no Domínio de {{ l.conta.rotulo }}">{% endif %}</td>
             <td>{% if l.situacao == 'BATE' %}<span class="etiqueta etiqueta-verde">✓ bate com o extrato</span>
-              {% elif l.situacao == 'DIFERENCA' %}<span class="etiqueta etiqueta-vermelha">diferença de R$ {{ l.diferenca | reais }}</span>
+              {% elif l.situacao == 'DIFERENCA' %}<span class="etiqueta etiqueta-vermelha">{{ l.texto_diferenca }}</span>
               {% elif l.situacao == 'FALTA' %}<span class="suave">falta digitar</span>
               {% else %}<span class="suave">—</span>{% endif %}</td>
           </tr>

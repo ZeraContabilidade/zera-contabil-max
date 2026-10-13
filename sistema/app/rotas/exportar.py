@@ -32,7 +32,6 @@ from app.servicos.exportacao import (
     resumo_excel,
 )
 from app.servicos.exportacao_automatica import exportar_se_pronto, motivo_para_esperar
-from app.servicos.extratos import reais_br
 from app.web import avisar, competencia_da_tela, redirecionar
 
 router = APIRouter()
@@ -217,9 +216,7 @@ async def conferir_com_o_dominio(
     if gravadas:
         diferentes = [linha for linha in gravadas if linha.situacao == "DIFERENCA"]
         if diferentes:
-            detalhes = "; ".join(
-                f"{linha.conta.rotulo}: diferença de R$ {reais_br(linha.diferenca)}" for linha in diferentes
-            )
+            detalhes = "; ".join(f"{linha.conta.rotulo}: {linha.texto_diferenca}" for linha in diferentes)
             avisar(request, f"Conferência com o Domínio: {len(diferentes)} conta(s) não batem — {detalhes}.", "erro")
         else:
             avisar(request, f"Conferência com o Domínio: as {len(gravadas)} conta(s) batem com o extrato. 🎉", "festa")

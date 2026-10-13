@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session
 
 from app.modelos import ConferenciaDominio, ContaBancaria, Empresa, Extrato, Usuario
 from app.servicos.competencia import Periodo, como_periodo
-from app.servicos.extratos import extratos_do_mes
+from app.servicos.extratos import extratos_do_mes, reais_br
 
 TOLERANCIA = Decimal("0.01")
 TOLERANCIA_CORTADO = Decimal("1.00")  # PDF que cortou os centavos do saldo
@@ -56,6 +56,14 @@ class LinhaConferencia:
         if self.informado is None or self.saldo_extrato is None:
             return None
         return self.informado.saldo_dominio - self.saldo_extrato
+
+    @property
+    def texto_diferenca(self) -> str:
+        """“o Domínio tem R$ 12,30 a mais que o extrato” (vazio quando não há o que comparar)."""
+        if self.diferenca is None:
+            return ""
+        lado = "a mais" if self.diferenca > 0 else "a menos"
+        return f"o Domínio tem R$ {reais_br(abs(self.diferenca))} {lado} que o extrato"
 
     @property
     def situacao(self) -> str:

@@ -58,9 +58,10 @@
   </div>
   <a href="/empresas/{{ empresa.id }}/perguntas.xlsx" role="button" class="secondary outline botao-pequeno">Baixar perguntas</a>
   <form method="post" action="/empresas/{{ empresa.id }}/perguntas" enctype="multipart/form-data" class="form-respostas"
-        data-aguarde="Lendo as respostas…">
-    <input type="file" name="arquivo" accept=".xlsx" required aria-label="Planilha respondida pelo cliente">
-    <button type="submit" class="secondary botao-pequeno">Enviar respostas</button>
+        data-enviar-ao-escolher>
+    <label class="botao-arquivo" title="Escolha a planilha que o cliente respondeu: ela é enviada na hora">Enviar respostas do cliente
+      <input type="file" name="arquivo" accept=".xlsx" required aria-label="Planilha respondida pelo cliente"></label>
+    <noscript><button type="submit" class="secondary botao-pequeno">Enviar</button></noscript>
   </form>
 </article>
 {% endif %}

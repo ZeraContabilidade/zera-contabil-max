@@ -39,7 +39,8 @@ def test_digitar_o_saldo_do_dominio_e_comparar(cliente, sessao, com_extrato):
     assert "Conferir com o Domínio" in tela and "600,00" in tela and "falta digitar" in tela
     assert "as 1 conta(s) batem com o extrato" in conferir("600,00D")
     assert "✓ bate com o extrato" in cliente.get(f"/empresas/{com_extrato.id}?aba=exportar").text
-    assert "diferença de R$ 12,30" in conferir("612,30")
+    assert "o Domínio tem R$ 12,30 a mais que o extrato" in conferir("612,30")
+    assert "o Domínio tem R$ 100,00 a menos que o extrato" in conferir("500,00D")
     assert "não é um valor" in conferir("seiscentos")
     conferir("")  # apagou: volta a faltar
     assert linhas_conferencia(sessao, com_extrato, AGOSTO)[0].situacao == "FALTA"
