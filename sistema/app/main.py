@@ -16,6 +16,7 @@ from app.db import banco_disponivel
 from app.rotas import (
     acesso,
     aprendizado,
+    atalhos,
     backup,
     contas_chave,
     empresas,
@@ -43,6 +44,7 @@ app.add_middleware(
 )
 app.mount("/static", StaticFiles(directory=PASTA_APP / "static"), name="static")
 app.include_router(acesso.router)
+app.include_router(atalhos.router)
 app.include_router(empresas.router)
 app.include_router(plano.router)
 app.include_router(contas_chave.router)

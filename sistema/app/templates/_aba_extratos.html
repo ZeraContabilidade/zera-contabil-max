@@ -7,13 +7,18 @@
     <label class="zona-arquivos">
       <input type="file" name="arquivos" multiple required accept=".pdf,.ofx,.xlsx,.xls,.csv,.txt"
              aria-label="Arquivos dos extratos">
+      <span class="zona-icone" aria-hidden="true"><svg class="ico"><use href="#i-extratos"></use></svg></span>
       <span class="zona-titulo">Arraste os extratos para cá</span>
-      <span class="suave">ou clique para escolher — pode mandar vários de uma vez. O sistema descobre sozinho o banco,
-        a conta e o mês. Lê <strong>OFX de qualquer banco</strong>, <strong>Excel/CSV</strong> (na 1ª vez de cada modelo de
-        planilha você confere as colunas), os <strong>PDFs do Banco do Brasil</strong> e, com a IA ligada, <strong>PDF de outros
-        bancos</strong> (só entra se o saldo conferir).</span>
+      <span class="zona-sub">ou <span class="zona-escolher">escolha os arquivos</span> — vários de uma vez, de um ou mais meses</span>
+      <span class="zona-formatos" aria-label="Formatos aceitos"><span>OFX</span><span>Excel / CSV</span><span>PDF Banco do Brasil</span><span>PDF de outros bancos · IA</span></span>
     </label>
-    <button type="submit">Enviar extratos</button>
+    <details class="zona-ajuda"><summary>Como cada arquivo é lido</summary>
+      <p class="dica">O sistema descobre sozinho o banco, a conta e o mês. Lê <strong>OFX de qualquer banco</strong>,
+        <strong>Excel/CSV</strong> (na 1ª vez de cada modelo de planilha você confere as colunas), os <strong>PDFs do Banco do
+        Brasil</strong> e, com a IA ligada, <strong>PDF de outros bancos</strong> (só entra se o saldo conferir). Nada é
+        duplicado: mandar o mesmo extrato de novo só confirma o que já está lá.</p>
+    </details>
+    <button type="submit" class="enviar-extratos">Enviar extratos</button>
   </form>
   {% if planilhas_esperando %}
   <div class="aviso aviso-atencao">

@@ -71,6 +71,20 @@ Próximos possíveis:
 
 ## Histórico
 
+### 13/10/2026 — Visual: busca rápida, atalhos e Revisão pelo teclado (etapas V2 e V3)
+- **Ctrl+K / “Ir para…”** (topo do trilho): abre qualquer empresa (já no próximo passo do período), aba de empresa
+  (“creche rev” → Revisão da Creche) ou tela; sem digitar mostra as abertas por último (localStorage `zcm-recentes`).
+  Dados em `GET /atalhos` (`app/rotas/atalhos.py`; telas do Supervisor só para ele); filtro no navegador
+  (`static/paleta.js`, sem acento, começo de palavra vale mais). Janela de atalhos (`?` ou o botão ⌨ ao lado).
+  Atalhos: `/` busca da tela, `1`–`5` etapas e `0` cadastro dentro da empresa.
+- **Revisão pelo teclado** (`static/revisao.js`): J/K ou ↓/↑ andam, Enter vai para a conta (Enter grava), A aprova,
+  I ignora, X marca; depois de cada decisão o foco vai para a próxima pendente; linha com erro volta com o foco no
+  campo. O parágrafo de instruções virou uma linha de teclas + “Como funciona”.
+- **Enviar extratos:** a zona inteira é o botão (o “Escolher arquivos / Nenhum arquivo escolhido” nativo sumiu),
+  ícone, etiquetas dos formatos e “Como cada arquivo é lido” recolhido.
+- Armadilhas: o Pico faz do `<dialog>` uma cortina de tela cheia (min-width/min-height 100%, conteúdo centrado) — a
+  `.paleta` desfaz isso; a regra geral do botão dourado ganhou `:not(.trilho-busca)`.
+
 ### 13/10/2026 — Visual: navegação fluida e acabamento (etapa V1)
 - Pedido do usuário: “melhore a visualização… falta capricho… algo surpreendente, a navegação, nada robotizado”.
 - Diagnóstico nas telas (servidor de teste com dados de demonstração): o Pico aumenta a letra para 20px (125%) em

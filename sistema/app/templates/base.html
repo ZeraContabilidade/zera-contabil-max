@@ -16,6 +16,8 @@
   <script src="{{ estatico('arrastar.js') }}" defer></script>
   <script src="{{ estatico('marcar.js') }}" defer></script>
   <script src="{{ estatico('interface.js') }}" defer></script>
+  <script src="{{ estatico('paleta.js') }}" defer></script>
+  <script src="{{ estatico('revisao.js') }}" defer></script>
 </head>
 <body>
 {# Ícones de traço fino, desenhados para o sistema (usados com <svg class="ico"><use href="#i-..."></use></svg>) #}
@@ -42,6 +44,8 @@
   <symbol id="i-aprendizado" viewBox="0 0 24 24"><path d="M12 6.5C10 5 7 4.5 3.5 5v13.5c3.5-.5 6.5 0 8.5 1.5 2-1.5 5-2 8.5-1.5V5c-3.5-.5-6.5 0-8.5 1.5zM12 6.5V20"/></symbol>
   <symbol id="i-extratos" viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h4"/></symbol>
   <symbol id="i-revisao" viewBox="0 0 24 24"><path d="M8.5 11.5l3 3 8.5-8.5"/><path d="M20 12.5V19a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h9"/></symbol>
+  <symbol id="i-busca" viewBox="0 0 24 24"><path d="M4.5 4.5h8l2.5 2.5v7.5h-8l-2.5-2.5z"/><path d="M15 14.5l5 5"/></symbol>
+  <symbol id="i-teclado" viewBox="0 0 24 24"><path d="M3 7.5l1.5-1.5h16.5v10.5l-1.5 1.5h-16.5z"/><path d="M7 10h.01M10.5 10h.01M14 10h.01M17.5 10h.01M8 14h8"/></symbol>
   <symbol id="i-exportar" viewBox="0 0 24 24"><path d="M12 15.5V3.5M7.5 8L12 3.5 16.5 8"/><path d="M4 14v5a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-5"/></symbol>
 </svg>
 {% block corpo %}
@@ -55,6 +59,12 @@
       <span class="topo-produto">Contábil MAX</span>
     </a>
     {% if usuario %}
+    <div class="trilho-atalhos">
+      <button type="button" class="trilho-busca" data-abrir-paleta title="Abrir qualquer empresa, aba ou tela (Ctrl+K)">
+        <svg class="ico"><use href="#i-busca"></use></svg><span>Ir para…</span><kbd>Ctrl K</kbd></button>
+      <button type="button" class="btn-icone" data-abrir-atalhos title="Atalhos do teclado (?)" aria-label="Ver os atalhos do teclado">
+        <svg class="ico"><use href="#i-teclado"></use></svg></button>
+    </div>
     <nav class="trilho-menu">
       <a href="/" {% if caminho == '/' or caminho.startswith('/empresas') %}aria-current="page"{% endif %}>
         <svg class="ico"><use href="#i-empresas"></use></svg><span>Empresas</span></a>
@@ -102,6 +112,38 @@
     </main>
   </div>
 </div>
+{% if usuario %}
+<dialog class="paleta" id="paleta" aria-label="Ir para">
+  <label class="paleta-campo"><svg class="ico" aria-hidden="true"><use href="#i-busca"></use></svg>
+    <input type="text" placeholder="Empresa, aba ou tela… (ex.: creche revisão)" autocomplete="off" spellcheck="false"
+           role="combobox" aria-expanded="true" aria-controls="paleta-lista" aria-label="O que você quer abrir?"></label>
+  <ul class="paleta-lista" id="paleta-lista" role="listbox" data-resultados></ul>
+  <p class="paleta-pe"><span><kbd>↑</kbd><kbd>↓</kbd> escolher</span><span><kbd>Enter</kbd> abrir</span><span><kbd>Esc</kbd> fechar</span><span><kbd>?</kbd> todos os atalhos</span></p>
+</dialog>
+<dialog class="paleta atalhos-ajuda" id="atalhos-ajuda" aria-labelledby="atalhos-titulo">
+  <header><h2 id="atalhos-titulo">Atalhos do teclado</h2>
+    <form method="dialog"><button class="btn-icone" aria-label="Fechar"><svg class="ico"><use href="#i-fechar"></use></svg></button></form></header>
+  <div class="atalhos-grade">
+    <section><h3>Em qualquer tela</h3><dl>
+      <div><dt><kbd>Ctrl</kbd><kbd>K</kbd></dt><dd>Ir para qualquer empresa, aba ou tela</dd></div>
+      <div><dt><kbd>/</kbd></dt><dd>Ir para a busca da tela</dd></div>
+      <div><dt><kbd>?</kbd></dt><dd>Mostrar estes atalhos</dd></div>
+      <div><dt><kbd>Esc</kbd></dt><dd>Fechar janelas e menus</dd></div>
+    </dl></section>
+    <section><h3>Dentro da empresa</h3><dl>
+      <div><dt><kbd>1</kbd>…<kbd>5</kbd></dt><dd>Plano · Aprendizado · Extratos · Revisão · Exportar</dd></div>
+      <div><dt><kbd>0</kbd></dt><dd>Cadastro da empresa</dd></div>
+    </dl></section>
+    <section><h3>Na Revisão</h3><dl>
+      <div><dt><kbd>J</kbd><kbd>K</kbd> ou <kbd>↓</kbd><kbd>↑</kbd></dt><dd>Descer / subir de linha</dd></div>
+      <div><dt><kbd>Enter</kbd></dt><dd>Ir para a conta da linha (Enter de novo grava)</dd></div>
+      <div><dt><kbd>A</kbd></dt><dd>Aprovar a sugestão</dd></div>
+      <div><dt><kbd>I</kbd></dt><dd>Ignorar (sem lançamento)</dd></div>
+      <div><dt><kbd>X</kbd></dt><dd>Marcar a linha (para decidir várias juntas)</dd></div>
+    </dl></section>
+  </div>
+</dialog>
+{% endif %}
 <div class="toasts" aria-live="polite">
   {% for aviso in tirar_avisos(request) %}
   <div class="aviso aviso-{{ aviso.tipo }} toast" role="{{ 'alert' if aviso.tipo == 'erro' else 'status' }}" data-toast="{{ aviso.tipo }}">

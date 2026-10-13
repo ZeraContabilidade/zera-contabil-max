@@ -37,10 +37,16 @@
     <input name="conta" value="{{ conta_filtro }}" placeholder="Por conta (código)" inputmode="numeric" aria-label="Filtrar pela conta" class="campo-curto">
     <button type="submit" class="secondary outline">Filtrar</button>
   </form>
-  <p class="dica">💡 Escolha a conta digitando o código ou parte do nome (ex.: “agua” ou “355”) e clique em <strong>Salvar</strong>
-    — a linha fica aprovada e o sistema aprende para o próximo mês. <strong>Aprovar</strong> aceita a sugestão como está;
-    <strong>Ignorar</strong> deixa a linha sem lançamento. Passe o mouse na situação para ver de onde veio a sugestão.
-    Para várias linhas de uma vez, marque as caixinhas e use a barra acima da grade.</p>
+  <div class="dica-teclado">
+    <span><kbd>J</kbd><kbd>K</kbd> andar</span><span><kbd>Enter</kbd> conta</span><span><kbd>A</kbd> aprovar</span>
+    <span><kbd>I</kbd> ignorar</span><span><kbd>X</kbd> marcar</span>
+    <details class="dica-como"><summary>Como funciona</summary>
+      <p class="dica">Escolha a conta digitando o código ou parte do nome (ex.: “agua” ou “355”) e clique em <strong>Salvar</strong>
+        — a linha fica aprovada e o sistema aprende para o próximo mês. <strong>Aprovar</strong> aceita a sugestão como está;
+        <strong>Ignorar</strong> deixa a linha sem lançamento. Passe o mouse na situação para ver de onde veio a sugestão.
+        Para várias linhas de uma vez, marque as caixinhas e use a barra acima da grade.</p>
+    </details>
+  </div>
 </article>
 
 {% if fornecedores %}
