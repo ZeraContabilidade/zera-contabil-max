@@ -364,7 +364,24 @@ def _por_valor(ctx: Contexto, movimento: MovimentoExtrato) -> Proposta | None:
     )
 
 
-PASSOS = (_transferencia, _regra_de_banco, _por_cnpj, _por_nome, _por_palavra, _por_valor)
+def _regra_do_escritorio(ctx: Contexto, movimento: MovimentoExtrato) -> Proposta | None:
+    """Regra criada pelo escritório na tela (“contém TARIFA → 535”): vale antes do aprendizado e aprova sozinha."""
+    from app.servicos.regras import combina
+
+    for regra in sorted(ctx.padroes["REGRA"], key=lambda p: -len(p.chave)):
+        conta = ctx.contas.get(regra.conta_id) if regra.conta_id else None
+        if conta is not None and combina(regra, movimento):
+            return Proposta(
+                conta,
+                97,
+                "ESCRITORIO",
+                f"Regra do escritório: “{regra.nome}” → {conta.rotulo}.",
+                natureza=regra.natureza or "",
+            )
+    return None
+
+
+PASSOS = (_transferencia, _regra_do_escritorio, _regra_de_banco, _por_cnpj, _por_nome, _por_palavra, _por_valor)
 
 
 # ---------------------------------------------------------------- gravar
@@ -401,7 +418,9 @@ def complemento_da_proposta(empresa: Empresa, proposta: Proposta, movimento: Mov
     valores = {
         "FAVORECIDO": proposta.favorecido or movimento.complemento or movimento.historico,
         "CNPJ": formatar_documento(proposta.cnpj) if proposta.cnpj else "",
-        "NATUREZA": proposta.natureza,
+        # sem natureza achada, vale o que o cliente respondeu na planilha de perguntas
+        "NATUREZA": proposta.natureza
+        or ((movimento.sugestao.resposta_cliente or "").upper() if movimento.sugestao else ""),
         "DOCUMENTO": "S/N",
     }
     return montar_complemento(empresa.modelo_complemento or MODELO_PADRAO, valores)[:300]

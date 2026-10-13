@@ -19,11 +19,13 @@ from app.servicos.aprendizado import (
     normalizar_natureza,
     resumo_historico,
 )
+from app.servicos.classificacao import classificar
 from app.servicos.contas_chave import achar_conta_analitica
 from app.servicos.empresas import completar_pelo_cnpj, descrever_campos
 from app.servicos.historico_ia import contar_pendentes, revisar_historico
 from app.servicos.plano import ErroLeitura, buscar_contas
-from app.web import avisar, pagina, redirecionar
+from app.servicos.regras import SENTIDOS, ErroRegra, criar_regra, quantas_combinam, regras
+from app.web import avisar, competencia_da_tela, pagina, redirecionar
 
 router = APIRouter()
 TAMANHO_MAXIMO = 30 * 1024 * 1024
@@ -42,6 +44,8 @@ def contexto_aba_aprendizado(sessao: Session, empresa: Empresa, q: str = "", amb
         "fornecedores": listar_padroes(sessao, empresa, "FORNECEDOR", q, ambiguos),
         "clientes": listar_padroes(sessao, empresa, "CLIENTE"),
         "palavras": listar_padroes(sessao, empresa, "PALAVRA"),
+        "regras": regras(sessao, empresa),
+        "sentidos": SENTIDOS,
         "despesas": despesas_por_conta(sessao, empresa)[:30],
         "lista_analiticas": buscar_contas(sessao, empresa, "", True, limite=5000)[0] if contas else [],
         "rotulo_reduzido": {c.reduzido: c.rotulo for c in contas},
@@ -277,3 +281,67 @@ def ligar_desligar_padrao(
         sessao.commit()
         avisar(request, f"{padrao.nome}: {'ativado' if padrao.ativo else 'desativado (não será mais usado)'}.")
     return redirecionar(_destino(empresa, "fornecedores" if padrao and padrao.tipo != "PALAVRA" else "palavras"))
+
+
+# ---------------------------------------------------------------- regras do escritório
+def _reclassificar(request: Request, sessao: Session, empresa: Empresa):
+    """Depois de criar ou apagar uma regra, o período da tela é classificado de novo (o conferido não muda)."""
+    from app.rotas.exportar import exportar_sozinho
+
+    periodo = competencia_da_tela(request, None)
+    classificar(sessao, empresa, *periodo.limites)
+    sessao.commit()
+    exportar_sozinho(request, sessao, empresa, periodo.meses)
+    return periodo
+
+
+@router.post("/empresas/{empresa_id}/regras")
+def nova_regra(
+    request: Request,
+    empresa_id: int,
+    texto: str = Form(""),
+    sentido: str = Form(""),
+    conta: str = Form(""),
+    natureza: str = Form(""),
+    usuario: Usuario = Depends(usuario_logado),
+    sessao: Session = Depends(obter_sessao),
+):
+    if (empresa := buscar_empresa(sessao, request, empresa_id)) is None:
+        return redirecionar("/")
+    try:
+        regra = criar_regra(sessao, empresa, texto, conta, sentido, natureza)
+    except ErroRegra as erro:
+        sessao.rollback()
+        avisar(request, str(erro), "erro")
+        return redirecionar(_destino(empresa, "regras"))
+    periodo = _reclassificar(request, sessao, empresa)
+    combinam = quantas_combinam(sessao, empresa, regra, periodo)
+    from app.servicos.competencia import nome_competencia
+
+    avisar(
+        request,
+        f"Regra criada: “{regra.nome}” → {regra.conta.rotulo}. {combinam} linha(s) de {nome_competencia(periodo)} "
+        "combinam com ela e já foram aprovadas (as que você conferiu à mão não mudam).",
+        "festa" if combinam else "ok",
+    )
+    return redirecionar(_destino(empresa, "regras"))
+
+
+@router.post("/empresas/{empresa_id}/regras/{regra_id}/apagar")
+def apagar_regra(
+    request: Request,
+    empresa_id: int,
+    regra_id: int,
+    usuario: Usuario = Depends(usuario_logado),
+    sessao: Session = Depends(obter_sessao),
+):
+    empresa, regra = _padrao_da_empresa(sessao, request, empresa_id, regra_id)
+    if empresa is None:
+        return redirecionar("/")
+    if regra is not None and regra.tipo == "REGRA":
+        nome = regra.nome
+        sessao.delete(regra)
+        sessao.flush()
+        _reclassificar(request, sessao, empresa)
+        avisar(request, f"Regra “{nome}” apagada. As linhas que seguiam a regra foram classificadas de novo.")
+    return redirecionar(_destino(empresa, "regras"))

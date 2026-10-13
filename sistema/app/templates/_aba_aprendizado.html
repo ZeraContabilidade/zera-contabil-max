@@ -95,6 +95,44 @@
   </div>
 </article>
 
+<article id="regras">
+  <header class="cabecalho-pagina"><strong>Regras do escritório</strong>
+    <span class="suave">valem antes do aprendizado e aprovam sozinhas</span></header>
+  {% if regras %}
+  <div class="tabela-rolavel">
+    <table class="tabela-chaves">
+      <thead><tr><th>Se a descrição do banco contém</th><th>Quando</th><th>Conta</th><th>Natureza no histórico</th><th></th></tr></thead>
+      <tbody>
+        {% for r in regras %}
+        <tr>
+          <td><strong>{{ r.nome }}</strong></td>
+          <td>{{ sentidos[(r.detalhes or {}).get('sentido') or ''] }}</td>
+          <td>{{ r.conta.rotulo if r.conta else '—' }}</td>
+          <td>{{ r.natureza or '—' }}</td>
+          <td><form method="post" action="/empresas/{{ empresa.id }}/regras/{{ r.id }}/apagar" class="form-inline">
+            <button type="submit" class="secondary outline botao-pequeno">Apagar</button></form></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <p class="suave">Nenhuma ainda. Ex.: “TARIFA” → tarifas bancárias; “SABESP” → água e esgoto; “PIX RECEBIDO PREFEITURA” → repasse.</p>
+  {% endif %}
+  <details {% if not regras %}open{% endif %}>
+    <summary>+ Nova regra</summary>
+    <form method="post" action="/empresas/{{ empresa.id }}/regras" class="grid form-regra" data-aguarde="Aplicando a regra…">
+      <label>A descrição do banco contém <input name="texto" placeholder="ex.: TARIFA PACOTE" required></label>
+      <label>Vale para
+        <select name="sentido">{% for valor, nome in sentidos.items() %}<option value="{{ valor }}">{{ nome }}</option>{% endfor %}</select>
+      </label>
+      <label>Conta <input name="conta" list="contas-analiticas-aprendizado" placeholder="código ou nome" required autocomplete="off"></label>
+      <label>Natureza no histórico <small class="suave">(opcional)</small> <input name="natureza" placeholder="ex.: TARIFA BANCARIA"></label>
+      <button type="submit">Criar regra</button>
+    </form>
+  </details>
+</article>
+
 <article id="palavras">
   <header class="cabecalho-pagina"><strong>Palavras-chave</strong> <span class="suave">texto do histórico → conta</span></header>
   {% if palavras %}

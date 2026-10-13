@@ -41,6 +41,7 @@ TAMANHO_MAXIMO = 30 * 1024 * 1024
 ORIGENS = {
     "TRANSFERENCIA": "transferência entre contas",
     "REGRA": "regra do banco",
+    "ESCRITORIO": "regra do escritório",
     "CNPJ": "pelo CNPJ",
     "NOME": "pelo nome",
     "PALAVRA": "palavra-chave",

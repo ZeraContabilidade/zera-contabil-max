@@ -4,7 +4,7 @@
 from datetime import date
 from urllib.parse import urlencode
 
-from fastapi import APIRouter, Depends, Form, Request
+from fastapi import APIRouter, Depends, File, Form, Request, UploadFile
 from fastapi.responses import Response
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -14,10 +14,13 @@ from app.db import obter_sessao
 from app.modelos import ContaContabil, Empresa, Sugestao, Usuario
 from app.rotas.comum import buscar_empresa
 from app.rotas.exportar import exportar_sozinho
-from app.servicos.competencia import Periodo, valor_campo_mes
+from app.servicos.classificacao import classificar
+from app.servicos.competencia import Periodo, periodo_no_arquivo, valor_campo_mes
 from app.servicos.contas_chave import normalizar
 from app.servicos.exportacao_automatica import meses_das_sugestoes
 from app.servicos.fornecedores import lista, pela_linha
+from app.servicos.perguntas import ler_respostas, planilha_perguntas
+from app.servicos.plano import ErroLeitura
 from app.servicos.revisao import (
     ACOES_LOTE,
     FILTROS,
@@ -39,6 +42,7 @@ router = APIRouter()
 ORIGENS = {
     "TRANSFERENCIA": "transferência entre contas",
     "REGRA": "regra do banco",
+    "ESCRITORIO": "regra do escritório",
     "CNPJ": "pelo CNPJ",
     "NOME": "pelo nome",
     "PALAVRA": "palavra-chave",
@@ -235,4 +239,60 @@ def aplicar_as_parecidas(
         exportar_sozinho(request, sessao, empresa, [sugestao.movimento.data.replace(day=1)])
     if request.headers.get("HX-Request"):
         return Response(headers={"HX-Redirect": destino})
+    return redirecionar(destino)
+
+
+# ---------------------------------------------------------------- perguntas ao cliente
+TIPO_XLSX = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+
+
+@router.get("/empresas/{empresa_id}/perguntas.xlsx")
+def baixar_perguntas(
+    request: Request,
+    empresa_id: int,
+    usuario: Usuario = Depends(usuario_logado),
+    sessao: Session = Depends(obter_sessao),
+):
+    if (empresa := buscar_empresa(sessao, request, empresa_id)) is None:
+        return redirecionar("/")
+    periodo = competencia_da_tela(request, None)
+    nome = f"perguntas_{empresa.codigo_arquivo}_{periodo_no_arquivo(periodo)}.xlsx"
+    return Response(
+        planilha_perguntas(sessao, empresa, periodo),
+        media_type=TIPO_XLSX,
+        headers={"Content-Disposition": f'attachment; filename="{nome}"'},
+    )
+
+
+@router.post("/empresas/{empresa_id}/perguntas")
+def receber_respostas(
+    request: Request,
+    empresa_id: int,
+    arquivo: UploadFile | None = File(None),
+    usuario: Usuario = Depends(usuario_logado),
+    sessao: Session = Depends(obter_sessao),
+):
+    if (empresa := buscar_empresa(sessao, request, empresa_id)) is None:
+        return redirecionar("/")
+    destino = f"/empresas/{empresa.id}?aba=revisao&filtro=todos"
+    if arquivo is None or not arquivo.filename:
+        avisar(request, "Escolha a planilha de perguntas respondida pelo cliente antes de enviar.", "erro")
+        return redirecionar(destino)
+    try:
+        resultado = ler_respostas(sessao, empresa, arquivo.file.read(10 * 1024 * 1024))
+    except ErroLeitura as erro:
+        sessao.rollback()
+        avisar(request, str(erro), "erro")
+        return redirecionar(destino)
+    if resultado.respondidas:  # a resposta entra no histórico do lançamento; a IA olha de novo com ela
+        datas = [s.movimento.data for s in resultado.respondidas]
+        classificar(sessao, empresa, min(datas), max(datas))
+        sessao.commit()
+        avisar(request, resultado.resumo())
+        from app.rotas.extratos import _ia_no_que_sobrou  # a IA usa a mesma rotina do envio de extratos
+
+        _ia_no_que_sobrou(request, sessao, empresa, usuario, min(datas), max(datas))
+    else:
+        sessao.commit()
+        avisar(request, resultado.resumo() + " Nenhuma resposta nova.", "atencao")
     return redirecionar(destino)

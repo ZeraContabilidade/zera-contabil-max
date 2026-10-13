@@ -49,6 +49,22 @@
   </div>
 </article>
 
+{% if contagem.vermelha %}
+<article class="perguntas-cliente">
+  <div class="perguntas-texto">
+    <strong>Perguntar ao cliente</strong>
+    <small class="suave">{{ contagem.vermelha }} linha(s) que o sistema não reconheceu. Baixe a planilha, mande ao cliente e envie
+      de volta a planilha respondida: a resposta vai para o histórico do lançamento e a IA usa para sugerir a conta.</small>
+  </div>
+  <a href="/empresas/{{ empresa.id }}/perguntas.xlsx" role="button" class="secondary outline botao-pequeno">Baixar perguntas</a>
+  <form method="post" action="/empresas/{{ empresa.id }}/perguntas" enctype="multipart/form-data" class="form-respostas"
+        data-aguarde="Lendo as respostas…">
+    <input type="file" name="arquivo" accept=".xlsx" required aria-label="Planilha respondida pelo cliente">
+    <button type="submit" class="secondary botao-pequeno">Enviar respostas</button>
+  </form>
+</article>
+{% endif %}
+
 {% if fornecedores %}
 <article class="lista-fornecedores">
   <header class="cabecalho-pagina"><strong>Fornecedores a cadastrar no Domínio ({{ fornecedores | length }})</strong>

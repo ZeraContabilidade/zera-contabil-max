@@ -220,6 +220,9 @@ class Sugestao(Auditavel, Base):
     # pago a um fornecedor que ainda não tem conta: fica pendente (e a classificação não mexe) até a conta existir
     fornecedor_id: Mapped[int | None] = mapped_column(ForeignKey("fornecedor_a_cadastrar.id", ondelete="SET NULL"))
     exportacao_id: Mapped[int | None] = mapped_column(ForeignKey("exportacao.id"), index=True)  # EXPORTADO por ela
+    # o que o cliente respondeu na planilha de perguntas (“material de limpeza”): vai no histórico e ajuda a IA
+    resposta_cliente: Mapped[str | None] = mapped_column(String(200))
+    resposta_em: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     atualizado_em: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )

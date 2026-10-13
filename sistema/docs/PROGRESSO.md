@@ -79,6 +79,18 @@ Próximos possíveis (sugestões levadas ao usuário em 13/10 — fazer só o qu
 
 ## Histórico
 
+### 13/10/2026 — Sugestões 3 e 4: perguntas ao cliente e regras do escritório
+- **Perguntas ao cliente** (`servicos/perguntas.py`): na Revisão, cartão “Perguntar ao cliente” quando há vermelhas →
+  **Baixar perguntas** (`/perguntas.xlsx`: Ref., data, conta, descrição, valor, entrou/saiu e a coluna amarela “O que é?”)
+  e **Enviar respostas** (`POST /perguntas`): a resposta vai para `sugestao.resposta_cliente` (migração 0023; “;” vira
+  “,”), aparece na linha (“💬 Cliente: …”), entra no histórico no lugar da natureza (`complemento_da_proposta`) e a IA
+  recebe “o cliente disse que é: …” (instrução nova). Linha já conferida/exportada não muda.
+- **Regras do escritório** (`servicos/regras.py`, aba Aprendizado, seção acima das palavras-chave): “a descrição do banco
+  contém X” (+ entradas/saídas/as duas, natureza opcional) → conta. `Padrao` tipo REGRA, origem USUARIO (o aprendizado
+  não mexe). Passo `_regra_do_escritorio` logo depois da transferência — antes da regra do banco e do aprendizado —,
+  origem `ESCRITORIO`, 97% (aprova sozinha). Criar/apagar reclassifica o período da tela e avisa quantas linhas
+  combinaram; o conferido à mão não muda.
+
 ### 13/10/2026 — Sugestão 2: aviso de extrato faltando
 - `servicos/extratos.extratos_faltando(sessao, empresa, mês ou período)` → lista de `Falta` (conta, mês, motivo): só
   em meses já terminados (no meio do mês é normal faltar); conta que teve extrato no mês anterior e não tem neste; e

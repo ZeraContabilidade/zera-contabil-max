@@ -49,6 +49,8 @@ REPASSE MUNICIPAL).
 - confianca de 0 a 100: 90+ só quando o histórico da empresa mostra claramente essa conta para esse tipo de \
 movimento; 70–89 quando é provável; abaixo de 70 quando é palpite. Sem ideia: conta 0 e confiança 0.
 - justificativa: uma frase curta em português dizendo por quê.
+- Quando a linha traz “o cliente disse que é: …”, essa é a melhor informação sobre o que foi pago ou recebido: \
+use-a para escolher a conta e como natureza.
 - conta_a_criar: só quando o contexto diz que a empresa usa CONTA INDIVIDUAL POR FORNECEDOR e a linha é \
 pagamento a um fornecedor (compra, serviço) que deveria ter conta própria no grupo de fornecedores, mas essa conta \
 NÃO existe no plano: escreva o nome da conta a criar (nome do fornecedor, maiúsculas, até 40 letras) e responda \
@@ -183,9 +185,10 @@ def _linha(numero: int, sugestao: Sugestao, contas: dict[int, ContaContabil]) ->
         if contrapartida:
             atual = f" | regras sugeriram {contrapartida.reduzido} ({sugestao.justificativa})"
     sentido = "SAÍDA (pagamento)" if m.sentido == "SAIDA" else "ENTRADA (recebimento)"
+    cliente = f' | o cliente disse que é: "{sugestao.resposta_cliente}"' if sugestao.resposta_cliente else ""
     return (
         f"{numero}. {m.data:%d/%m/%Y} | {sentido} | R$ {m.valor} | {m.historico} | {m.complemento or '-'} | "
-        f"banco: {f'{banco.reduzido} {banco.descricao}' if banco else '(sem conta no plano)'}{atual}"
+        f"banco: {f'{banco.reduzido} {banco.descricao}' if banco else '(sem conta no plano)'}{atual}{cliente}"
     )
 
 
