@@ -17,13 +17,14 @@ from app.modelos.extrato import (
     Sugestao,
 )
 from app.modelos.ia import ChamadaIA
-from app.modelos.importacao import ArquivoOriginal, Importacao
+from app.modelos.importacao import ArquivoOriginal, ArquivoPasta, Importacao
 from app.modelos.log import Log
 from app.modelos.plano import ContaContabil
 from app.modelos.usuario import Papel, Usuario
 
 __all__ = [
     "ArquivoOriginal",
+    "ArquivoPasta",
     "Auditavel",
     "Base",
     "ChamadaIA",

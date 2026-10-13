@@ -249,6 +249,7 @@ def editar_empresa(
     grupo_fornecedores: str = Form(""),
     limiar_aprovacao: str = Form(""),
     exportacao_automatica: str | None = Form(None),
+    pasta_extratos: str = Form(""),
     supervisor: Usuario = Depends(exigir_supervisor),
     sessao: Session = Depends(obter_sessao),
 ):
@@ -271,6 +272,7 @@ def editar_empresa(
         "grupo_fornecedores": grupo_fornecedores,
         "limiar_aprovacao": limiar_aprovacao,
         "exportacao_automatica": exportacao_automatica,
+        "pasta_extratos": pasta_extratos,
     }
     valores, erros = ler_formulario(sessao, form, empresa)
     if erros:

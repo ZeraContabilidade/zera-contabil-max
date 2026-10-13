@@ -79,6 +79,17 @@ Próximos possíveis (sugestões levadas ao usuário em 13/10 — fazer só o qu
 
 ## Histórico
 
+### 13/10/2026 — Sugestão 1: pasta de entrada (extratos lidos direto da pasta do cliente)
+- Pedido: “pode fazer essas sugestões” (as 6 de 13/10). Cadastro ganhou “Pasta onde o cliente deixa os extratos”
+  (`empresa.pasta_extratos`, migração 0022); aba Extratos: botão **Buscar extratos novos** (`rotas/extratos`
+  `/extratos/pasta` → `servicos/pasta_entrada.buscar_na_pasta`). Só lê (Z:\ é só leitura), inclusive subpastas.
+- Conferido na pasta real da APAE (só leitura, sem importar): 140 arquivos (65 OFX, 73 PDF, 2 planilhas em “PLANILHA
+  ANUAL”), 15 cópias repetidas, 7 s para ler tudo pela rede → decisões: tabela `arquivo_pasta` anota cada arquivo
+  (caminho, tamanho, data, SHA-256, resultado): a próxima busca nem abre o que não mudou e não repete aviso; OFX antes de
+  PDF; arquivo sem movimento novo (PDF do BB igual ao OFX, cópia) não vira extrato (`IGUAL`); PDF sem leitor próprio
+  não vai para a IA (`importar_extrato(..., usar_ia=False)` → `SEM_LEITOR`, listado na aba); planilhas não são lidas
+  sozinhas (`PLANILHA`); erro é tentado de novo. Depois da busca: IA no que sobrou e exportação automática, como no envio.
+
 ### 13/10/2026 — Visual: mesa de trabalho e aplicativo (etapa V4)
 - Tela Empresas: “Bom dia, <nome> · mesa de trabalho” (`saudacao()`) e o cartão **Próximo passo sugerido**
   (`proximo_passo`: das empresas com etapa a fazer, primeiro as do usuário, a mais adiantada).

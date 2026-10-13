@@ -109,6 +109,12 @@
                  value="{{ valor('ia_limite_mensal_usd', (empresa.ia_limite_mensal_usd | string).replace('.', ',') if empresa.ia_limite_mensal_usd is not none else '') }}">
         </label>
       </div>
+      <label>Pasta onde o cliente deixa os extratos <small class="suave">(opcional — o sistema só lê, nunca altera nada lá)</small>
+        <input name="pasta_extratos" value="{{ valor('pasta_extratos', empresa.pasta_extratos) }}" autocomplete="off"
+               placeholder="ex.: Z:\CLIENTES\230 EMPRESA\EXTRATOS 2026">
+        <small class="suave">Na aba Extratos aparece o botão “Buscar extratos novos”: lê os arquivos novos desta pasta e das
+          subpastas (os meses), sem repetir os que já entraram.</small>
+      </label>
       <label>
         <input type="checkbox" role="switch" name="exportacao_automatica" {% if (dados.exportacao_automatica if dados is not none else empresa.exportacao_automatica) %}checked{% endif %}>
         Exportar sozinho: quando o mês estiver todo aprovado e o saldo dos extratos conferir, o lanctos.txt é gerado

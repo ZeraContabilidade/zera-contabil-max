@@ -69,6 +69,8 @@ class Empresa(Auditavel, Base):
     limiar_aprovacao: Mapped[int] = mapped_column(default=LIMIAR_PADRAO, server_default=str(LIMIAR_PADRAO))
     # mês todo aprovado + saldo conferido → o lanctos.txt sai sozinho (§6.5); desligado até o Supervisor confiar
     exportacao_automatica: Mapped[bool] = mapped_column(default=False, server_default=false())
+    # pasta onde o cliente deixa os extratos (ex.: no Z:\); o sistema só lê — nunca altera nada lá
+    pasta_extratos: Mapped[str | None] = mapped_column(String(400))
     # campos preenchidos pelo sistema (selo "🤖 automático"); sai da lista quando o usuário altera
     campos_automaticos: Mapped[list[str]] = mapped_column(JSONB, default=list)
     dados_publicos: Mapped[dict[str, Any] | None] = mapped_column(JSONB)  # resumo da consulta do CNPJ

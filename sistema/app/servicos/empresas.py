@@ -100,6 +100,11 @@ def ler_formulario(sessao: Session, form: dict[str, str | None], empresa: Empres
         valores["ativa"] = form["ativa"] is not None
     if "ia_ligada" in form:
         valores["ia_ligada"] = form["ia_ligada"] is not None
+    if "pasta_extratos" in form:  # quem copia o caminho do Explorador às vezes traz as aspas junto
+        pasta = (form.get("pasta_extratos") or "").strip().strip('"').strip()
+        if len(pasta) > 400:
+            erros.append("O caminho da pasta dos extratos pode ter no máximo 400 letras.")
+        valores["pasta_extratos"] = pasta or None
     if "exportacao_automatica" in form:
         valores["exportacao_automatica"] = form["exportacao_automatica"] is not None
     if "usa_conta_individual" in form:

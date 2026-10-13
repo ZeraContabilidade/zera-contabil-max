@@ -139,12 +139,16 @@ def importar_extrato(
     usuario: Usuario | None,
     conta_escolhida: ContaBancaria | dict[str, str] | None = None,
     arquivo: ArquivoOriginal | None = None,
+    usar_ia: bool = True,
 ) -> Extrato:
-    """`conta_escolhida` e `arquivo`: vindos da tela de confirmação de planilha (o arquivo já estava guardado)."""
+    """`conta_escolhida` e `arquivo`: vindos da tela de confirmação de planilha (o arquivo já estava guardado).
+    `usar_ia=False` (busca na pasta do cliente): PDF de banco sem leitor próprio não vai para a IA (NaoReconhecido)."""
     try:
         lido = ler_extrato(nome_arquivo, conteudo)
     except NaoReconhecido:
         if conteudo.lstrip()[:5] == b"%PDF-":
+            if not usar_ia:
+                raise
             lido = ler_pdf_com_ia(sessao, empresa, usuario, nome_arquivo, conteudo)  # banco sem leitor próprio
         elif parece_planilha(nome_arquivo, conteudo):
             lido = ler_planilha_extrato(sessao, empresa, usuario, nome_arquivo, conteudo, conta_escolhida)

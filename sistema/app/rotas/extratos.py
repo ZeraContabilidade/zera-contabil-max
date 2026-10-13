@@ -30,6 +30,7 @@ from app.servicos.extratos import (
     mesma_conta,
     movimentos_do_mes,
 )
+from app.servicos.pasta_entrada import PastaInvalida, buscar_na_pasta, nao_lidos_sozinhos
 from app.servicos.planilha_extrato import PrecisaConfirmar, analisar, guardar_modelo, problema_nas_colunas
 from app.servicos.plano import ErroLeitura
 from app.web import avisar, competencia_da_tela, pagina, redirecionar
@@ -81,6 +82,7 @@ def contexto_aba_extratos(sessao: Session, empresa: Empresa, competencia: date |
         "total_saidas": sum((m.valor for m in movimentos if m.sentido == "SAIDA"), Decimal("0")),
         "rotulo_conferencia": CONFERENCIA,
         "planilhas_esperando": planilhas_esperando(sessao, empresa),
+        "nao_lidos_da_pasta": nao_lidos_sozinhos(sessao, empresa) if empresa.pasta_extratos else [],
         "contagem": Counter({"verde": 0, "amarela": 0, "vermelha": 0, "cinza": 0})
         + Counter(m.sugestao.cor for m in movimentos if m.sugestao),
         "origens": ORIGENS,
@@ -177,6 +179,57 @@ def enviar_extratos(
     if meses:  # mostra os meses dos extratos enviados (fica no período da tela se eles estão dentro dele)
         atual = competencia_da_tela(request, None)
         if not all(atual.contem(mes) for mes in meses):
+            destino += f"&mes={valor_campo_mes(Periodo.entre(min(meses), max(meses)))}"
+    return redirecionar(destino)
+
+
+@router.post("/empresas/{empresa_id}/extratos/pasta")
+def buscar_pasta_do_cliente(
+    request: Request,
+    empresa_id: int,
+    usuario: Usuario = Depends(usuario_logado),
+    sessao: Session = Depends(obter_sessao),
+):
+    """Lê os extratos novos da pasta do cliente (só leitura; o que já entrou é pulado)."""
+    if (empresa := buscar_empresa(sessao, request, empresa_id)) is None:
+        return redirecionar("/")
+    destino = f"/empresas/{empresa.id}?aba=extratos"
+    try:
+        resultado = buscar_na_pasta(sessao, empresa, usuario)
+    except PastaInvalida as erro:
+        sessao.rollback()
+        avisar(request, str(erro), "erro")
+        return redirecionar(destino)
+    sessao.commit()
+    avisar(request, resultado.resumo(), "atencao" if resultado.erros or resultado.sem_leitor else "ok")
+    if resultado.planilhas:
+        avisar(
+            request,
+            f"{len(resultado.planilhas)} planilha(s) na pasta não foram lidas sozinhas (podem não ser extratos): "
+            f"{', '.join(resultado.planilhas[:4])}. Se alguma for extrato, arraste-a na área de cima.",
+            "atencao",
+        )
+    if resultado.sem_leitor:
+        nomes = ", ".join(resultado.sem_leitor[:6]) + (" …" if len(resultado.sem_leitor) > 6 else "")
+        avisar(
+            request,
+            f"{len(resultado.sem_leitor)} arquivo(s) de banco sem leitor próprio não foram lidos, para não gastar "
+            f"IA sem você ver: {nomes}. Se precisar deles, arraste-os na área de cima — aí a IA lê (só entra se "
+            "o saldo conferir).",
+            "atencao",
+        )
+    if resultado.erros:
+        detalhes = "; ".join(f"{nome}: {motivo}" for nome, motivo in resultado.erros[:4])
+        mais = f" (e mais {len(resultado.erros) - 4})" if len(resultado.erros) > 4 else ""
+        avisar(request, f"Não consegui ler {len(resultado.erros)} arquivo(s) — {detalhes}{mais}", "erro")
+    if resultado.lidos:
+        extratos = [extrato for _, extrato in resultado.lidos]
+        inicio, fim = min(e.inicio for e in extratos), max(e.fim for e in extratos)
+        _ia_no_que_sobrou(request, sessao, empresa, usuario, inicio, fim)
+        meses = resultado.meses
+        exportar_sozinho(request, sessao, empresa, meses)
+        atual = competencia_da_tela(request, None)
+        if not all(atual.contem(mes) for mes in meses):  # mostra os meses que chegaram
             destino += f"&mes={valor_campo_mes(Periodo.entre(min(meses), max(meses)))}"
     return redirecionar(destino)
 

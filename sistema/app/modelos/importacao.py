@@ -1,7 +1,7 @@
 from datetime import date, datetime
 from typing import Any
 
-from sqlalchemy import DateTime, ForeignKey, String, func
+from sqlalchemy import DateTime, ForeignKey, String, Text, UniqueConstraint, func
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -45,3 +45,23 @@ class Importacao(Base):
 
     arquivo: Mapped[ArquivoOriginal | None] = relationship()
     usuario: Mapped[Usuario | None] = relationship()
+
+
+class ArquivoPasta(Base):
+    """Cada arquivo que a busca na pasta do cliente já olhou (pasta de entrada): a próxima busca pula o que não mudou
+    (mesmo caminho, tamanho e data) e não repete o mesmo aviso. O arquivo em si continua só na pasta do cliente."""
+
+    __tablename__ = "arquivo_pasta"
+    __table_args__ = (UniqueConstraint("empresa_id", "caminho"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    empresa_id: Mapped[int] = mapped_column(ForeignKey("empresa.id"), index=True)
+    caminho: Mapped[str] = mapped_column(String(500))
+    tamanho: Mapped[int]
+    modificado_em: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    sha256: Mapped[str] = mapped_column(String(64), index=True)
+    # LIDO (virou extrato), IGUAL (nada novo: cópia ou PDF do que o OFX trouxe), SEM_LEITOR (PDF que só a IA lê),
+    # PLANILHA (não é lida sozinha: pode não ser extrato) ou ERRO (tenta de novo na próxima busca)
+    resultado: Mapped[str] = mapped_column(String(12))
+    detalhe: Mapped[str | None] = mapped_column(Text)
+    quando: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())

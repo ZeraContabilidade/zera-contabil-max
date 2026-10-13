@@ -20,6 +20,23 @@
     </details>
     <button type="submit" class="enviar-extratos">Enviar extratos</button>
   </form>
+  {% if empresa.pasta_extratos %}
+  <form method="post" action="/empresas/{{ empresa.id }}/extratos/pasta" class="pasta-cliente" data-aguarde="Procurando extratos novos…">
+    <span class="pasta-icone" aria-hidden="true"><svg class="ico"><use href="#i-pasta"></use></svg></span>
+    <span class="pasta-texto"><strong>Pasta do cliente</strong><small title="{{ empresa.pasta_extratos }}">{{ empresa.pasta_extratos }}</small></span>
+    <button type="submit" class="secondary">Buscar extratos novos</button>
+  </form>
+  {% if nao_lidos_da_pasta %}
+  <details class="pasta-nao-lidos"><summary>{{ nao_lidos_da_pasta | length }} arquivo(s) da pasta que o sistema não lê sozinho</summary>
+    <p class="dica">PDF de banco sem leitor próprio (a IA lê se você arrastar o arquivo na área de cima) e planilhas
+      (podem não ser extratos). Os OFX e os PDFs do Banco do Brasil entram sozinhos.</p>
+    <ul class="lista-aviso">{% for a in nao_lidos_da_pasta %}<li>{{ a.caminho }} <small class="suave">— {{ a.detalhe }}</small></li>{% endfor %}</ul>
+  </details>
+  {% endif %}
+  {% else %}
+  <p class="dica">Dica: informe no <a href="/empresas/{{ empresa.id }}?aba=cadastro">Cadastro</a> a pasta onde o cliente deixa os
+    extratos (ex.: no Z:\) e o sistema busca sozinho os arquivos novos, sem você arrastar um por um.</p>
+  {% endif %}
   {% if planilhas_esperando %}
   <div class="aviso aviso-atencao">
     <strong>Planilhas esperando a sua confirmação:</strong>
