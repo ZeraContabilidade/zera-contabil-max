@@ -37,6 +37,14 @@
   <p class="dica">Dica: informe no <a href="/empresas/{{ empresa.id }}?aba=cadastro">Cadastro</a> a pasta onde o cliente deixa os
     extratos (ex.: no Z:\) e o sistema busca sozinho os arquivos novos, sem você arrastar um por um.</p>
   {% endif %}
+  {% if faltando %}
+  <div class="aviso aviso-atencao faltando" role="status">
+    <strong>Falta{{ 'm' if faltando | length > 1 else '' }} {{ faltando | length }} extrato(s):</strong>
+    <ul class="lista-aviso">{% for f in faltando %}<li>{{ f.texto }}</li>{% endfor %}</ul>
+    <small>Peça ao cliente{% if empresa.pasta_extratos %} ou busque de novo na pasta dele{% endif %}. Sem eles, o mês não fecha
+      e a exportação automática espera.</small>
+  </div>
+  {% endif %}
   {% if planilhas_esperando %}
   <div class="aviso aviso-atencao">
     <strong>Planilhas esperando a sua confirmação:</strong>

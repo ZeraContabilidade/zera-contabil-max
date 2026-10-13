@@ -79,6 +79,12 @@ Próximos possíveis (sugestões levadas ao usuário em 13/10 — fazer só o qu
 
 ## Histórico
 
+### 13/10/2026 — Sugestão 2: aviso de extrato faltando
+- `servicos/extratos.extratos_faltando(sessao, empresa, mês ou período)` → lista de `Falta` (conta, mês, motivo): só
+  em meses já terminados (no meio do mês é normal faltar); conta que teve extrato no mês anterior e não tem neste; e
+  extrato que não chega ao último dia do mês. Aparece na aba Extratos (caixa “Faltam N extratos”), no cartão da empresa
+  (“⚠ falta N extrato(s)”, com a lista no título) e no Painel. Testes com `hoje` fixo (`app.servicos.extratos.hoje`).
+
 ### 13/10/2026 — Sugestão 1: pasta de entrada (extratos lidos direto da pasta do cliente)
 - Pedido: “pode fazer essas sugestões” (as 6 de 13/10). Cadastro ganhou “Pasta onde o cliente deixa os extratos”
   (`empresa.pasta_extratos`, migração 0022); aba Extratos: botão **Buscar extratos novos** (`rotas/extratos`

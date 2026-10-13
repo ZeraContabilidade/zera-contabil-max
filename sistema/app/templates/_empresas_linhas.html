@@ -10,6 +10,7 @@
       {% if e.nome_curto and e.razao_social %}<small class="suave">{{ e.razao_social }}</small>{% endif %}
     </div>
     {% if not e.ativa %}<span class="etiqueta etiqueta-apagada">Inativa</span>{% endif %}
+    {% if linha.faltando %}<span class="etiqueta etiqueta-ambar" title="{% for f in linha.faltando %}{{ f.texto }}&#10;{% endfor %}">⚠ falta{{ 'm' if linha.faltando | length > 1 else '' }} {{ linha.faltando | length }} extrato(s)</span>{% endif %}
     <span class="cartao-placar" title="Etapas do mês feitas"><strong>{{ feitas }}</strong>/{{ linha.etapas | length }}</span>
   </div>
   <dl class="cartao-dados">

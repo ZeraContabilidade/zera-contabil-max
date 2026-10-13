@@ -23,6 +23,7 @@ from app.servicos.empresas import (
     completar_pelo_cnpj,
     ler_formulario,
 )
+from app.servicos.extratos import extratos_faltando
 from app.servicos.progresso import etapa_atual, progresso_do_mes
 from app.web import avisar, competencia_da_tela, pagina, redirecionar
 
@@ -51,7 +52,8 @@ def _linhas(
     linhas = []
     for empresa in empresas:
         etapas = progresso_do_mes(sessao, empresa, competencia)
-        linhas.append({"empresa": empresa, "etapas": etapas, "atual": etapa_atual(etapas)})
+        faltando = extratos_faltando(sessao, empresa, competencia) if empresa.ativa else []
+        linhas.append({"empresa": empresa, "etapas": etapas, "atual": etapa_atual(etapas), "faltando": faltando})
     return linhas, competencia
 
 

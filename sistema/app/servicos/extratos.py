@@ -4,7 +4,7 @@ grava os movimentos sem duplicar e confere o saldo (inicial + entradas − saíd
 import hashlib
 import re
 from collections import Counter
-from dataclasses import asdict
+from dataclasses import asdict, dataclass
 from datetime import date, timedelta
 from decimal import Decimal
 
@@ -27,7 +27,7 @@ from app.modelos import (
 )
 from app.servicos.armazenamento import guardar_arquivo
 from app.servicos.classificacao import classificar
-from app.servicos.competencia import Periodo, como_periodo
+from app.servicos.competencia import Periodo, como_periodo, hoje, nome_competencia, somar_meses
 from app.servicos.contas_chave import identificar_banco, ligar_conta_bancaria, referencia_bancaria
 from app.servicos.planilha_extrato import ler_planilha_extrato
 from app.servicos.plano import Aviso, ErroLeitura
@@ -351,3 +351,44 @@ def contar_movimentos_do_mes(sessao: Session, empresa: Empresa, competencia: dat
         )
         or 0
     )
+
+
+@dataclass(frozen=True)
+class Falta:
+    """Extrato que está faltando num mês já terminado (sugestão de 13/10)."""
+
+    conta: ContaBancaria
+    mes: date
+    motivo: str
+
+    @property
+    def texto(self) -> str:
+        return f"{self.conta.rotulo} — {nome_competencia(self.mes)}: {self.motivo}"
+
+
+def extratos_faltando(sessao: Session, empresa: Empresa, competencia: date | Periodo) -> list[Falta]:
+    """Só olha meses que já terminaram (no meio do mês é normal faltar): a conta que teve extrato no mês anterior e
+    não tem neste, e o extrato que não chega ao último dia do mês."""
+    faltas: list[Falta] = []
+    for mes in como_periodo(competencia).meses:
+        ultimo_dia = Periodo.do_mes(mes).ultimo_dia
+        if ultimo_dia >= hoje():
+            continue
+        deste_mes = extratos_do_mes(sessao, empresa, mes)
+        ate: dict[int, tuple[ContaBancaria, date]] = {}
+        for extrato in deste_mes:
+            atual = ate.get(extrato.conta_bancaria_id)
+            if atual is None or extrato.fim > atual[1]:
+                ate[extrato.conta_bancaria_id] = (extrato.conta_bancaria, extrato.fim)
+        anterior = somar_meses(mes, -1)
+        sem_extrato = {
+            e.conta_bancaria_id: e.conta_bancaria
+            for e in extratos_do_mes(sessao, empresa, anterior)
+            if e.conta_bancaria_id not in ate
+        }
+        for conta in sem_extrato.values():
+            faltas.append(Falta(conta, mes, f"sem extrato (teve em {nome_competencia(anterior)})"))
+        for conta, fim in ate.values():
+            if fim < ultimo_dia:
+                faltas.append(Falta(conta, mes, f"o extrato vai só até {fim:%d/%m}"))
+    return sorted(faltas, key=lambda f: (f.mes, f.conta.rotulo))

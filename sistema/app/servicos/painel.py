@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session
 from app.modelos import ChamadaIA, Empresa, Exportacao, MovimentoExtrato, Sugestao
 from app.servicos.competencia import Periodo, como_periodo
 from app.servicos.exportacao_automatica import motivo_para_esperar, prontos_para_importar
-from app.servicos.extratos import limites_do_mes
+from app.servicos.extratos import extratos_faltando, limites_do_mes
 from app.servicos.progresso import Etapa, etapa_atual, progresso_do_mes
 
 ABA_DA_ETAPA = {
@@ -87,6 +87,7 @@ class LinhaPainel:
     numeros: NumerosMes
     exportacao: Exportacao | None  # a última válida (não reaberta) do mês
     espera_automatica: str | None = None  # exportação automática ligada: o que falta para gerar sozinho
+    faltando: list = field(default_factory=list)  # extratos que faltam (meses já terminados)
 
     @property
     def atual(self) -> Etapa | None:
@@ -130,6 +131,7 @@ def painel(
         linha = LinhaPainel(
             empresa, progresso_do_mes(sessao, empresa, competencia), numeros[empresa.id], exportacoes.get(empresa.id)
         )
+        linha.faltando = extratos_faltando(sessao, empresa, competencia)
         if empresa.exportacao_automatica and linha.atual is not None and competencia.um_mes:  # a automática é mensal
             linha.espera_automatica = motivo_para_esperar(sessao, empresa, competencia.inicio)
         if linha.atual is None:  # mês concluído (tudo exportado)

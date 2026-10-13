@@ -26,6 +26,7 @@ from app.servicos.exportacao_automatica import meses_entre
 from app.servicos.extratos import (
     contas_bancarias,
     extratos_do_mes,
+    extratos_faltando,
     importar_extrato,
     mesma_conta,
     movimentos_do_mes,
@@ -77,6 +78,7 @@ def contexto_aba_extratos(sessao: Session, empresa: Empresa, competencia: date |
     return {
         "contas_bancarias": contas_bancarias(sessao, empresa),
         "extratos": extratos_do_mes(sessao, empresa, competencia),
+        "faltando": extratos_faltando(sessao, empresa, competencia),
         "movimentos": movimentos,
         "total_entradas": sum((m.valor for m in movimentos if m.sentido == "ENTRADA"), Decimal("0")),
         "total_saidas": sum((m.valor for m in movimentos if m.sentido == "SAIDA"), Decimal("0")),

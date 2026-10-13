@@ -861,3 +861,5 @@ dialog.atalhos-ajuda[open] { display: block; overflow-y: auto; }
 .continuar-acao { display: inline-flex; align-items: center; gap: .35rem; font-size: .82rem; color: var(--suave); }
 .continuar-acao .ico { width: 1em; height: 1em; color: var(--ouro); transition: transform var(--rapido) var(--suave-curva); }
 .continuar:hover .continuar-acao .ico { transform: translateX(4px); }
+.falta-painel { color: var(--ambar); font-size: .74rem; white-space: nowrap; }
+.aviso.faltando small { display: block; margin-top: .3rem; color: var(--suave); }
