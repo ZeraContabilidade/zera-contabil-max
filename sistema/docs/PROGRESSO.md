@@ -71,6 +71,17 @@ Próximos possíveis:
 
 ## Histórico
 
+### 13/10/2026 — Visual: navegação fluida e acabamento (etapa V1)
+- Pedido do usuário: “melhore a visualização… falta capricho… algo surpreendente, a navegação, nada robotizado”.
+- Diagnóstico nas telas (servidor de teste com dados de demonstração): o Pico aumenta a letra para 20px (125%) em
+  telas ≥ 1280px — tudo grande, palavras quebradas na barra de etapas (“Aprendizad-o”), nome da empresa em 2 linhas.
+- Letra contida (16 → 17px), troca de tela com View Transitions (Chrome/Edge): trilho parado, destaque do menu
+  desliza, nome da empresa “voa” do cartão para o título, aba aberta desliza na jornada, conteúdo entra subindo;
+  `pagereveal` tira a animação de abertura quando a transição já fez a entrada. Fio de ouro no alto enquanto a
+  próxima tela (ou a IA) trabalha (não liga em download; desliga sozinho em 20 s). Confete com lingotes (sem círculos).
+- `scripts/demonstracao.py`: o servidor de teste agora cria a Creche Exemplo com plano, histórico e extratos OFX
+  fictícios de agosto e setembro/2026 (telas cheias para conferir o visual).
+
 ### 09/10/2026 — Etapa 4.3: trabalhar por período
 - Pedido do usuário: “precisa ser por período para adicionar os extratos bancários, por exemplo de 01/2025 a
   12/2025, para que eu possa gerar os arquivos anualmente para importar na Domínio”. Resposta: “tudo pelo período”.

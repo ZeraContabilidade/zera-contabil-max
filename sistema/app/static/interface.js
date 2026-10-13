@@ -69,7 +69,7 @@
         vx: (deEsquerda ? 1 : -1) * (5 + Math.random() * 9),
         vy: -(11 + Math.random() * 9),
         giro: Math.random() * Math.PI, vgiro: (Math.random() - 0.5) * 0.35,
-        tam: 5 + Math.random() * 7, cor: CORES[i % CORES.length], redondo: Math.random() < 0.3,
+        tam: 5 + Math.random() * 7, cor: CORES[i % CORES.length], lingote: Math.random() < 0.45,
       });
     }
     var inicio = performance.now();
@@ -81,8 +81,13 @@
         ctx.save();
         ctx.globalAlpha = Math.max(0, 1 - passou / 2600);
         ctx.translate(p.x, p.y); ctx.rotate(p.giro); ctx.fillStyle = p.cor;
-        if (p.redondo) { ctx.beginPath(); ctx.arc(0, 0, p.tam / 2, 0, Math.PI * 2); ctx.fill(); }
-        else ctx.fillRect(-p.tam / 2, -p.tam / 4, p.tam, p.tam / 2);
+        if (p.lingote) { // lingote de ouro em miniatura (trapézio), nada redondo
+          var l = p.tam;
+          ctx.beginPath();
+          ctx.moveTo(-l * 0.5, l * 0.25); ctx.lineTo(l * 0.5, l * 0.25);
+          ctx.lineTo(l * 0.32, -l * 0.25); ctx.lineTo(-l * 0.32, -l * 0.25);
+          ctx.closePath(); ctx.fill();
+        } else ctx.fillRect(-p.tam / 2, -p.tam / 4, p.tam, p.tam / 2);
         ctx.restore();
       });
       if (passou < 2600) requestAnimationFrame(quadro); else tela.remove();
@@ -141,6 +146,31 @@
       atualizarPlacar(1);
     }
   });
+
+  // ---------------------------------------------------------------- fio de ouro: a próxima tela está a caminho
+  var ARQUIVO = /\.(txt|xlsx|xls|csv|ofx|pdf|dump|zip)$/i; // baixar arquivo não troca de tela
+  var desligar = null;
+  function navegando(ligado) {
+    document.documentElement.classList.toggle("navegando", ligado);
+    clearTimeout(desligar);
+    if (ligado) desligar = setTimeout(function () { navegando(false); }, 20000); // nunca fica preso
+  }
+  document.addEventListener("click", function (evento) {
+    if (evento.defaultPrevented || evento.button !== 0 || evento.ctrlKey || evento.metaKey || evento.shiftKey) return;
+    var link = evento.target.closest("a[href]");
+    if (!link || link.target || link.hasAttribute("download") || link.hasAttribute("hx-get")) return;
+    var destino = new URL(link.href, location.href);
+    if (destino.origin !== location.origin || ARQUIVO.test(destino.pathname)) return;
+    if (destino.pathname === location.pathname && destino.search === location.search && destino.hash) return;
+    navegando(true);
+  });
+  document.addEventListener("submit", function (evento) {
+    var formulario = evento.target;
+    if (!evento.defaultPrevented && !formulario.hasAttribute("hx-post") && !formulario.hasAttribute("hx-get")) navegando(true);
+  });
+  document.addEventListener("htmx:beforeRequest", function () { navegando(true); });
+  document.addEventListener("htmx:afterRequest", function () { navegando(false); });
+  window.addEventListener("pageshow", function () { navegando(false); }); // voltou pelo “Voltar” do navegador
 
   // ---------------------------------------------------------------- ao abrir a tela
   function iniciar() {

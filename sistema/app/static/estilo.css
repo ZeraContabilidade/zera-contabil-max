@@ -710,3 +710,47 @@ progress::-webkit-progress-bar { background: var(--cartao-3); border-radius: 2px
 progress::-webkit-progress-value { background: var(--grad-ouro); border-radius: 0; }
 progress::-moz-progress-bar { background: var(--grad-ouro); }
 .conteudo > h1 { margin-bottom: 1.2rem; }
+
+/* =====================================================================
+   NAVEGAÇÃO FLUIDA E ACABAMENTO (13/10)
+   ===================================================================== */
+/* letra de sistema de trabalho: o Pico cresce até 125% (20px) nas telas grandes; aqui fica entre 16 e 17px */
+:root { --pico-font-size: 100%; }
+@media (min-width: 1280px) { :root { --pico-font-size: 103.125%; } }
+@media (min-width: 1536px) { :root { --pico-font-size: 106.25%; } }
+
+/* troca de tela sem “piscar”: o trilho fica parado, o destaque dourado desliza até o item novo, o nome da empresa
+   voa do cartão para o título e o conteúdo entra subindo (Chrome/Edge; nos outros navegadores, troca normal) */
+@view-transition { navigation: auto; }
+.trilho { view-transition-name: trilho; }
+.trilho-menu a[aria-current="page"] { view-transition-name: menu-ativo; }
+.empresa-cabeca { view-transition-name: cabeca-empresa; }
+.jornada { view-transition-name: jornada; }
+.progresso li[data-aberta] > a { view-transition-name: aba-aberta; }
+::view-transition-group(trilho), ::view-transition-old(trilho), ::view-transition-new(trilho) { animation: none; }
+::view-transition-group(*) { animation-duration: 340ms; animation-timing-function: var(--suave-curva); }
+::view-transition-old(root) { animation: 140ms ease both pagina-sai; }
+::view-transition-new(root) { animation: 300ms var(--suave-curva) 40ms both pagina-entra; }
+@keyframes pagina-sai { to { opacity: 0; transform: translateY(-4px); } }
+@keyframes pagina-entra { from { opacity: 0; transform: translateY(10px); } }
+.com-transicao .conteudo > * { animation: none; } /* a transição já faz a entrada */
+@media (prefers-reduced-motion: reduce) {
+  @view-transition { navigation: none; }
+}
+
+/* fio de ouro no alto enquanto a próxima tela (ou a IA) trabalha */
+.fio-ouro { position: fixed; top: 0; left: 0; z-index: 90; height: 3px; width: 0; opacity: 0; pointer-events: none;
+  background: var(--grad-ouro); box-shadow: 0 0 12px var(--ouro-brilho), 0 0 2px var(--ouro);
+  clip-path: polygon(0 0, 100% 0, calc(100% - 3px) 100%, 0 100%); }
+.navegando .fio-ouro { opacity: 1; animation: fio-anda 9s cubic-bezier(.1, .7, .2, 1) both; }
+@keyframes fio-anda { from { width: 0; } 12% { width: 38%; } 40% { width: 68%; } to { width: 94%; } }
+
+/* jornada: nome da etapa inteiro numa linha (nada de “Aprendizad-o”) */
+.etapa-nome { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* cabeça da empresa: título e ações na mesma linha quando cabe */
+.empresa-titulo h1 { overflow-wrap: normal; }
+@media (min-width: 1100px) {
+  .empresa-cabeca { flex-wrap: nowrap; }
+  .empresa-titulo { flex: 1 1 auto; }
+  .empresa-acoes { flex: 0 0 auto; flex-wrap: nowrap; }
+}

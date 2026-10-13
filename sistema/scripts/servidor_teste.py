@@ -8,6 +8,7 @@ Uso: .venv\\Scripts\\python -m scripts.servidor_teste
 import os
 
 import uvicorn
+from sqlalchemy import select
 
 from scripts.banco_teste import criar_banco_teste, esvaziar_tabelas, usar_banco_teste
 from scripts.comum import ErroAmigavel, rodar
@@ -67,6 +68,10 @@ def main() -> int:
             ]
         )
         sessao.commit()
+        from scripts.demonstracao import preparar_demonstracao
+
+        creche = sessao.scalar(select(Empresa).where(Empresa.codigo_dominio == 900))
+        preparar_demonstracao(sessao, creche)  # plano, histórico e extratos fictícios: as telas aparecem cheias
 
     print(f"Servidor de TESTE em http://127.0.0.1:{PORTA} (usuários: ana, carla, davi)")
     uvicorn.run("app.main:app", host="127.0.0.1", port=PORTA, log_level="warning")

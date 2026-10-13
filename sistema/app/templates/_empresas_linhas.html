@@ -6,7 +6,7 @@
    href="/empresas/{{ e.id }}?aba={{ aba_da_etapa(linha.atual) }}&mes={{ competencia | valor_campo_mes }}">
   <div class="cartao-topo">
     <div class="cartao-nome">
-      <strong>{{ e.nome }}</strong>
+      <strong style="view-transition-name: nome-empresa-{{ e.id }}">{{ e.nome }}</strong>
       {% if e.nome_curto and e.razao_social %}<small class="suave">{{ e.razao_social }}</small>{% endif %}
     </div>
     {% if not e.ativa %}<span class="etiqueta etiqueta-apagada">Inativa</span>{% endif %}

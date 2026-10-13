@@ -10,7 +10,7 @@
 <div class="empresa-cabeca">
   {{ selo_mes(etapas) }}
   <div class="empresa-titulo">
-    <h1>{{ empresa.nome }}</h1>
+    <h1 style="view-transition-name: nome-empresa-{{ empresa.id }}">{{ empresa.nome }}</h1>
     <p class="suave subtitulo">
       Código {{ empresa.rotulo_codigo }}{% if empresa.documento_formatado %} · {{ empresa.documento_formatado }}{% endif %}
       {% if empresa.regime %} · {{ empresa.regime.rotulo }}{% endif %}

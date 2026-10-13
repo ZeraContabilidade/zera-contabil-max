@@ -5,7 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block titulo %}{{ nome_sistema }}{% endblock %}</title>
   <link rel="icon" type="image/png" href="{{ estatico('marca/emblema.png') }}">
-  <script>try { var t = localStorage.getItem("zcm-tema"); if (t === "light" || t === "dark") document.documentElement.setAttribute("data-theme", t); } catch (e) {}</script>
+  <script>try { var t = localStorage.getItem("zcm-tema"); if (t === "light" || t === "dark") document.documentElement.setAttribute("data-theme", t); } catch (e) {}
+    // chegou por transição suave (navegador moderno): o conteúdo já entra com ela, sem a animação de abertura
+    addEventListener("pagereveal", function (e) { if (e.viewTransition) document.documentElement.classList.add("com-transicao"); });</script>
   <link rel="stylesheet" href="{{ estatico('vendor/pico.min.css') }}">
   <link rel="stylesheet" href="{{ estatico('estilo.css') }}">
   <script src="{{ estatico('vendor/htmx.min.js') }}" defer></script>
@@ -44,6 +46,7 @@
 </svg>
 {% block corpo %}
 {% set caminho = request.url.path %}
+<div class="fio-ouro" aria-hidden="true"></div>
 <div class="casca">
   <aside class="trilho" id="trilho" aria-label="Menu principal">
     <a href="/" class="trilho-marca" aria-label="Início">
