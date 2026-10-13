@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 from app.config import PASTA_SISTEMA
 from app.modelos import ContaChave, ContaContabil, Empresa
 from app.servicos.aprendizado import aprender, importar_historico
+from app.servicos.competencia import Periodo
 from app.servicos.extratos import importar_extrato
 
 HISTORICO = PASTA_SISTEMA / "tests" / "dados" / "lanctos_exemplo.txt"
@@ -35,7 +36,7 @@ MOVIMENTOS = [
 
 def montar_ofx(mes: date, saldo_final: Decimal) -> bytes:
     """Um OFX no jeito do Banco do Brasil (SGML, Windows-1252, MEMO “HISTÓRICO - dd/mm hh:mm FAVORECIDO”)."""
-    fim = date(mes.year, mes.month, 30)
+    fim = Periodo.do_mes(mes).ultimo_dia
     linhas = [
         "OFXHEADER:100", "DATA:OFXSGML", "VERSION:102", "SECURITY:NONE", "ENCODING:USASCII", "CHARSET:1252",
         "COMPRESSION:NONE", "OLDFILEUID:NONE", "NEWFILEUID:NONE", "",

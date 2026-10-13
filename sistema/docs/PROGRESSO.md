@@ -79,6 +79,15 @@ Próximos possíveis (sugestões levadas ao usuário em 13/10 — fazer só o qu
 
 ## Histórico
 
+### 13/10/2026 — Sugestão 5: conferir com o Domínio
+- Aba Exportar, quadro “Conferir com o Domínio” (`servicos/conferencia_dominio.py`, tabela `conferencia_dominio`,
+  migração 0024): depois de importar o lanctos.txt, digita-se o saldo de cada conta banco no Domínio no fim do mês
+  como ele mostra (“12.345,67D”; C = credor = negativo; `ler_saldo`) e o sistema compara com o saldo final do extrato
+  do último dia (tolerância R$ 0,01; R$ 1,00 se o PDF cortou o saldo). Sem saldo do fim do mês (extrato curto, longo
+  ou sem saldo) a linha diz o motivo e não pede valor. **Digitado e não lido de relatório:** ainda não há um exemplo
+  do Razão do Domínio (§11: não inventar formato) — com um exemplo, dá para ler o razão sozinho.
+- Dados de demonstração: o extrato fictício de agosto ia só até o dia 30 (o aviso de extrato faltando pegou).
+
 ### 13/10/2026 — Sugestões 3 e 4: perguntas ao cliente e regras do escritório
 - **Perguntas ao cliente** (`servicos/perguntas.py`): na Revisão, cartão “Perguntar ao cliente” quando há vermelhas →
   **Baixar perguntas** (`/perguntas.xlsx`: Ref., data, conta, descrição, valor, entrou/saiu e a coluna amarela “O que é?”)

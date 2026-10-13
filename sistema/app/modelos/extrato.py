@@ -240,3 +240,23 @@ class Sugestao(Auditavel, Base):
         if self.status in ("IGNORADO", "APROVADO", "EXPORTADO"):
             return "verde" if self.status != "IGNORADO" else "cinza"
         return "amarela" if self.confianca >= 70 else "vermelha"
+
+
+class ConferenciaDominio(Auditavel, Base):
+    """Saldo da conta banco no Domínio no fim do mês, digitado depois de importar o lanctos.txt, para comparar com o
+    saldo do extrato (sugestão de 13/10). Um por conta bancária e mês."""
+
+    __tablename__ = "conferencia_dominio"
+    __table_args__ = (UniqueConstraint("conta_bancaria_id", "mes"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    empresa_id: Mapped[int] = mapped_column(ForeignKey("empresa.id"), index=True)
+    conta_bancaria_id: Mapped[int] = mapped_column(ForeignKey("conta_bancaria.id"))
+    mes: Mapped[date] = mapped_column(Date)  # 1º dia do mês
+    saldo_dominio: Mapped[Decimal] = mapped_column(Numeric(14, 2))
+    informado_por_id: Mapped[int | None] = mapped_column(ForeignKey("usuario.id"))
+    informado_em: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+    informado_por: Mapped[Usuario | None] = relationship()

@@ -121,3 +121,37 @@
   </div>
 </article>
 {% endif %}
+
+{% if conferencia %}
+<article id="conferencia">
+  <header class="cabecalho-pagina"><strong>Conferir com o Domínio</strong>
+    <span class="suave">depois de importar o lanctos.txt</span></header>
+  <p class="dica">Abra no Domínio o razão (ou o balancete) de cada conta banco no último dia do mês e digite o saldo como
+    aparece lá — ex.: <strong>12.345,67D</strong> (D = devedor; C = credor, saldo negativo). O sistema compara com o saldo
+    final do extrato.</p>
+  <form method="post" action="/empresas/{{ empresa.id }}/conferencia-dominio" class="form-conferencia">
+    <input type="hidden" name="mes" value="{{ competencia | valor_campo_mes }}">
+    <div class="tabela-rolavel">
+      <table class="striped">
+        <thead><tr><th>Conta</th><th>Mês</th><th class="num">Saldo do extrato</th><th>Saldo no Domínio</th><th>Situação</th></tr></thead>
+        <tbody>
+          {% for l in conferencia %}
+          <tr>
+            <td>{{ l.conta.rotulo }}</td>
+            <td>{{ l.mes | nome_competencia }}</td>
+            <td class="num">{% if l.saldo_extrato is not none %}{{ l.saldo_extrato | reais }}{% else %}<small class="suave">{{ l.sem_saldo }}</small>{% endif %}</td>
+            <td>{% if l.saldo_extrato is not none %}<input name="saldo-{{ l.chave }}" value="{{ (l.informado.saldo_dominio | reais) if l.informado else '' }}"
+                   placeholder="ex.: 12.345,67D" inputmode="decimal" autocomplete="off" aria-label="Saldo no Domínio de {{ l.conta.rotulo }}">{% endif %}</td>
+            <td>{% if l.situacao == 'BATE' %}<span class="etiqueta etiqueta-verde">✓ bate com o extrato</span>
+              {% elif l.situacao == 'DIFERENCA' %}<span class="etiqueta etiqueta-vermelha">diferença de R$ {{ l.diferenca | reais }}</span>
+              {% elif l.situacao == 'FALTA' %}<span class="suave">falta digitar</span>
+              {% else %}<span class="suave">—</span>{% endif %}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <button type="submit" class="secondary">Conferir</button>
+  </form>
+</article>
+{% endif %}

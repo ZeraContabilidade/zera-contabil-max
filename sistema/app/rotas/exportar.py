@@ -22,6 +22,7 @@ from app.servicos.competencia import (
     periodo_no_arquivo,
     valor_campo_mes,
 )
+from app.servicos.conferencia_dominio import informar_saldos, linhas_conferencia
 from app.servicos.exportacao import (
     ErroExportacao,
     exportacoes,
@@ -31,6 +32,7 @@ from app.servicos.exportacao import (
     resumo_excel,
 )
 from app.servicos.exportacao_automatica import exportar_se_pronto, motivo_para_esperar
+from app.servicos.extratos import reais_br
 from app.web import avisar, competencia_da_tela, redirecionar
 
 router = APIRouter()
@@ -48,6 +50,7 @@ def contexto_aba_exportar(sessao: Session, empresa: Empresa, competencia: date |
         "preparo": preparo,
         "escolhidas_ids": [c.id for c in preparo.escolhidas],
         "exportacoes": exportacoes(sessao, empresa),
+        "conferencia": linhas_conferencia(sessao, empresa, periodo),
         "espera_automatica": motivo_para_esperar(sessao, empresa, periodo.inicio)
         if empresa.exportacao_automatica and periodo.um_mes  # a automática é sempre mês a mês
         else None,
@@ -190,3 +193,35 @@ def baixar_resumo(
         media_type=TIPO_XLSX,
         headers={"Content-Disposition": f'attachment; filename="{nome}"'},
     )
+
+
+@router.post("/empresas/{empresa_id}/conferencia-dominio")
+async def conferir_com_o_dominio(
+    request: Request,
+    empresa_id: int,
+    usuario: Usuario = Depends(usuario_logado),
+    sessao: Session = Depends(obter_sessao),
+):
+    """Os saldos digitados (um campo “saldo-<conta>-<AAAA-MM>” por conta e mês) → compara com o extrato."""
+    if (empresa := buscar_empresa(sessao, request, empresa_id)) is None:
+        return redirecionar("/")
+    formulario = await request.form()
+    periodo = competencia_da_tela(request, str(formulario.get("mes") or "") or None)
+    digitados = {
+        chave.removeprefix("saldo-"): str(valor) for chave, valor in formulario.items() if chave.startswith("saldo-")
+    }
+    gravadas, erros = informar_saldos(sessao, empresa, periodo, digitados, usuario)
+    sessao.commit()
+    for erro in erros:
+        avisar(request, erro, "erro")
+    if gravadas:
+        diferentes = [linha for linha in gravadas if linha.situacao == "DIFERENCA"]
+        if diferentes:
+            detalhes = "; ".join(
+                f"{linha.conta.rotulo}: diferença de R$ {reais_br(linha.diferenca)}" for linha in diferentes
+            )
+            avisar(request, f"Conferência com o Domínio: {len(diferentes)} conta(s) não batem — {detalhes}.", "erro")
+        else:
+            avisar(request, f"Conferência com o Domínio: as {len(gravadas)} conta(s) batem com o extrato. 🎉", "festa")
+    destino = f"/empresas/{empresa.id}?" + urlencode({"aba": "exportar", "mes": valor_campo_mes(periodo)})
+    return redirecionar(destino + "#conferencia")
