@@ -42,6 +42,31 @@ Para trabalhar vários meses juntos — por exemplo, de 01/2025 a 12/2025 — e 
 
 A exportação automática (quando ligada no cadastro) continua sendo feita mês a mês.
 
+## Atalhos que economizam tempo
+
+| Tecla | O que faz |
+|---|---|
+| **Ctrl + K** (ou “Ir para…” no menu) | Abre qualquer empresa, aba ou tela digitando parte do nome — ex.: “creche rev” abre a Revisão da Creche |
+| **?** | Mostra todos os atalhos |
+| **/** | Vai para a busca da tela |
+| **1** a **5** (dentro da empresa) | Plano · Aprendizado · Extratos · Revisão · Exportar · **0** = Cadastro |
+| **J / K** ou **↓ / ↑** (Revisão) | Desce / sobe de linha |
+| **Enter** (Revisão) | Vai para a conta da linha; Enter de novo grava e passa para a próxima |
+| **A** / **I** / **X** (Revisão) | Aprovar / Ignorar / Marcar a linha |
+
+Na tela **Empresas**, o cartão **Próximo passo sugerido** leva direto para a tarefa mais adiantada (primeiro as
+empresas pelas quais você é responsável).
+
+## Abrir como aplicativo (recomendado)
+
+O sistema pode ficar na barra de tarefas com o emblema da Zera, abrindo em janela própria (sem a barra de endereço):
+
+- **Microsoft Edge:** com o sistema aberto, menu **⋯** → **Aplicativos** → **Instalar este site como um aplicativo**.
+- **Google Chrome:** menu **⋮** → **Transmitir, salvar e compartilhar** → **Instalar página como app…**
+  (nos computadores que acessam pela rede, o Chrome pode oferecer **Criar atalho…** — marque **Abrir como janela**).
+
+Use o Chrome ou o Edge **atualizados**: as trocas de tela suaves só aparecem neles.
+
 ## Para o Supervisor
 
 - **Painel**: todas as empresas no mês — onde cada uma parou, pendências, % classificado sozinho, correções e quem

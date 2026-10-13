@@ -5,6 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block titulo %}{{ nome_sistema }}{% endblock %}</title>
   <link rel="icon" type="image/png" href="{{ estatico('marca/emblema.png') }}">
+  {# instalável como aplicativo (Chrome/Edge): abre em janela própria, com o emblema na barra de tarefas #}
+  <link rel="manifest" href="{{ estatico('manifest.json') }}">
+  <meta name="theme-color" content="#0A0A0B">
+  <link rel="apple-touch-icon" href="{{ estatico('marca/icone-192.png') }}">
   <script>try { var t = localStorage.getItem("zcm-tema"); if (t === "light" || t === "dark") document.documentElement.setAttribute("data-theme", t); } catch (e) {}
     // chegou por transição suave (navegador moderno): o conteúdo já entra com ela, sem a animação de abertura
     addEventListener("pagereveal", function (e) { if (e.viewTransition) document.documentElement.classList.add("com-transicao"); });</script>

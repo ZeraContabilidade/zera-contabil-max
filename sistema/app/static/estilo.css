@@ -850,3 +850,14 @@ dialog.atalhos-ajuda[open] { display: block; overflow-y: auto; }
 .zona-arquivos.arrastando .zona-titulo::after { content: " — pode soltar"; }
 .zona-ajuda { margin: 0 0 .8rem; }
 .zona-ajuda > summary { font-size: .82rem; color: var(--suave); }
+
+/* ---------------------------------------------------------------- mesa de trabalho: próximo passo sugerido */
+.continuar { display: flex; flex-direction: column; gap: .12rem; margin-left: auto; padding: .6rem 1.1rem .65rem;
+  color: var(--texto); text-decoration: none; background: var(--ouro-vidro); border: 1px solid var(--ouro-borda);
+  clip-path: var(--corte); transition: background var(--rapido), transform var(--rapido) var(--suave-curva); }
+.continuar:hover { background: var(--ouro-brilho); transform: translateY(-2px); color: var(--texto); }
+.continuar-rotulo { font-size: .64rem; letter-spacing: 1.8px; text-transform: uppercase; color: var(--ouro); font-weight: 650; }
+.continuar strong { font-size: 1rem; font-weight: 650; }
+.continuar-acao { display: inline-flex; align-items: center; gap: .35rem; font-size: .82rem; color: var(--suave); }
+.continuar-acao .ico { width: 1em; height: 1em; color: var(--ouro); transition: transform var(--rapido) var(--suave-curva); }
+.continuar:hover .continuar-acao .ico { transform: translateX(4px); }

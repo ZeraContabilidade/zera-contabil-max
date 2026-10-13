@@ -55,6 +55,17 @@ def _linhas(
     return linhas, competencia
 
 
+def proximo_passo(linhas: list[dict], usuario: Usuario) -> dict | None:
+    """A empresa sugerida para continuar: das que ainda têm etapa a fazer, primeiro as do próprio usuário, e entre
+    elas a que está mais perto de terminar o período (quase lá dá mais vontade de fechar)."""
+    abertas = [linha for linha in linhas if linha["atual"] is not None and linha["empresa"].ativa]
+    minhas = [linha for linha in abertas if linha["empresa"].responsavel_id == usuario.id]
+    candidatas = minhas or abertas
+    if not candidatas:
+        return None
+    return max(candidatas, key=lambda linha: sum(etapa.situacao == "feita" for etapa in linha["etapas"]))
+
+
 @router.get("/")
 def lista_empresas(
     request: Request,
@@ -67,6 +78,7 @@ def lista_empresas(
 ):
     linhas, competencia = _linhas(sessao, request, q, minhas, usuario, mes, ate)
     total = sessao.scalar(select(func.count()).select_from(Empresa))
+    proxima = proximo_passo(linhas, usuario)
     return pagina(
         request,
         "empresas.html",
@@ -75,6 +87,7 @@ def lista_empresas(
         minhas=bool(minhas),
         competencia=competencia,
         total=total,
+        proxima=proxima,
         backup=backup.situacao() if usuario.e_supervisor else None,
     )
 

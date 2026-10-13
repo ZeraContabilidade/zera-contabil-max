@@ -1,11 +1,11 @@
 {% extends "base.html" %}
-{% from "_macros.html" import icone, seletor_periodo %}
+{% from "_macros.html" import icone, seletor_periodo, aba_da_etapa %}
 {% block titulo %}Empresas — {{ nome_sistema }}{% endblock %}
 {% block conteudo %}
 {% set concluidas = linhas | selectattr('atual', 'none') | list | length %}
 <div class="cabecalho-pagina">
   <div>
-    <p class="sobretitulo">Mesa de trabalho</p>
+    <p class="sobretitulo">{{ saudacao() }}, {{ usuario.nome.split()[0] }} · mesa de trabalho</p>
     <h1>Empresas</h1>
   </div>
   <div class="acoes-cabecalho">
@@ -43,6 +43,13 @@
     <p><strong data-contar>{{ concluidas }}</strong> de {{ linhas | length }} empresa(s) com o mês concluído</p>
   </div>
   <div class="trilha" aria-hidden="true"><span style="width: {{ (100 * concluidas / linhas | length) | round | int if linhas else 0 }}%"></span></div>
+  {% if proxima %}
+  <a class="continuar" href="/empresas/{{ proxima.empresa.id }}?aba={{ aba_da_etapa(proxima.atual) }}&mes={{ competencia | valor_campo_mes }}">
+    <span class="continuar-rotulo">Próximo passo sugerido</span>
+    <strong>{{ proxima.empresa.nome }}</strong>
+    <span class="continuar-acao">{{ proxima.atual.nome }} {{ icone('seta') }}</span>
+  </a>
+  {% endif %}
 </section>
 
 <form id="filtros" method="get" action="/" class="filtros filtros-empresas">

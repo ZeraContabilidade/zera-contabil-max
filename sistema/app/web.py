@@ -118,6 +118,15 @@ templates.env.filters["valor_campo_mes"] = valor_campo_mes
 templates.env.globals["tirar_avisos"] = _tirar_avisos
 
 
+def saudacao(agora: datetime | None = None) -> str:
+    """“Bom dia”, “Boa tarde” ou “Boa noite”, pelo relógio de São Paulo."""
+    hora = (agora or datetime.now(FUSO)).hour
+    return "Bom dia" if 5 <= hora < 12 else "Boa tarde" if 12 <= hora < 18 else "Boa noite"
+
+
+templates.env.globals["saudacao"] = saudacao
+
+
 def avisar(request: Request, texto: str, tipo: str = "ok") -> None:
     """Mensagem mostrada na próxima tela (tipo 'ok', 'atencao', 'erro' ou 'festa' — conquista, com confete)."""
     request.session.setdefault("avisos", []).append({"texto": texto, "tipo": tipo})

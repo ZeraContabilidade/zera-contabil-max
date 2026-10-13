@@ -119,6 +119,19 @@ AMOSTRAS/       arquivos reais da Casa Criança (fora do Git)
   `static/interface.js`: toasts, menu do celular, `data-contar` (número que conta), `data-celebrar="chave"` (confete uma vez
   por sessão), placar da Revisão ao vivo (`data-placar` + linhas com `data-status`: a linha decidida desconta do “faltam” e,
   no filtro “Precisa de atenção”, sai da lista; zerou → “Tudo revisado!” + confete). `prefers-reduced-motion` desliga tudo.
+- **Navegação (13/10, pedido: “nada robotizado”):** letra contida (o Pico ia a 20px em telas ≥ 1280px; `--pico-font-size`
+  100% → 106,25%). Troca de tela por **View Transitions** (`@view-transition`; nomes fixos `trilho`, `menu-ativo`,
+  `cabeca-empresa`, `jornada`, `aba-aberta` e `nome-empresa-<id>` no cartão e no título da empresa — nome único por
+  página); `pagereveal` (script no `<head>`) põe `.com-transicao` e tira a animação de abertura. **Fio de ouro**
+  (`.fio-ouro` + `html.navegando`, em `interface.js`) ao clicar link/enviar formulário/HTMX (não em download).
+  **Ctrl+K** = `static/paleta.js` + `GET /atalhos` (`rotas/atalhos.py`); janela de atalhos `#atalhos-ajuda` (`?`);
+  `/` busca da tela; `1`–`5`/`0` abas da empresa. **Revisão pelo teclado** = `static/revisao.js` (J/K, Enter, A, I, X;
+  usa os botões `name=acao` da linha — manter os valores `salvar/aprovar/ignorar`). `<dialog>`: o Pico faz dele uma
+  cortina de tela cheia — use a classe `.paleta`. Botão que não deve ser dourado: incluir na exceção da regra geral
+  `button:not(...)` do `estilo.css`. Instalável como aplicativo: `static/manifest.json` + `marca/icone-192/512.png`.
+  Mesa de trabalho: `saudacao()` (web.py) e `proximo_passo(linhas, usuario)` (rotas/empresas.py).
+- Servidor de teste com **dados de demonstração** (`scripts/demonstracao.py`: Creche Exemplo com plano, histórico e
+  OFX fictícios de ago–set/2026) — para ver telas cheias. Rodar o pytest apaga: reinicie o servidor.
 - Pico.css: `nav` vira flex com `space-between` e os links ganham margem negativa — em `nav` próprio zerar `margin`/`padding`
   e definir `display`; `section` ganha margem embaixo. Conferir telas pelo Playwright (no robô, o botão dourado “sobe” no
   hover e o clique automático pode falhar: clicar via `element.click()` no `browser_evaluate`).
