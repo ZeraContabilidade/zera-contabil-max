@@ -40,11 +40,22 @@ class _Colunas:
         textos = [normalizar(p["text"]) for p in linha]
         if "VALOR" not in textos or not any(t.startswith("HISTORIC") for t in textos):
             return False
+        posicoes = {}
         for posicao, palavra in enumerate(linha):
+            posicoes.setdefault(textos[posicao], palavra["x0"])
             if textos[posicao].startswith("HISTORIC"):
                 self.historico = palavra["x0"] - 3
             elif textos[posicao] == "BASE":
                 self.base = palavra["x0"] - 15
+        if {"AG.", "DOCUMENTO", "INFORMACOES", "SALDO"} <= posicoes.keys():
+            # modelo baixado pelas creches: cabeçalho inteiro numa linha e o valor alinhado à ESQUERDA da coluna
+            # (o da Casa Criança corta o cabeçalho e alinha o valor à direita: ficam as posições de sempre)
+            self.agencia = posicoes["AG."] - 3
+            self.documento = posicoes["DOCUMENTO"] - 3
+            self.informacoes = posicoes["INFORMACOES"] - 3
+            self.valor = posicoes["VALOR"] - 3
+            self.sentido = posicoes["VALOR"] + 15  # o C/D vem logo depois do valor (“2,47 C”: bem perto)
+            self.saldo = posicoes["SALDO"] - 2
         return True
 
 
@@ -53,7 +64,10 @@ class LeitorBBPoupanca:
 
     def reconhece(self, arquivo: ArquivoExtrato) -> bool:
         texto = normalizar(arquivo.texto[:4000])
-        return arquivo.eh_pdf and "BANCO DO BRASIL" in texto and "EXTRATOS - POUPANCA" in texto
+        if not arquivo.eh_pdf or "EXTRATOS - POUPANCA" not in texto:
+            return False
+        # o baixado pelas creches não escreve “Banco do Brasil”: vale a variação “POUPANÇA-OURO” do BB
+        return "BANCO DO BRASIL" in texto or "POUPANCA-OURO" in texto
 
     def ler(self, arquivo: ArquivoExtrato) -> ExtratoLido:
         texto = arquivo.texto
@@ -85,7 +99,9 @@ class LeitorBBPoupanca:
                 if j in grupos:
                     continue
                 if normalizar(texto_da_linha(linha)).startswith("SALDO TOTAL"):
-                    saldo_total = linha[-1]["text"]
+                    # “Saldo total 251.483,54 C”: o número (às vezes cortado: “239.233”), não o C/D do fim
+                    com_numero = [p["text"] for p in linha if any(ch.isdigit() for ch in p["text"])]
+                    saldo_total = com_numero[-1] if com_numero else ""
                 perto = [i for i in datas if abs(todas[i][0]["top"] - linha[0]["top"]) <= DISTANCIA]
                 if perto:
                     dono = min(perto, key=lambda i: abs(todas[i][0]["top"] - linha[0]["top"]))

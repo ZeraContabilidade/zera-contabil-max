@@ -18,6 +18,7 @@ from app.servicos.plano import Aviso, ErroLeitura
 
 _HORA_NO_COMECO = re.compile(r"^\d{2}/\d{2}\s+\d{2}:\d{2}\s+")
 _DOCUMENTO = re.compile(r"^[\d.\-/]+$")
+_DIA = r"(\d{2})\s*/\s*(\d{2})\s*/\s*(\d{4})"  # “01 / 08 / 2026”
 
 
 class _Colunas:
@@ -47,13 +48,18 @@ class LeitorBBContaCorrente:
     nome = "Banco do Brasil — conta corrente (PDF)"
 
     def reconhece(self, arquivo: ArquivoExtrato) -> bool:
+        """O do autoatendimento traz “Banco do Brasil”; o de “Consultas - Extrato de conta corrente” (o que as
+        creches baixam) não escreve o nome do banco, só as colunas “Dt. balancete … Lote” e a Ouvidoria BB."""
         texto = normalizar(arquivo.texto[:4000])
-        return arquivo.eh_pdf and "BANCO DO BRASIL" in texto and "EXTRATO DE CONTA CORRENTE" in texto
+        if not arquivo.eh_pdf or "EXTRATO DE CONTA CORRENTE" not in texto:
+            return False
+        return "BANCO DO BRASIL" in texto or ("DT. BALANCETE" in texto and "LOTE" in texto)
 
     def ler(self, arquivo: ArquivoExtrato) -> ExtratoLido:
         texto = arquivo.texto
         agencia = re.search(r"Ag[eê]ncia\s+(\d{1,5}-[\dXx])", texto)
-        conta = re.search(r"Conta corrente\s+([\d.]+-[\dXx])\s+([^\n]*)", texto)
+        # “Conta corrente 83431-9ASSOCIACAO M C H I U”: no modelo das Consultas o titular vem grudado no número
+        conta = re.search(r"Conta corrente\s+([\d.]+-[\dXx])\s*([^\n]*)", texto)
         if not agencia or not conta:
             raise ErroLeitura("Não achei a agência e a conta no extrato do Banco do Brasil. Baixe o PDF de novo.")
         lido = ExtratoLido(
@@ -68,6 +74,10 @@ class LeitorBBContaCorrente:
             mes, ano = int(periodo.group(1)), int(periodo.group(2))
             lido.inicio = date(ano, mes, 1)
             lido.fim = date(ano, mes, calendar.monthrange(ano, mes)[1])
+        elif periodo := re.search(rf"Per[ií]odo do extrato de\s+{_DIA}\s+at[ée]\s+{_DIA}", texto):
+            # “Período do extrato de 01 / 08 / 2026 até 31 / 08 / 2026”
+            d1, m1, a1, d2, m2, a2 = (int(g) for g in periodo.groups())
+            lido.inicio, lido.fim = date(a1, m1, d1), date(a2, m2, d2)
 
         colunas = _Colunas()
         pendente: dict[str, Any] | None = None
