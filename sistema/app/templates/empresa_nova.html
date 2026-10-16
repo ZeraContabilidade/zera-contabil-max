@@ -16,6 +16,10 @@
         <input name="codigo_filial" value="{{ dados.codigo_filial or '' }}" inputmode="numeric" placeholder="ex.: 231">
         <small class="suave">Vai em todas as linhas do lanctos.txt no lugar do código da matriz. Cada filial é um cadastro.</small>
       </label>
+      <label>Unidade (creche) <small class="suave">(só se dividir o código com outras)</small>
+        <input name="unidade" value="{{ dados.unidade or '' }}" placeholder="ex.: CARMEM DIAS">
+        <small class="suave">Creches com o mesmo código e o mesmo plano no Domínio: um cadastro para cada uma, com o nome que fecha as contas dela no plano.</small>
+      </label>
       <label>CNPJ ou CPF <small class="suave">(opcional)</small>
         <input name="cnpj_cpf" value="{{ dados.cnpj_cpf or '' }}" placeholder="00.000.000/0000-00">
         <small class="suave">Com o CNPJ, o sistema busca razão social e regime na consulta pública.</small>

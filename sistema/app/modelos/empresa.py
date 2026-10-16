@@ -1,9 +1,23 @@
 import enum
+import re
 from datetime import datetime
 from decimal import Decimal
 from typing import Any
 
-from sqlalchemy import DateTime, Enum, ForeignKey, Numeric, String, Text, UniqueConstraint, false, func, true
+from sqlalchemy import (
+    DateTime,
+    Enum,
+    ForeignKey,
+    Index,
+    Numeric,
+    String,
+    Text,
+    UniqueConstraint,
+    false,
+    func,
+    text,
+    true,
+)
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -41,15 +55,28 @@ class Empresa(Auditavel, Base):
     """Empresa-cliente do escritório. Só o código no Domínio é obrigatório: o resto o sistema descobre."""
 
     __tablename__ = "empresa"
-    # cada filial é um cadastro: o código da matriz pode repetir, a filial não (sem filial também conta como valor)
-    __table_args__ = (UniqueConstraint("codigo_dominio", "codigo_filial", postgresql_nulls_not_distinct=True),)
+    # cada filial é um cadastro: o código da matriz pode repetir, a filial não (sem filial também conta como valor);
+    # creches que dividem o código e o plano no Domínio (121: Carmem Dias, Jandira…) são cadastros com a unidade
+    __table_args__ = (
+        UniqueConstraint("codigo_dominio", "codigo_filial", "unidade", postgresql_nulls_not_distinct=True),
+        Index(
+            "uq_empresa_cnpj_cpf_unidade",
+            "cnpj_cpf",
+            text("coalesce(unidade, '')"),
+            unique=True,
+            postgresql_where=text("cnpj_cpf IS NOT NULL"),
+        ),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True)
     codigo_dominio: Mapped[int] = mapped_column()  # código da empresa (da matriz, se for filial) no Domínio
     codigo_filial: Mapped[int | None] = mapped_column()  # preenchido → vai no campo 8 do lanctos.txt no lugar do acima
+    # creche/unidade quando várias dividem o mesmo código: o nome que fecha as contas dela no plano
+    # (“SALÁRIO MENSAL - CARMEM DIAS” → CARMEM DIAS); o sistema só sugere as contas desta unidade
+    unidade: Mapped[str | None] = mapped_column(String(60))
     razao_social: Mapped[str | None] = mapped_column(String(200))
     nome_curto: Mapped[str | None] = mapped_column(String(80))
-    cnpj_cpf: Mapped[str | None] = mapped_column(String(14), unique=True)  # só letras e números
+    cnpj_cpf: Mapped[str | None] = mapped_column(String(14))  # só letras e números; repete só com unidade diferente
     regime: Mapped[Regime | None] = mapped_column(
         Enum(Regime, native_enum=False, length=20, create_constraint=True, name="regime")
     )
@@ -98,8 +125,23 @@ class Empresa(Auditavel, Base):
 
     @property
     def codigo_arquivo(self) -> str:
-        """Código nos nomes dos arquivos baixados: “230” ou “230-filial231”."""
-        return f"{self.codigo_dominio}-filial{self.codigo_filial}" if self.codigo_filial else str(self.codigo_dominio)
+        """Código nos nomes dos arquivos baixados: “230”, “230-filial231” ou “121-CARMEM-DIAS” (unidade)."""
+        codigo = f"{self.codigo_dominio}-filial{self.codigo_filial}" if self.codigo_filial else str(self.codigo_dominio)
+        if self.unidade:
+            from app.servicos.contas_chave import normalizar
+
+            codigo += "-" + "-".join(re.findall(r"[A-Z0-9]+", normalizar(self.unidade)))
+        return codigo
+
+    @property
+    def terceiro_setor(self) -> bool:
+        return self.regime == Regime.TERCEIRO_SETOR
+
+    @property
+    def conta_por_fornecedor(self) -> bool:
+        """Lança o pagamento na conta do fornecedor? Associação (terceiro setor) nunca: vai direto para a conta de
+        resultado (despesa) — regra do escritório de 15/10/2026."""
+        return bool(self.usa_conta_individual) and not self.terceiro_setor
 
     @property
     def documento_formatado(self) -> str:

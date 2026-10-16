@@ -7,7 +7,9 @@
 
   <p>
     <strong>Fornecedores:</strong>
-    {% if empresa.usa_conta_individual %}
+    {% if empresa.terceiro_setor %}
+      associação (terceiro setor): o pagamento vai direto para a conta de despesa, nunca para a do fornecedor
+    {% elif empresa.usa_conta_individual %}
       conta individual por fornecedor{% if empresa.grupo_fornecedores %} (grupo {{ empresa.grupo_fornecedores }}){% endif %}
     {% elif empresa.usa_conta_individual is sameas false %}
       conta geral de fornecedores

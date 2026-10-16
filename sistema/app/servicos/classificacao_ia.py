@@ -28,6 +28,7 @@ from app.modelos import (
 )
 from app.servicos.classificacao import Proposta, complemento_da_proposta
 from app.servicos.contas_chave import naturezas, nome_do_tipo
+from app.servicos.contas_permitidas import FiltroContas, carregar_filtro
 from app.servicos.fornecedores import pela_ia
 
 TAMANHO_LOTE = 40
@@ -56,7 +57,10 @@ pagamento a um fornecedor (compra, serviço) que deveria ter conta própria no g
 NÃO existe no plano: escreva o nome da conta a criar (nome do fornecedor, maiúsculas, até 40 letras) e responda \
 conta 0. Salário, imposto, tarifa, transferência e quem já tem conta no plano nunca vão para conta_a_criar. Nos \
 outros casos conta_a_criar fica vazio "". Empresa SEM conta individual: pagamento a fornecedor sem conta melhor vai \
-para a conta genérica de fornecedores (contas-chave).
+para a conta genérica de fornecedores (contas-chave) — exceto ASSOCIAÇÃO (terceiro setor), que lança o pagamento \
+direto na conta de DESPESA (resultado) e nunca usa conta de fornecedor.
+- Quando o contexto traz UNIDADE (CRECHE), o plano já vem só com as contas dela e as comuns: nunca use conta com \
+o nome de outra creche.
 Responda um item para cada id recebido."""
 
 ESQUEMA = {
@@ -85,13 +89,24 @@ ESQUEMA = {
 }
 
 
-def montar_contexto(sessao: Session, empresa: Empresa) -> str:
+def montar_contexto(sessao: Session, empresa: Empresa, filtro: FiltroContas | None = None) -> str:
     """Bloco grande e estável (vai para o cache da IA): sempre na mesma ordem."""
     contas = list(sessao.scalars(select(ContaContabil).where(ContaContabil.empresa_id == empresa.id)))
+    filtro = filtro or carregar_filtro(sessao, empresa, contas)
     natureza = naturezas(contas)
     por_id = {c.id: c for c in contas}
+
+    def usavel(conta_id: int | None) -> ContaContabil | None:  # a conta que vale para esta empresa (ou nenhuma)
+        return filtro.ajustar(por_id.get(conta_id))[0] if conta_id else None
+
     linhas = [f"EMPRESA: {empresa.nome}"]
-    if empresa.usa_conta_individual:
+    if filtro.unidade:
+        linhas.append(
+            f"UNIDADE (CRECHE): {filtro.unidade} — o plano tem contas de várias creches; use só as desta e as comuns"
+        )
+    if empresa.terceiro_setor:
+        linhas.append("ASSOCIAÇÃO (TERCEIRO SETOR): pagamento vai direto para a conta de despesa, nunca de fornecedor")
+    if empresa.conta_por_fornecedor:
         grupo = f" (grupo {empresa.grupo_fornecedores})" if empresa.grupo_fornecedores else ""
         linhas.append(f"CONTA INDIVIDUAL POR FORNECEDOR: sim{grupo}")
     else:
@@ -120,7 +135,8 @@ def montar_contexto(sessao: Session, empresa: Empresa) -> str:
             exemplos[conta_id][favorecido] += 1
         linhas.append("\nCONTAS QUE A EMPRESA MAIS USA NO HISTÓRICO (reduzido | descrição | vezes | exemplos):")
         for conta_id, vezes in uso:
-            conta = por_id[conta_id]
+            if (conta := usavel(conta_id)) is None:
+                continue
             amostra = ", ".join(nome for nome, _ in exemplos[conta_id].most_common(4))
             linhas.append(f"{conta.reduzido} | {conta.descricao} | {vezes} | {amostra}")
 
@@ -133,8 +149,10 @@ def montar_contexto(sessao: Session, empresa: Empresa) -> str:
     if padroes:
         linhas.append("\nFAVORECIDOS E PALAVRAS APRENDIDOS (tipo | nome | conta | natureza | valores que se repetem):")
         for p in padroes:
+            if (conta := usavel(p.conta_id)) is None:
+                continue
             valores = ", ".join((p.detalhes or {}).get("valores", [])[:3])
-            linhas.append(f"{p.tipo} | {p.nome} | {por_id[p.conta_id].reduzido} | {p.natureza or '-'} | {valores}")
+            linhas.append(f"{p.tipo} | {p.nome} | {conta.reduzido} | {p.natureza or '-'} | {valores}")
 
     chaves = sessao.scalars(
         select(ContaChave).where(ContaChave.empresa_id == empresa.id, ContaChave.conta_id.is_not(None))
@@ -146,7 +164,9 @@ def montar_contexto(sessao: Session, empresa: Empresa) -> str:
             linhas.append(f"{rotulo} → {por_id[chave.conta_id].reduzido}")
 
     linhas.append("\nPLANO DE CONTAS ANALÍTICO (reduzido | classificação | descrição | natureza):")
-    for conta in sorted((c for c in contas if c.analitica and c.ativa), key=lambda c: c.classificacao):
+    for conta in sorted(
+        (c for c in contas if c.analitica and c.ativa and filtro.permitida(c)), key=lambda c: c.classificacao
+    ):
         linhas.append(
             f"{conta.reduzido} | {conta.classificacao_formatada} | {conta.descricao} | {natureza.get(conta.id, '-')}"
         )
@@ -176,9 +196,11 @@ def _banco(movimento: MovimentoExtrato, contas: dict[int, ContaContabil]) -> Con
     return contas.get(chave.conta_id) if chave and chave.conta_id else None
 
 
-def _linha(numero: int, sugestao: Sugestao, contas: dict[int, ContaContabil]) -> str:
+def _linha(numero: int, sugestao: Sugestao, contas: dict[int, ContaContabil], filtro: FiltroContas) -> str:
     m = sugestao.movimento
     banco = _banco(m, contas)
+    unidade = filtro.unidade_para(banco) if not filtro.unidade else ""
+    unidade = f" | unidade/projeto do banco: {unidade} (use as contas dela ou as comuns)" if unidade else ""
     atual = ""
     if sugestao.confianca >= 70:  # amarela: mostra o que as regras acharam
         contrapartida = sugestao.conta_debito if m.sentido == "SAIDA" else sugestao.conta_credito
@@ -188,7 +210,7 @@ def _linha(numero: int, sugestao: Sugestao, contas: dict[int, ContaContabil]) ->
     cliente = f' | o cliente disse que é: "{sugestao.resposta_cliente}"' if sugestao.resposta_cliente else ""
     return (
         f"{numero}. {m.data:%d/%m/%Y} | {sentido} | R$ {m.valor} | {m.historico} | {m.complemento or '-'} | "
-        f"banco: {f'{banco.reduzido} {banco.descricao}' if banco else '(sem conta no plano)'}{atual}{cliente}"
+        f"banco: {f'{banco.reduzido} {banco.descricao}' if banco else '(sem conta no plano)'}{unidade}{atual}{cliente}"
     )
 
 
@@ -229,7 +251,8 @@ def classificar_com_ia(
         return resultado
     contas = {c.id: c for c in sessao.scalars(select(ContaContabil).where(ContaContabil.empresa_id == empresa.id))}
     por_reduzido = {c.reduzido: c for c in contas.values()}
-    contexto = montar_contexto(sessao, empresa)
+    filtro = carregar_filtro(sessao, empresa, list(contas.values()))
+    contexto = montar_contexto(sessao, empresa, filtro)
     lotes = [sugestoes[i : i + TAMANHO_LOTE] for i in range(0, len(sugestoes), TAMANHO_LOTE)]
     sessao.info["auditoria_em_bloco"] = True
     try:
@@ -238,7 +261,7 @@ def classificar_com_ia(
                 finalidade="classificacao",
                 instrucoes=INSTRUCOES,
                 contexto=contexto,
-                pergunta="\n".join(_linha(i, s, contas) for i, s in enumerate(lote, 1)),
+                pergunta="\n".join(_linha(i, s, contas, filtro) for i, s in enumerate(lote, 1)),
                 esquema=ESQUEMA,
                 max_tokens=8000,
             )
@@ -256,14 +279,16 @@ def classificar_com_ia(
             for i, sugestao in enumerate(lote, 1):
                 if (item := respostas.get(i)) is not None:
                     resultado.perguntadas += 1
-                    _aplicar(sessao, empresa, sugestao, item, contas, por_reduzido, resultado)
+                    _aplicar(sessao, empresa, sugestao, item, contas, por_reduzido, resultado, filtro)
         sessao.flush()
     finally:
         sessao.info.pop("auditoria_em_bloco", None)
     return resultado
 
 
-def _aplicar(sessao, empresa, sugestao: Sugestao, item: dict, contas, por_reduzido, resultado: ResultadoIA) -> None:
+def _aplicar(
+    sessao, empresa, sugestao: Sugestao, item: dict, contas, por_reduzido, resultado: ResultadoIA, filtro: FiltroContas
+) -> None:
     movimento = sugestao.movimento
     banco = _banco(movimento, contas)
     conta = por_reduzido.get(item.get("conta"))
@@ -271,7 +296,7 @@ def _aplicar(sessao, empresa, sugestao: Sugestao, item: dict, contas, por_reduzi
     justificativa = " ".join(str(item.get("justificativa") or "").split())[:300]
     sugestao.revisado_ia = True  # respondida (mesmo que não sirva): não pergunta de novo
     a_criar = str(item.get("conta_a_criar") or "").strip()
-    if a_criar and empresa.usa_conta_individual and movimento.sentido == "SAIDA":
+    if a_criar and empresa.conta_por_fornecedor and movimento.sentido == "SAIDA":
         natureza = " ".join(str(item.get("natureza") or "").upper().split())[:200]
         if pela_ia(sessao, empresa, sugestao, a_criar, natureza, justificativa) is not None:
             resultado.fornecedores += 1
@@ -282,6 +307,10 @@ def _aplicar(sessao, empresa, sugestao: Sugestao, item: dict, contas, por_reduzi
         if item.get("conta"):
             resultado.recusadas += 1
         conta, confianca = None, 0
+    conta, nota = filtro.ajustar(conta, banco)  # conta de outra creche/projeto ou de fornecedor (associação)
+    if nota:
+        justificativa = f"{justificativa} {nota}".strip()
+        resultado.recusadas += conta is None
     if conta is None or confianca <= sugestao.confianca:
         # a IA não soube, respondeu conta inválida ou as regras já tinham algo igual ou melhor: fica como está
         resultado.amarelas += sugestao.confianca >= 70

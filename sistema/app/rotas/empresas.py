@@ -133,6 +133,7 @@ def criar_empresa(
     request: Request,
     codigo_dominio: str = Form(""),
     codigo_filial: str = Form(""),
+    unidade: str = Form(""),
     cnpj_cpf: str = Form(""),
     razao_social: str = Form(""),
     nome_curto: str = Form(""),
@@ -145,6 +146,7 @@ def criar_empresa(
     form = {
         "codigo_dominio": codigo_dominio,
         "codigo_filial": codigo_filial,
+        "unidade": unidade,
         "cnpj_cpf": cnpj_cpf,
         "razao_social": razao_social,
         "nome_curto": nome_curto,
@@ -237,6 +239,7 @@ def editar_empresa(
     empresa_id: int,
     codigo_dominio: str = Form(""),
     codigo_filial: str = Form(""),
+    unidade: str = Form(""),
     cnpj_cpf: str = Form(""),
     razao_social: str = Form(""),
     nome_curto: str = Form(""),
@@ -260,6 +263,7 @@ def editar_empresa(
     form = {
         "codigo_dominio": codigo_dominio,
         "codigo_filial": codigo_filial,
+        "unidade": unidade,
         "cnpj_cpf": cnpj_cpf,
         "razao_social": razao_social,
         "nome_curto": nome_curto,

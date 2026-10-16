@@ -34,6 +34,7 @@ from app.modelos import (
 from app.servicos.aprendizado import CNPJ_NO_TEXTO, natureza_para_exibir, normalizar_natureza, normalizar_nome
 from app.servicos.complemento import MODELO_PADRAO, montar_complemento
 from app.servicos.contas_chave import nome_do_tipo, normalizar
+from app.servicos.contas_permitidas import FiltroContas, carregar_filtro
 from app.servicos.documentos import formatar_documento, normalizar_documento, tipo_documento
 
 PROTEGIDAS = ("USUARIO",)  # origem que a classificação automática nunca troca
@@ -108,6 +109,7 @@ class Contexto:
     chaves: dict[str, ContaChave]
     padroes: dict[str, list[Padrao]]
     movimentos_do_periodo: list[MovimentoExtrato]
+    filtro: FiltroContas
     pares_usados: set[int] = field(default_factory=set)  # já pareados (aqui ou pelo usuário)
     par_de: dict[int, MovimentoExtrato] = field(default_factory=dict)  # a outra ponta, para as duas usarem
 
@@ -136,7 +138,8 @@ def _carregar(sessao: Session, empresa: Empresa, movimentos: list[MovimentoExtra
             )
         )
     )
-    return Contexto(empresa, contas, {c.reduzido: c for c in contas.values()}, chaves, padroes, periodo)
+    filtro = carregar_filtro(sessao, empresa, list(contas.values()))
+    return Contexto(empresa, contas, {c.reduzido: c for c in contas.values()}, chaves, padroes, periodo, filtro)
 
 
 # ---------------------------------------------------------------- passos
@@ -481,6 +484,11 @@ def classificar(sessao: Session, empresa: Empresa, inicio: date, fim: date) -> R
 
 def _gravar(sessao, ctx: Contexto, movimento: MovimentoExtrato, proposta: Proposta, resultado) -> None:
     banco = ctx.banco(movimento)
+    if proposta.debito_credito is None and proposta.status != "IGNORADO":
+        # só as contas desta creche; associação lança na despesa, não na conta do fornecedor
+        proposta.contrapartida, nota = ctx.filtro.ajustar(proposta.contrapartida, banco)
+        if nota:
+            proposta.justificativa = f"{proposta.justificativa} {nota}"
     if proposta.debito_credito is not None:
         debito, credito = proposta.debito_credito
     elif movimento.sentido == "SAIDA":

@@ -50,6 +50,7 @@ ROTULOS_CAMPO = {
     "criado_em": "Criado em",
     "codigo_dominio": "Código no Domínio",
     "codigo_filial": "Código da filial",
+    "unidade": "Unidade (creche)",
     "razao_social": "Razão social",
     "cnpj_cpf": "CNPJ/CPF",
     "responsavel_id": "Responsável (nº do usuário)",

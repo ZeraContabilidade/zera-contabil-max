@@ -191,7 +191,9 @@ def conferir_linha(
     elif acao == "reabrir":
         reabrir(sessao, sugestao)
     elif acao == "fornecedor":
-        if not empresa.usa_conta_individual:
+        if empresa.terceiro_setor:
+            erro = "Associação (terceiro setor) lança o pagamento direto na conta de despesa: escolha a conta."
+        elif not empresa.usa_conta_individual:
             erro = "Esta empresa não usa conta individual por fornecedor (veja o Cadastro): escolha a conta."
         elif sugestao.movimento.sentido != "SAIDA":
             erro = "Só pagamentos (saídas) vão para a lista de fornecedores a cadastrar."

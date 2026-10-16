@@ -231,7 +231,7 @@ def _conferir_empresa(sessao: Session, empresa: Empresa, lido: DiarioLido) -> li
         )
     if lido.cnpj and not empresa.cnpj_cpf:
         outra = sessao.scalar(select(Empresa).where(Empresa.cnpj_cpf == lido.cnpj, Empresa.id != empresa.id))
-        if outra:
+        if outra and not (empresa.unidade and outra.unidade):  # creches do mesmo CNPJ dividem o Diário
             raise ErroLeitura(
                 f"Este Diário é do CNPJ {formatar_documento(lido.cnpj)}, que está cadastrado na empresa "
                 f"{outra.nome} (código {outra.rotulo_codigo}). Confira se escolheu a empresa certa."

@@ -46,6 +46,10 @@
           <input name="codigo_filial" value="{{ valor('codigo_filial', empresa.codigo_filial) }}" inputmode="numeric" placeholder="ex.: 231">
           <small class="suave">Vai na coluna 8 do lanctos.txt no lugar do código da matriz.</small>
         </label>
+        <label>Unidade (creche) <small class="suave">(só se dividir o código com outras)</small>
+          <input name="unidade" value="{{ valor('unidade', empresa.unidade) }}" placeholder="ex.: CARMEM DIAS">
+          <small class="suave">Como as contas dela terminam no plano (“SALÁRIO MENSAL - CARMEM DIAS”): o sistema só sugere as contas desta creche.</small>
+        </label>
         <label>CNPJ ou CPF {{ selo_automatico(empresa, 'cnpj_cpf') }}
           <input name="cnpj_cpf" value="{{ valor('cnpj_cpf', empresa.documento_formatado) }}" placeholder="00.000.000/0000-00">
         </label>

@@ -11,6 +11,7 @@ from app.modelos.empresa import LIMIAR_MINIMO, LIMIAR_PADRAO
 from app.servicos import cnpj_publico
 from app.servicos.cnpj_publico import DadosPublicos
 from app.servicos.complemento import MODELO_PADRAO, problema_no_modelo
+from app.servicos.contas_chave import normalizar
 from app.servicos.documentos import formatar_documento, normalizar_documento, tipo_documento
 
 TAMANHOS = {"razao_social": 200, "nome_curto": 80}
@@ -40,23 +41,44 @@ def ler_formulario(sessao: Session, form: dict[str, str | None], empresa: Empres
             filial = int(texto) if texto else None
             valores["codigo_filial"] = filial
 
-    if "codigo_dominio" in valores:  # cada filial é um cadastro: o par código + filial não pode repetir
-        outra = sessao.scalar(
-            select(Empresa).where(
-                Empresa.codigo_dominio == valores["codigo_dominio"],
-                Empresa.codigo_filial.is_(None) if filial is None else Empresa.codigo_filial == filial,
-                Empresa.id != ignorar_id,
-            )
+    unidade = empresa.unidade if empresa else None
+    if "unidade" in form:
+        texto = " ".join((form.get("unidade") or "").split())
+        if len(texto) > 60:
+            erros.append("A unidade (creche) pode ter no máximo 60 letras (ex.: CARMEM DIAS).")
+        unidade = texto or None
+        valores["unidade"] = unidade
+
+    if "codigo_dominio" in valores:  # cada filial (ou creche) é um cadastro: código + filial + unidade não repete
+        outra = next(
+            (
+                e
+                for e in sessao.scalars(
+                    select(Empresa).where(
+                        Empresa.codigo_dominio == valores["codigo_dominio"],
+                        Empresa.codigo_filial.is_(None) if filial is None else Empresa.codigo_filial == filial,
+                        Empresa.id != ignorar_id,
+                    )
+                )
+                if normalizar(e.unidade) == normalizar(unidade)
+            ),
+            None,
         )
-        if outra and filial:
+        if outra and unidade:
+            erros.append(
+                f"A unidade {unidade} do código {valores['codigo_dominio']} já é o cadastro {outra.nome}. "
+                "Confira o nome da creche."
+            )
+        elif outra and filial:
             erros.append(
                 f"A filial {filial} do código {valores['codigo_dominio']} já é da empresa {outra.nome}. "
-                "Confira os códigos no Domínio."
+                "Confira os códigos no Domínio — se forem creches diferentes, preencha a unidade (creche)."
             )
         elif outra:
             erros.append(
                 f"O código {valores['codigo_dominio']} já é da empresa {outra.nome}. Confira o código no Domínio — "
-                "se esta for uma filial, preencha também o código da filial."
+                "se esta for uma filial, preencha também o código da filial; se for outra creche com o mesmo "
+                "código, preencha a unidade (creche)."
             )
 
     for campo, tamanho in TAMANHOS.items():
@@ -68,8 +90,15 @@ def ler_formulario(sessao: Session, form: dict[str, str | None], empresa: Empres
     documento = normalizar_documento(form.get("cnpj_cpf"))
     if documento and tipo_documento(documento) is None:
         erros.append(f"O CNPJ/CPF {formatar_documento(documento)} não é válido — confira os números.")
-    elif documento:
-        outra = sessao.scalar(select(Empresa).where(Empresa.cnpj_cpf == documento, Empresa.id != ignorar_id))
+    elif documento:  # o mesmo CNPJ só se repete em creches (unidades) diferentes
+        outra = next(
+            (
+                e
+                for e in sessao.scalars(select(Empresa).where(Empresa.cnpj_cpf == documento, Empresa.id != ignorar_id))
+                if normalizar(e.unidade) == normalizar(unidade)
+            ),
+            None,
+        )
         if outra:
             erros.append(
                 f"O CNPJ/CPF {formatar_documento(documento)} já está na empresa {outra.nome} "
