@@ -29,6 +29,7 @@ from app.servicos.armazenamento import guardar_arquivo
 from app.servicos.classificacao import classificar
 from app.servicos.competencia import Periodo, como_periodo, hoje, nome_competencia, somar_meses
 from app.servicos.contas_chave import identificar_banco, ligar_conta_bancaria, referencia_bancaria
+from app.servicos.contas_permitidas import ligar_pela_unidade
 from app.servicos.planilha_extrato import ler_planilha_extrato
 from app.servicos.plano import Aviso, ErroLeitura
 
@@ -95,6 +96,8 @@ def _conta_bancaria(
         if chave is None or chave.conta_id is None:
             chave, aviso_ia = ligar_conta_bancaria(sessao, empresa, nome, lido.agencia, lido.numero, lido.tipo, usuario)
         conta.conta_chave = chave
+    if ligar_pela_unidade(sessao, empresa, conta.conta_chave):  # creche: a conta do banco que o histórico dela usa
+        aviso_ia = None
     return conta, aviso_ia
 
 
@@ -330,7 +333,11 @@ def movimentos_do_mes(sessao: Session, empresa: Empresa, competencia: date | Per
     return list(
         sessao.scalars(
             select(MovimentoExtrato)
-            .where(MovimentoExtrato.empresa_id == empresa.id, MovimentoExtrato.data.between(inicio, fim))
+            .where(
+                MovimentoExtrato.empresa_id == empresa.id,
+                MovimentoExtrato.data.between(inicio, fim),
+                MovimentoExtrato.parte_de_id.is_(None),  # as linhas como o banco mostra (sem as partes do rateio)
+            )
             .order_by(
                 MovimentoExtrato.conta_bancaria_id,
                 MovimentoExtrato.data,
@@ -347,7 +354,11 @@ def contar_movimentos_do_mes(sessao: Session, empresa: Empresa, competencia: dat
         sessao.scalar(
             select(func.count())
             .select_from(MovimentoExtrato)
-            .where(MovimentoExtrato.empresa_id == empresa.id, MovimentoExtrato.data.between(inicio, fim))
+            .where(
+                MovimentoExtrato.empresa_id == empresa.id,
+                MovimentoExtrato.data.between(inicio, fim),
+                MovimentoExtrato.parte_de_id.is_(None),
+            )
         )
         or 0
     )

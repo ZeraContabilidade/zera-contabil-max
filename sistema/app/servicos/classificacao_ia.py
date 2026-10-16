@@ -26,7 +26,7 @@ from app.modelos import (
     Sugestao,
     Usuario,
 )
-from app.servicos.classificacao import Proposta, complemento_da_proposta
+from app.servicos.classificacao import Proposta, aplicacao_automatica, complemento_da_proposta
 from app.servicos.contas_chave import naturezas, nome_do_tipo
 from app.servicos.contas_permitidas import FiltroContas, carregar_filtro
 from app.servicos.fornecedores import pela_ia
@@ -186,6 +186,7 @@ def candidatas(sessao: Session, empresa: Empresa, movimentos: list[MovimentoExtr
             and not sugestao.revisado_ia
             and sugestao.conferido_por_id is None
             and sugestao.fornecedor_id is None
+            and not aplicacao_automatica(movimento)  # dinheiro que não sai da empresa: nunca receita nem despesa
         ):
             escolhidas.append(sugestao)
     return escolhidas
@@ -208,6 +209,9 @@ def _linha(numero: int, sugestao: Sugestao, contas: dict[int, ContaContabil], fi
             atual = f" | regras sugeriram {contrapartida.reduzido} ({sugestao.justificativa})"
     sentido = "SAÍDA (pagamento)" if m.sentido == "SAIDA" else "ENTRADA (recebimento)"
     cliente = f' | o cliente disse que é: "{sugestao.resposta_cliente}"' if sugestao.resposta_cliente else ""
+    if (linha := m.linha_demonstrativo) is not None:  # o demonstrativo diz quem recebeu e o que foi pago
+        quem = f"{linha.favorecido} / " if linha.favorecido else ""
+        cliente += f' | demonstrativo: "{quem}{linha.especificacao}" ({linha.grupo or linha.documento_tipo or "-"})'
     return (
         f"{numero}. {m.data:%d/%m/%Y} | {sentido} | R$ {m.valor} | {m.historico} | {m.complemento or '-'} | "
         f"banco: {f'{banco.reduzido} {banco.descricao}' if banco else '(sem conta no plano)'}{unidade}{atual}{cliente}"
@@ -243,7 +247,11 @@ def classificar_com_ia(
     resultado = ResultadoIA()
     movimentos = sessao.scalars(
         select(MovimentoExtrato)
-        .where(MovimentoExtrato.empresa_id == empresa.id, MovimentoExtrato.data.between(inicio, fim))
+        .where(
+            MovimentoExtrato.empresa_id == empresa.id,
+            MovimentoExtrato.data.between(inicio, fim),
+            MovimentoExtrato.desdobrado.is_(False),
+        )
         .order_by(MovimentoExtrato.data, MovimentoExtrato.conta_bancaria_id, MovimentoExtrato.ordem)
     ).all()
     sugestoes = candidatas(sessao, empresa, list(movimentos))
@@ -326,6 +334,11 @@ def _aplicar(
         favorecido=" ".join(str(item.get("favorecido") or "").upper().split())[:200],
         natureza=" ".join(str(item.get("natureza") or "").upper().split())[:200],
     )
+    if (linha := movimento.linha_demonstrativo) is not None:  # quem e o quê vêm do demonstrativo, não da IA
+        if linha.favorecido:
+            proposta.favorecido = linha.favorecido
+        proposta.natureza = linha.especificacao or proposta.natureza
+        proposta.documento = linha.documento
     debito, credito = (conta, banco) if movimento.sentido == "SAIDA" else (banco, conta)
     sugestao.conta_debito, sugestao.conta_credito = debito, credito
     sugestao.complemento = complemento_da_proposta(empresa, proposta, movimento)

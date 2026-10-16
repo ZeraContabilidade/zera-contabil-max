@@ -88,15 +88,59 @@ class MovimentoExtrato(Base):
     documento: Mapped[str | None] = mapped_column(String(60))
     codigo_banco: Mapped[str | None] = mapped_column(String(10))  # código do histórico no banco (BB: 109, 144...)
     hash: Mapped[str] = mapped_column(String(64))
+    # desdobrado pelo demonstrativo (uma transferência = rateio de várias guias: INSS + IRRF + PIS…): a linha do banco
+    # fica de fora (sem sugestão) e cada parte vira um movimento com a sua sugestão; as partes apontam para ela
+    desdobrado: Mapped[bool] = mapped_column(default=False, server_default=false())
+    parte_de_id: Mapped[int | None] = mapped_column(ForeignKey("movimento_extrato.id", ondelete="CASCADE"), index=True)
 
     conta_bancaria: Mapped[ContaBancaria] = relationship()
     sugestao: Mapped["Sugestao | None"] = relationship(
         foreign_keys="Sugestao.movimento_id", back_populates="movimento", uselist=False
     )
+    linha_demonstrativo: Mapped["LinhaDemonstrativo | None"] = relationship(back_populates="movimento", uselist=False)
 
     @property
     def descricao(self) -> str:
         return f"{self.historico} {self.complemento or ''}".strip()
+
+
+class LinhaDemonstrativo(Base):
+    """Uma linha do demonstrativo da prestação de contas (pagamento ou receita), ligada ao movimento do extrato que ela
+    explica — o favorecido de verdade, o CNPJ, o que foi pago e o nº da nota (pedido de 15/10/2026). Importada em
+    bloco: o arquivo e o resumo ficam na Importacao. Um demonstrativo por empresa (creche) e mês."""
+
+    __tablename__ = "linha_demonstrativo"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    empresa_id: Mapped[int] = mapped_column(ForeignKey("empresa.id"), index=True)
+    importacao_id: Mapped[int] = mapped_column(ForeignKey("importacao.id"))
+    mes: Mapped[date] = mapped_column(Date)  # 1º dia do mês do demonstrativo
+    ordem: Mapped[int]
+    sentido: Mapped[str] = mapped_column(String(8))  # SAIDA (pagamento) ou ENTRADA (receita)
+    valor: Mapped[Decimal] = mapped_column(Numeric(14, 2))
+    favorecido: Mapped[str] = mapped_column(String(200), default="")  # como está escrito, com o CNPJ
+    nome: Mapped[str] = mapped_column(String(200), default="")  # sem o CNPJ
+    cnpj_cpf: Mapped[str | None] = mapped_column(String(14))
+    especificacao: Mapped[str] = mapped_column(String(200), default="")
+    grupo: Mapped[str] = mapped_column(String(60), default="")
+    item: Mapped[int | None]
+    documento_tipo: Mapped[str] = mapped_column(String(30), default="")
+    documento_numero: Mapped[str] = mapped_column(String(40), default="")  # vazio = S/N
+    documento_data: Mapped[date | None] = mapped_column(Date)
+    transferencia: Mapped[str] = mapped_column(String(40), default="")  # nº no banco, só dígitos
+    data: Mapped[date | None] = mapped_column(Date)  # data do pagamento
+    conta_bancaria_id: Mapped[int | None] = mapped_column(ForeignKey("conta_bancaria.id"))
+    movimento_id: Mapped[int | None] = mapped_column(
+        ForeignKey("movimento_extrato.id", ondelete="SET NULL"), unique=True
+    )
+
+    importacao: Mapped[Importacao] = relationship()
+    movimento: Mapped[MovimentoExtrato | None] = relationship(back_populates="linha_demonstrativo")
+
+    @property
+    def documento(self) -> str:
+        """Como vai no fim do histórico: “657” ou “S/N”."""
+        return self.documento_numero or "S/N"
 
 
 class ModeloPlanilha(Auditavel, Base):

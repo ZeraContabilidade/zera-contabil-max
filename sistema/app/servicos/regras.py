@@ -66,7 +66,9 @@ def quantas_combinam(sessao: Session, empresa: Empresa, regra: Padrao, periodo: 
     inicio, fim = periodo.limites
     movimentos = sessao.scalars(
         select(MovimentoExtrato).where(
-            MovimentoExtrato.empresa_id == empresa.id, MovimentoExtrato.data.between(inicio, fim)
+            MovimentoExtrato.empresa_id == empresa.id,
+            MovimentoExtrato.data.between(inicio, fim),
+            MovimentoExtrato.desdobrado.is_(False),
         )
     )
     return sum(combina(regra, movimento) for movimento in movimentos)

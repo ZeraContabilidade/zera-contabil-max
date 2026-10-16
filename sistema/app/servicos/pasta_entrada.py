@@ -6,7 +6,8 @@ inclusive nas subpastas dos meses (“EXTRATOS 2026\\1. JANEIRO”). Só LÊ —
 - OFX primeiro, PDF depois. Arquivo que não traz nenhum movimento novo (o PDF do mesmo mês que o OFX já trouxe, ou o
   mesmo extrato baixado de novo) NÃO vira mais um extrato na lista: fica anotado como “igual”.
 - PDF de banco sem leitor próprio NÃO vai para a IA aqui (custo sem ninguém ver): fica listado para mandar pela tela.
-- Planilhas (Excel/CSV) não são lidas sozinhas — na pasta do cliente costumam ser outras coisas; mande pela tela.
+- O demonstrativo da prestação de contas (Excel com o “BLOCO 4 - PAGAMENTOS EFETUADOS”) é lido sozinho, depois dos
+  extratos (15/10/2026). As outras planilhas não — na pasta do cliente costumam ser outras coisas; mande pela tela.
 """
 
 import hashlib
@@ -18,7 +19,9 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.leitores import NaoReconhecido
-from app.modelos import ArquivoOriginal, ArquivoPasta, Empresa, Extrato, Usuario
+from app.leitores.demonstrativo import e_demonstrativo
+from app.modelos import ArquivoOriginal, ArquivoPasta, Empresa, Extrato, Importacao, Usuario
+from app.servicos.demonstrativos import importar_demonstrativo
 from app.servicos.exportacao_automatica import meses_entre
 from app.servicos.extratos import importar_extrato
 from app.servicos.plano import ErroLeitura
@@ -36,6 +39,7 @@ class PastaInvalida(Exception):
 @dataclass
 class ResultadoPasta:
     lidos: list[tuple[str, Extrato]] = field(default_factory=list)
+    demonstrativos: list[tuple[str, Importacao]] = field(default_factory=list)
     ja_lidos: int = 0  # sem mudança desde a última busca, cópia, ou nada novo
     sem_leitor: list[str] = field(default_factory=list)
     planilhas: list[str] = field(default_factory=list)
@@ -43,16 +47,19 @@ class ResultadoPasta:
 
     @property
     def meses(self) -> set[date]:
-        return {mes for _, extrato in self.lidos for mes in meses_entre(extrato.inicio, extrato.fim)}
+        meses = {mes for _, extrato in self.lidos for mes in meses_entre(extrato.inicio, extrato.fim)}
+        return meses | {date.fromisoformat(i.resumo["mes"]) for _, i in self.demonstrativos}
 
     @property
     def novos(self) -> int:
         return sum(extrato.importacao.resumo.get("novos", 0) for _, extrato in self.lidos)
 
     def resumo(self) -> str:
-        if not self.lidos:
+        if not self.lidos and not self.demonstrativos:
             return f"Pasta do cliente: nenhum extrato novo ({self.ja_lidos} arquivo(s) já estavam no sistema)."
         texto = f"Pasta do cliente: {len(self.lidos)} extrato(s) lido(s) com {self.novos} movimento(s) novo(s)"
+        if self.demonstrativos:
+            texto += f", {len(self.demonstrativos)} demonstrativo(s)"
         if self.ja_lidos:
             texto += f", {self.ja_lidos} já estavam no sistema"
         return texto + "."
@@ -146,6 +153,17 @@ def _olhar(sessao, empresa, usuario, caminho: Path, tamanho: int, conhecidos: se
         resultado.ja_lidos += 1
         return "IGUAL", "o mesmo conteúdo já tinha entrado", impressao
     conhecidos.add(impressao)
+    if caminho.suffix.lower() in PLANILHAS and e_demonstrativo(conteudo):
+        ponto = sessao.begin_nested()
+        try:
+            importacao = importar_demonstrativo(sessao, empresa, nome, conteudo, usuario)
+        except ErroLeitura as erro:
+            ponto.rollback()
+            resultado.erros.append((nome, str(erro)))
+            return "ERRO", str(erro)[:2000], impressao
+        ponto.commit()
+        resultado.demonstrativos.append((nome, importacao))
+        return "LIDO", f"demonstrativo de {importacao.resumo['mes'][:7]}", impressao
     if caminho.suffix.lower() in PLANILHAS:
         resultado.planilhas.append(nome)
         return "PLANILHA", "planilha: se for extrato, mande pela tela", impressao

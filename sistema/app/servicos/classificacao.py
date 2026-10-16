@@ -13,10 +13,11 @@ escolheu (origem USUARIO) e o que já foi exportado nunca é refeito.
 """
 
 import re
-from collections import defaultdict
+from collections import Counter, defaultdict
 from dataclasses import dataclass, field
 from datetime import date, timedelta
 from decimal import Decimal
+from types import SimpleNamespace
 
 from rapidfuzz import fuzz
 from sqlalchemy import select
@@ -27,6 +28,7 @@ from app.modelos import (
     ContaChave,
     ContaContabil,
     Empresa,
+    LancamentoHistorico,
     MovimentoExtrato,
     Padrao,
     Sugestao,
@@ -40,7 +42,7 @@ from app.servicos.documentos import formatar_documento, normalizar_documento, ti
 PROTEGIDAS = ("USUARIO",)  # origem que a classificação automática nunca troca
 
 REGRAS_BANCO = (
-    ("RENDIMENTO", "ENTRADA", re.compile(r"\bJUROS\b|REAJUSTE MONETARIO|RENDIMENTO|REMUNERACAO BASICA|RENDE FACIL")),
+    ("RENDIMENTO", "ENTRADA", re.compile(r"\bJUROS\b|REAJUSTE MONETARIO|RENDIMENTO|REMUNERACAO BASICA")),
     ("IR_RETIDO", "SAIDA", re.compile(r"IMPOSTO DE RENDA")),
     ("TARIFA", "SAIDA", re.compile(r"\bTARIFA|\bTAR\b|CESTA DE (SERVICOS|RELACIONAMENTO)|PACOTE DE SERVICOS")),
     ("IOF", "SAIDA", re.compile(r"\bIOF\b")),
@@ -52,6 +54,12 @@ NATUREZA_REGRA = {
     "IOF": "IOF",
 }
 _TRANSFERENCIA = re.compile(r"POUP|APLICAC|RESGAT|TRANSF|TRANSFERIDO")
+# aplicação/resgate automático entre a conta corrente e a poupança/aplicação da própria empresa: o dinheiro não sai
+# da empresa — nunca é receita nem despesa (o “BB Rende Fácil” é dentro da própria conta corrente)
+_APLICACAO_AUTOMATICA = re.compile(
+    r"RENDE FACIL|APLICACAO AUTOMATICA|RESGATE AUTOMATICO|APLICACAO POUPANCA|RESGATE POUPANCA|CURTO PRAZO AUTOMATIC"
+)
+FOLGA_APLICACAO = 3  # a poupança registra o resgate/aplicação automático até 3 dias depois da conta corrente
 _RAIZ_CNPJ = re.compile(r"\b\d{2}\.\d{3}\.\d{3}\b")
 
 
@@ -99,6 +107,7 @@ class Proposta:
     debito_credito: tuple[ContaContabil | None, ContaContabil | None] | None = None  # transferência: as duas
     status: str | None = None  # força o status (IGNORADO)
     par: MovimentoExtrato | None = None
+    documento: str = ""  # nº da nota/recibo (vem do demonstrativo); vazio = S/N
 
 
 @dataclass
@@ -110,6 +119,8 @@ class Contexto:
     padroes: dict[str, list[Padrao]]
     movimentos_do_periodo: list[MovimentoExtrato]
     filtro: FiltroContas
+    # natureza do histórico → contas onde foi lançada (“SALARIO MENSAL” → 7007…), para o demonstrativo
+    naturezas: dict[tuple[str, str], Counter] = field(default_factory=dict)
     pares_usados: set[int] = field(default_factory=set)  # já pareados (aqui ou pelo usuário)
     par_de: dict[int, MovimentoExtrato] = field(default_factory=dict)  # a outra ponta, para as duas usarem
 
@@ -134,12 +145,31 @@ def _carregar(sessao: Session, empresa: Empresa, movimentos: list[MovimentoExtra
         sessao.scalars(
             select(MovimentoExtrato).where(
                 MovimentoExtrato.empresa_id == empresa.id,
-                MovimentoExtrato.data.between(min(datas) - timedelta(days=1), max(datas) + timedelta(days=1)),
+                MovimentoExtrato.data.between(
+                    min(datas) - timedelta(days=FOLGA_APLICACAO + 1), max(datas) + timedelta(days=FOLGA_APLICACAO + 1)
+                ),
+                MovimentoExtrato.desdobrado.is_(False),
             )
         )
     )
     filtro = carregar_filtro(sessao, empresa, list(contas.values()))
-    return Contexto(empresa, contas, {c.reduzido: c for c in contas.values()}, chaves, padroes, periodo, filtro)
+    contexto = Contexto(empresa, contas, {c.reduzido: c for c in contas.values()}, chaves, padroes, periodo, filtro)
+    if any(m.linha_demonstrativo is not None for m in movimentos):
+        naturezas: dict[tuple[str, str], Counter] = defaultdict(Counter)
+        for sentido, natureza, conta_id in sessao.execute(
+            select(
+                LancamentoHistorico.sentido, LancamentoHistorico.natureza, LancamentoHistorico.contrapartida_id
+            ).where(
+                LancamentoHistorico.empresa_id == empresa.id,
+                LancamentoHistorico.contrapartida_id.is_not(None),
+                LancamentoHistorico.natureza.is_not(None),
+                LancamentoHistorico.sentido.in_(("SAIDA", "ENTRADA")),
+            )
+        ):
+            if len(chave := chave_natureza(natureza)) >= 3:
+                naturezas[(sentido, chave)][conta_id] += 1
+        contexto.naturezas = dict(naturezas)
+    return contexto
 
 
 # ---------------------------------------------------------------- passos
@@ -147,6 +177,10 @@ def _carregar(sessao: Session, empresa: Empresa, movimentos: list[MovimentoExtra
 
 def _texto(movimento: MovimentoExtrato) -> str:
     return normalizar(f"{movimento.historico} {movimento.complemento or ''}")
+
+
+def aplicacao_automatica(movimento: MovimentoExtrato) -> bool:
+    return bool(_APLICACAO_AUTOMATICA.search(_texto(movimento)))
 
 
 def _da_empresa(movimento: MovimentoExtrato) -> bool:
@@ -162,18 +196,25 @@ def _transferencia(ctx: Contexto, movimento: MovimentoExtrato) -> Proposta | Non
     if not sinal:
         return None
     oposto = "ENTRADA" if movimento.sentido == "SAIDA" else "SAIDA"
-    par = ctx.par_de.get(movimento.id) or next(
-        (
-            outro
-            for outro in ctx.movimentos_do_periodo
-            if outro.conta_bancaria_id != movimento.conta_bancaria_id
-            and outro.data == movimento.data
-            and outro.valor == movimento.valor
-            and outro.sentido == oposto
-            and outro.id not in ctx.pares_usados
-            and movimento.id not in ctx.pares_usados
-        ),
-        None,
+    automatica = aplicacao_automatica(movimento)
+
+    def serve(outro: MovimentoExtrato) -> bool:
+        if (
+            outro.conta_bancaria_id == movimento.conta_bancaria_id
+            or outro.valor != movimento.valor
+            or outro.sentido != oposto
+            or outro.parte_de_id
+            or outro.id in ctx.pares_usados
+            or movimento.id in ctx.pares_usados
+        ):
+            return False
+        dias = abs((outro.data - movimento.data).days)
+        # resgate automático: a conta corrente registra no dia 03, a poupança no dia 04
+        return dias == 0 or (automatica and aplicacao_automatica(outro) and dias <= FOLGA_APLICACAO)
+
+    candidatos = [outro for outro in ctx.movimentos_do_periodo if serve(outro)]
+    par = ctx.par_de.get(movimento.id) or min(
+        candidatos, key=lambda o: (abs((o.data - movimento.data).days), o.data, o.ordem), default=None
     )
     if par is None:
         if not _da_empresa(movimento):
@@ -284,6 +325,22 @@ def _conta_do_padrao(ctx: Contexto, padrao: Padrao, valor: Decimal) -> tuple[Con
     return ctx.contas.get(padrao.conta_id) if padrao.conta_id else None, natureza_para_exibir(padrao.natureza) or ""
 
 
+def _na_unidade(ctx: Contexto, movimento: MovimentoExtrato, conta_id: int | None) -> int | None:
+    """A conta que vale nesta creche/projeto (a de outra creche vira a mesma desta)."""
+    conta = ctx.contas.get(conta_id) if conta_id else None
+    ajustada, _ = ctx.filtro.ajustar(conta, ctx.banco(movimento))
+    return ajustada.id if ajustada else conta_id
+
+
+def _duvida_some_na_unidade(ctx: Contexto, movimento: MovimentoExtrato, padrao: Padrao) -> bool:
+    """O favorecido foi lançado em contas de creches diferentes (SABESP: ÁGUA - CARMEM e ÁGUA - JANDIRA, num Diário
+    da associação inteira): nesta creche todas viram a mesma conta — então não há dúvida."""
+    contas = [ctx.por_reduzido.get(item["conta"]) for item in (padrao.detalhes or {}).get("contas", [])]
+    if len(contas) < 2 or None in contas:
+        return False
+    return len({_na_unidade(ctx, movimento, conta.id) for conta in contas}) == 1
+
+
 def _proposta_do_padrao(ctx, movimento, padrao: Padrao, confianca: int, origem: str, motivo: str) -> Proposta:
     conta, natureza = _conta_do_padrao(ctx, padrao, movimento.valor)
     vezes = f"{padrao.ocorrencias} lançamento(s) no histórico"
@@ -298,7 +355,7 @@ def _proposta_do_padrao(ctx, movimento, padrao: Padrao, confianca: int, origem: 
             padrao.cnpj_cpf or "",
             natureza,
         )
-    if padrao.ambiguo:
+    if padrao.ambiguo and not _duvida_some_na_unidade(ctx, movimento, padrao):
         confianca = min(confianca, 70)
         motivo += " (lançado em contas diferentes no histórico: confira)"
     return Proposta(
@@ -339,7 +396,8 @@ def _por_nome(ctx: Contexto, movimento: MovimentoExtrato) -> Proposta | None:
         return None
     notas.sort(key=lambda n: n[:5], reverse=True)
     nota, _, valor_bate, quando, _, padrao = notas[0]
-    empatados = [n for n in notas if n[0] == nota and n[5].conta_id != padrao.conta_id]
+    na_unidade = _na_unidade(ctx, movimento, padrao.conta_id)
+    empatados = [n for n in notas if n[0] == nota and _na_unidade(ctx, movimento, n[5].conta_id) != na_unidade]
     # o mesmo nome em contas diferentes: vale o mais recente se a prática mudou (2025 → 2026); senão confira
     duvida = any(quando - n[3] < timedelta(days=60) for n in empatados)
     confianca = (95 if valor_bate else 92) if nota == 100 else (90 if nota >= 90 else 80)
@@ -384,7 +442,123 @@ def _regra_do_escritorio(ctx: Contexto, movimento: MovimentoExtrato) -> Proposta
     return None
 
 
-PASSOS = (_transferencia, _regra_do_escritorio, _regra_de_banco, _por_cnpj, _por_nome, _por_palavra, _por_valor)
+def chave_natureza(texto: str | None) -> str:
+    """“MAT. DE LIMPEZA (SABÃO)” → “MAT LIMPEZA”; “SERVIÇOS CONTÁBEIS (AGOSTO)” → “SERVICOS CONTABEIS”."""
+    return normalizar_natureza(re.sub(r"\([^)]*\)", " ", texto or ""))
+
+
+def _por_natureza(ctx: Contexto, movimento: MovimentoExtrato, especificacao: str) -> Proposta | None:
+    """O que foi pago (do demonstrativo) → a conta onde o histórico lança isso, já na conta desta creche."""
+    chave = chave_natureza(especificacao)
+    if len(chave) < 3:
+        return None
+    banco = ctx.banco(movimento)
+    pontos: Counter = Counter()
+    vezes_por_conta: Counter = Counter()
+    for (sentido, outra), contas in ctx.naturezas.items():
+        if sentido != movimento.sentido:
+            continue
+        if outra == chave:
+            peso = 2
+        elif min(len(outra), len(chave)) >= 5 and fuzz.token_set_ratio(outra, chave) >= 90:
+            peso = 1
+        else:
+            continue
+        for conta_id, vezes in contas.items():
+            conta, _ = ctx.filtro.ajustar(ctx.contas.get(conta_id), banco)
+            if conta is not None:
+                pontos[conta.id] += vezes * peso
+                vezes_por_conta[conta.id] += vezes
+    if not pontos:
+        return None
+    conta_id, melhor = pontos.most_common(1)[0]
+    parte = melhor / sum(pontos.values())
+    conta, vezes = ctx.contas[conta_id], vezes_por_conta[conta_id]
+    confianca = 95 if parte >= 0.9 else 90 if parte >= 0.75 else 70
+    if vezes < 3:  # visto uma ou duas vezes no histórico: sugere, mas para conferir
+        confianca = min(confianca, 75)
+    return Proposta(
+        conta,
+        confianca,
+        "DEMONSTRATIVO",
+        f"“{especificacao}” é lançado em {conta.rotulo} no histórico ({vezes} vez(es), {round(parte * 100)}%).",
+    )
+
+
+def _pelo_demonstrativo(ctx: Contexto, movimento: MovimentoExtrato) -> Proposta | None:
+    """A linha do banco tem a sua linha no demonstrativo: vale o que ele diz — quem recebeu, o que foi pago e o nº
+    do documento — e a conta sai do histórico por essa natureza (ou pelo favorecido/CNPJ de verdade)."""
+    linha = movimento.linha_demonstrativo
+    if linha is None:
+        return None
+    proposta = _regra_do_escritorio(ctx, movimento) or _por_natureza(ctx, movimento, linha.especificacao)
+    if proposta is None and (linha.nome or linha.cnpj_cpf):
+        cnpj = formatar_documento(linha.cnpj_cpf) if linha.cnpj_cpf else ""
+        virtual = SimpleNamespace(
+            id=movimento.id,
+            data=movimento.data,
+            valor=movimento.valor,
+            sentido=movimento.sentido,
+            conta_bancaria=movimento.conta_bancaria,
+            historico=linha.especificacao,
+            complemento=" ".join(p for p in (linha.nome, cnpj) if p),
+            documento="",
+        )
+        proposta = next((p for passo in (_por_cnpj, _por_nome, _por_palavra) if (p := passo(ctx, virtual))), None)
+    if proposta is None:  # o banco também ajuda (o repasse da prefeitura, a tarifa)
+        passos = (_regra_de_banco, _por_cnpj, _por_nome, _por_palavra, _por_valor)
+        proposta = next((p for passo in passos if (p := passo(ctx, movimento)) is not None), None)
+    if proposta is None:
+        proposta = Proposta(
+            None, 40, "DEMONSTRATIVO", "O histórico não tem conta para isto: escolha a conta (a IA também olha)."
+        )
+    if linha.favorecido:  # como o escritório escrevia: o favorecido do demonstrativo já traz o CNPJ
+        proposta.favorecido, proposta.cnpj = linha.favorecido, ""
+    proposta.natureza = linha.especificacao or proposta.natureza
+    proposta.documento = linha.documento
+    item = f" item {linha.item}" if linha.item else ""
+    proposta.justificativa = (
+        f"📋 Demonstrativo{item} ({linha.documento_tipo or 'sem documento'}): {proposta.justificativa}"
+    )
+    return proposta
+
+
+def _aplicacao_sem_par(ctx: Contexto, movimento: MovimentoExtrato) -> Proposta | None:
+    """Aplicação/resgate automático sem a outra ponta no sistema: nunca vira receita nem despesa (nem vai para a IA)."""
+    if not aplicacao_automatica(movimento):
+        return None
+    if "RENDE FACIL" in _texto(movimento):
+        return Proposta(
+            None,
+            95,
+            "TRANSFERENCIA",
+            "BB Rende Fácil: aplicação/resgate automático dentro da própria conta — o dinheiro continua no banco, "
+            "não gera lançamento.",
+            natureza="APLICACAO AUTOMATICA",
+            status="IGNORADO",
+        )
+    return Proposta(
+        None,
+        50,
+        "TRANSFERENCIA",
+        "Aplicação/resgate automático entre contas da própria empresa, mas a outra ponta (poupança/aplicação) não "
+        "está no sistema: envie o extrato dela ou escolha a conta.",
+        favorecido=movimento.complemento or "",
+        natureza="APLICACAO/RESGATE AUTOMATICO",
+    )
+
+
+PASSOS = (
+    _pelo_demonstrativo,
+    _transferencia,
+    _regra_do_escritorio,
+    _regra_de_banco,
+    _por_cnpj,
+    _por_nome,
+    _por_palavra,
+    _por_valor,
+    _aplicacao_sem_par,
+)
 
 
 # ---------------------------------------------------------------- gravar
@@ -424,17 +598,24 @@ def complemento_da_proposta(empresa: Empresa, proposta: Proposta, movimento: Mov
         # sem natureza achada, vale o que o cliente respondeu na planilha de perguntas
         "NATUREZA": proposta.natureza
         or ((movimento.sugestao.resposta_cliente or "").upper() if movimento.sugestao else ""),
-        "DOCUMENTO": "S/N",
+        "DOCUMENTO": proposta.documento or "S/N",
     }
     return montar_complemento(empresa.modelo_complemento or MODELO_PADRAO, valores)[:300]
 
 
 def classificar(sessao: Session, empresa: Empresa, inicio: date, fim: date) -> ResultadoClassificacao:
     """Classifica os movimentos da empresa no período. Não mexe no que o usuário escolheu nem no exportado."""
+    from app.servicos.demonstrativos import cruzar_periodo
+
+    cruzar_periodo(sessao, empresa, inicio, fim)  # extrato novo: liga as linhas do demonstrativo que esperavam
     movimentos = list(
         sessao.scalars(
             select(MovimentoExtrato)
-            .where(MovimentoExtrato.empresa_id == empresa.id, MovimentoExtrato.data.between(inicio, fim))
+            .where(
+                MovimentoExtrato.empresa_id == empresa.id,
+                MovimentoExtrato.data.between(inicio, fim),
+                MovimentoExtrato.desdobrado.is_(False),  # a linha do banco desdobrada vale pelas partes
+            )
             .order_by(MovimentoExtrato.data, MovimentoExtrato.conta_bancaria_id, MovimentoExtrato.ordem)
         )
     )
@@ -458,11 +639,12 @@ def classificar(sessao: Session, empresa: Empresa, inicio: date, fim: date) -> R
                 resultado.contar(sugestao)
                 continue
             proposta = next((p for passo in PASSOS if (p := passo(ctx, movimento)) is not None), None)
-            if (
-                sugestao
-                and sugestao.origem == "IA"
-                and (proposta is None or proposta.confianca < empresa.limiar_aprovacao)
-            ):
+            forte = proposta is not None and (
+                proposta.confianca >= empresa.limiar_aprovacao
+                # aplicação/resgate automático: a IA nunca devia ter dado conta de receita ou despesa
+                or (proposta.origem == "TRANSFERENCIA" and aplicacao_automatica(movimento))
+            )
+            if sugestao and sugestao.origem == "IA" and not forte:
                 resultado.contar(sugestao)  # a resposta da IA vale até uma regra achar algo certo
                 continue
             if proposta is None:

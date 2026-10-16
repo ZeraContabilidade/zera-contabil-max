@@ -10,13 +10,16 @@
       <span class="zona-icone" aria-hidden="true"><svg class="ico"><use href="#i-extratos"></use></svg></span>
       <span class="zona-titulo">Arraste os extratos para cá</span>
       <span class="zona-sub">ou <span class="zona-escolher">escolha os arquivos</span> — vários de uma vez, de um ou mais meses</span>
-      <span class="zona-formatos" aria-label="Formatos aceitos"><span>OFX</span><span>Excel / CSV</span><span>PDF Banco do Brasil</span><span>PDF de outros bancos · IA</span></span>
+      <span class="zona-formatos" aria-label="Formatos aceitos"><span>OFX</span><span>Excel / CSV</span><span>PDF Banco do Brasil</span><span>PDF de outros bancos · IA</span><span>📋 Demonstrativo (Excel)</span></span>
     </label>
     <details class="zona-ajuda"><summary>Como cada arquivo é lido</summary>
       <p class="dica">O sistema descobre sozinho o banco, a conta e o mês. Lê <strong>OFX de qualquer banco</strong>,
         <strong>Excel/CSV</strong> (na 1ª vez de cada modelo de planilha você confere as colunas), os <strong>PDFs do Banco do
         Brasil</strong> e, com a IA ligada, <strong>PDF de outros bancos</strong> (só entra se o saldo conferir). Nada é
         duplicado: mandar o mesmo extrato de novo só confirma o que já está lá.</p>
+      <p class="dica"><strong>Demonstrativo da prestação de contas</strong> (o Excel com o “BLOCO 4 - PAGAMENTOS EFETUADOS”):
+        mande junto com o extrato do mês. Cada linha do banco ganha o favorecido de verdade, o CNPJ, o que foi pago e o nº
+        da nota; a transferência do rateio das guias vira um lançamento para cada guia. Mandar de novo troca o anterior.</p>
     </details>
     <button type="submit" class="enviar-extratos">Enviar extratos</button>
   </form>
@@ -114,6 +117,39 @@
   <p class="suave">Nenhum extrato deste mês ainda. Troque o mês no alto da página para ver outros meses.</p>
   {% endif %}
 </article>
+
+{% if demonstrativos %}
+<article class="demonstrativos">
+  <header class="cabecalho-pagina"><strong>📋 Demonstrativos</strong>
+    <span class="suave">o que o cliente diz que pagou × o que saiu do banco</span></header>
+  {% for d in demonstrativos %}
+  <div class="linha-extrato">
+    <p>
+      <strong>{{ d.mes | nome_competencia }}</strong> —
+      {{ d.linhas }} linha(s): {{ d.ligadas }} ligada(s) ao extrato
+      {% if d.rateios %} · {{ d.rateios }} transferência(s) de rateio desdobrada(s){% endif %}
+      {% if not d.sem_extrato and not d.sem_demonstrativo %}<span class="etiqueta etiqueta-verde">✓ tudo bate</span>{% endif %}
+      {% if d.importacao %}<br><small class="suave">{{ d.importacao.arquivo.nome_original if d.importacao.arquivo else '' }}
+        · enviado em {{ d.importacao.quando | data_hora }}{% if d.importacao.usuario %} por {{ d.importacao.usuario.nome }}{% endif %}</small>{% endif %}
+    </p>
+    {% if d.sem_extrato %}
+    <details class="aviso aviso-atencao">
+      <summary>⚠ {{ d.sem_extrato | length }} pagamento(s) do demonstrativo não estão no extrato</summary>
+      <ul class="lista-aviso">{% for linha in d.sem_extrato %}<li>{{ linha_texto(linha) }}</li>{% endfor %}</ul>
+      <small>Confira o valor, a data e o nº da transferência no demonstrativo — ou se falta o extrato de alguma conta.</small>
+    </details>
+    {% endif %}
+    {% if d.sem_demonstrativo %}
+    <details class="aviso aviso-atencao">
+      <summary>⚠ {{ d.sem_demonstrativo | length }} pagamento(s) do extrato não estão no demonstrativo</summary>
+      <ul class="lista-aviso">{% for m in d.sem_demonstrativo %}<li>{{ m.data.strftime('%d/%m') }} R$ {{ m.valor | reais }} — {{ m.complemento or m.historico }}</li>{% endfor %}</ul>
+      <small>São classificados pelo histórico, como sempre; vale perguntar ao cliente.</small>
+    </details>
+    {% endif %}
+  </div>
+  {% endfor %}
+</article>
+{% endif %}
 
 {% if movimentos %}
 <article>

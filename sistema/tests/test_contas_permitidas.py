@@ -258,3 +258,23 @@ def test_creches_com_o_mesmo_codigo_e_cnpj_sao_cadastros_diferentes(sessao):
     assert any("já é o cadastro" in e for e in erros)
     _, erros = ler_formulario(sessao, {"codigo_dominio": "121", "unidade": ""})
     assert any("preencha a unidade" in e for e in erros)
+
+
+@pytest.mark.banco
+def test_conta_do_banco_da_creche_vem_do_historico_dela(sessao, creche):
+    from app.modelos import ContaBancaria, ContaChave
+    from app.servicos.contas_permitidas import ligar_contas_da_unidade
+
+    linhas = [f"{dia:02d}/07/2026;7011;8;100,00;;SABESP - AGUA - S/N;1;121;;" for dia in range(1, 7)]
+    importar_historico(sessao, creche, "carmem.txt", "\r\n".join(linhas).encode("cp1252"), None)
+    chave = ContaChave(empresa_id=creche.id, tipo="POUPANCA", referencia="BB conta 55555-5", origem="IA", confianca=60)
+    sessao.add(chave)
+    sessao.flush()
+    sessao.add(ContaBancaria(empresa_id=creche.id, banco_codigo="001", banco_nome="Banco do Brasil", agencia="1234-5",
+                             numero="55555-5", tipo="POUPANCA", conta_chave_id=chave.id))  # fmt: skip
+    sessao.commit()
+    assert ligar_contas_da_unidade(sessao, creche) == 1
+    assert chave.conta.reduzido == 8 and "CARMEM DIAS" in chave.justificativa
+    chave.origem = "USUARIO"  # a escolha do usuário nunca é trocada
+    chave.conta_id = None
+    assert ligar_contas_da_unidade(sessao, creche) == 0

@@ -16,6 +16,7 @@ from app.rotas.revisao import contexto_aba_revisao
 from app.servicos import backup
 from app.servicos.competencia import valor_campo_mes
 from app.servicos.complemento import EXEMPLO, montar_complemento
+from app.servicos.contas_permitidas import ligar_contas_da_unidade
 from app.servicos.empresas import (
     ResultadoConsulta,
     aplicar_edicao,
@@ -285,8 +286,11 @@ def editar_empresa(
         return _tela_empresa(request, sessao, empresa, "cadastro", erros=erros, dados=form, status_code=400)
     cnpj_mudou = valores["cnpj_cpf"] != empresa.cnpj_cpf
     ligou_automatica = valores.get("exportacao_automatica") and not empresa.exportacao_automatica
+    unidade_mudou = valores.get("unidade", empresa.unidade) != empresa.unidade
     aplicar_edicao(empresa, valores)
     resultado = completar_pelo_cnpj(empresa) if cnpj_mudou else ResultadoConsulta("sem_cnpj")
+    if unidade_mudou and empresa.unidade and ligar_contas_da_unidade(sessao, empresa):
+        avisar(request, "🤖 Conta do banco da creche achada pelo histórico dela (veja a aba Extratos).")
     sessao.commit()
     avisar(request, f"Cadastro de {empresa.nome} salvo.")
     avisar_consulta(request, resultado)

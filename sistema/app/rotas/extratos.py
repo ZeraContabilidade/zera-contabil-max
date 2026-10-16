@@ -13,6 +13,7 @@ from sqlalchemy.orm import Session
 from app.auth import usuario_logado
 from app.db import obter_sessao
 from app.ia.servico import IAIndisponivel
+from app.leitores.demonstrativo import e_demonstrativo
 from app.leitores.planilha import NOMES_PAPEIS, PAPEIS, texto_celula
 from app.modelos import TIPOS_CONTA, ArquivoOriginal, ContaBancaria, Empresa, Extrato, Importacao, Usuario
 from app.rotas.comum import buscar_empresa
@@ -20,8 +21,10 @@ from app.rotas.exportar import exportar_sozinho
 from app.servicos.armazenamento import obter_armazenamento
 from app.servicos.classificacao import classificar
 from app.servicos.classificacao_ia import classificar_com_ia
-from app.servicos.competencia import Periodo, hoje, valor_campo_mes
+from app.servicos.competencia import Periodo, como_periodo, hoje, nome_competencia, valor_campo_mes
 from app.servicos.contas_chave import BANCOS
+from app.servicos.contas_permitidas import ligar_contas_da_unidade
+from app.servicos.demonstrativos import importar_demonstrativo, linha_texto, meses_com_demonstrativo
 from app.servicos.exportacao_automatica import meses_entre
 from app.servicos.extratos import (
     contas_bancarias,
@@ -46,6 +49,7 @@ ORIGENS = {
     "NOME": "pelo nome",
     "PALAVRA": "palavra-chave",
     "VALOR": "pelo valor",
+    "DEMONSTRATIVO": "📋 demonstrativo",
     "PENDENTE": "não reconhecido",
     "IA": "🤖 IA",
     "USUARIO": "escolhido à mão",
@@ -86,6 +90,8 @@ def contexto_aba_extratos(sessao: Session, empresa: Empresa, competencia: date |
         "rotulo_conferencia": CONFERENCIA,
         "planilhas_esperando": planilhas_esperando(sessao, empresa),
         "nao_lidos_da_pasta": nao_lidos_sozinhos(sessao, empresa) if empresa.pasta_extratos else [],
+        "demonstrativos": meses_com_demonstrativo(sessao, empresa, como_periodo(competencia)),
+        "linha_texto": linha_texto,
         "contagem": Counter({"verde": 0, "amarela": 0, "vermelha": 0, "cinza": 0})
         + Counter(m.sugestao.cor for m in movimentos if m.sugestao),
         "origens": ORIGENS,
@@ -103,6 +109,7 @@ def classificar_de_novo(
     if (empresa := buscar_empresa(sessao, request, empresa_id)) is None:
         return redirecionar("/")
     periodo = competencia_da_tela(request, mes)
+    ligar_contas_da_unidade(sessao, empresa)  # creche: a conta do banco que o histórico dela usa
     resultado = classificar(sessao, empresa, *periodo.limites)
     sessao.commit()
     avisar(request, resultado.resumo())
@@ -155,14 +162,21 @@ def enviar_extratos(
         avisar(request, "Escolha (ou arraste) os arquivos dos extratos antes de enviar.", "erro")
         return redirecionar(destino)
 
-    confirmar, meses = [], set()
+    confirmar, meses, recebidos = [], set(), []
     for arquivo in arquivos:
         conteudo = arquivo.file.read(TAMANHO_MAXIMO + 1)
         if len(conteudo) > TAMANHO_MAXIMO:
             avisar(request, f"{arquivo.filename}: passa de 30 MB. Envie o extrato de um mês por vez.", "erro")
             continue
+        recebidos.append((arquivo.filename, conteudo, e_demonstrativo(conteudo)))
+    # extratos primeiro, demonstrativos depois: o demonstrativo já encontra as linhas do banco
+    for nome, conteudo, demonstrativo in sorted(recebidos, key=lambda r: r[2]):
+        if demonstrativo:
+            if (mes := _enviar_demonstrativo(request, sessao, empresa, usuario, nome, conteudo)) is not None:
+                meses.add(mes)
+            continue
         try:
-            extrato = importar_extrato(sessao, empresa, arquivo.filename, conteudo, usuario)
+            extrato = importar_extrato(sessao, empresa, nome, conteudo, usuario)
         except PrecisaConfirmar as pedido:
             sessao.commit()  # o arquivo e a sugestão de colunas ficam guardados esperando a confirmação
             confirmar.append(pedido.arquivo.id)
@@ -170,20 +184,43 @@ def enviar_extratos(
             continue
         except ErroLeitura as erro:
             sessao.rollback()
-            avisar(request, f"{arquivo.filename}: {erro}", "erro")
+            avisar(request, f"{nome}: {erro}", "erro")
             continue
         sessao.commit()
-        _avisar_importado(request, arquivo.filename, extrato)
+        _avisar_importado(request, nome, extrato)
         _ia_no_que_sobrou(request, sessao, empresa, usuario, extrato.inicio, extrato.fim)
         meses.update(meses_entre(extrato.inicio, extrato.fim))
     exportar_sozinho(request, sessao, empresa, meses)
-    if len(confirmar) == 1 and len(arquivos) == 1:
+    if len(confirmar) == 1 and len(recebidos) == 1:
         return redirecionar(f"/empresas/{empresa.id}/extratos/planilha/{confirmar[0]}")
     if meses:  # mostra os meses dos extratos enviados (fica no período da tela se eles estão dentro dele)
         atual = competencia_da_tela(request, None)
         if not all(atual.contem(mes) for mes in meses):
             destino += f"&mes={valor_campo_mes(Periodo.entre(min(meses), max(meses)))}"
     return redirecionar(destino)
+
+
+def _enviar_demonstrativo(request, sessao, empresa, usuario, nome: str, conteudo: bytes) -> date | None:
+    try:
+        importacao = importar_demonstrativo(sessao, empresa, nome, conteudo, usuario)
+    except ErroLeitura as erro:
+        sessao.rollback()
+        avisar(request, f"{nome}: {erro}", "erro")
+        return None
+    sessao.commit()
+    resumo = importacao.resumo
+    mes = date.fromisoformat(resumo["mes"])
+    texto = (
+        f"📋 {nome}: demonstrativo de {nome_competencia(mes)} — {resumo['pagamentos']} pagamento(s), "
+        f"{resumo['ligadas']} linha(s) ligada(s) ao extrato"
+    )
+    if resumo["desdobradas"]:
+        texto += f"; {resumo['desdobradas']} rateio(s) viraram {resumo['partes']} lançamentos"
+    avisar(request, f"{texto}. {resumo['classificacao']}", "atencao" if importacao.avisos else "ok")
+    for aviso in importacao.avisos:
+        avisar(request, aviso["texto"], "atencao")
+    _ia_no_que_sobrou(request, sessao, empresa, usuario, *Periodo.do_mes(mes).limites)
+    return mes
 
 
 @router.post("/empresas/{empresa_id}/extratos/pasta")

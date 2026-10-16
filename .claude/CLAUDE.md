@@ -58,7 +58,7 @@ app/            sistema web
   static/         estilo.css (identidade Zera), interface.js (toasts, confete, placar), tema.js, marcar.js, arrastar.js, aguarde.js, marca/ (logos, emblema, Cinzel), vendor/ (Pico, HTMX)
   ia/             cliente.py (Anthropic + falso), precos.py, servico.py (chamar_ia, limites, registro)
   leitores/       leitores de extrato como plug-ins: __init__ (tipos, ArquivoExtrato, LEITORES, ler_extrato), ferramentas.py, bb_conta_corrente.py, bb_poupanca.py, ofx.py; universal_ia.py (PDF de banco sem leitor: IA página por página, chamado pelo serviço quando `ler_extrato` levanta `NaoReconhecido`); planilha.py (Excel/CSV: só a leitura — títulos, valores, montagem; as colunas e a conta vêm de `servicos/planilha_extrato.py`)
-migracoes/      Alembic (0001 usuario+log; 0002 empresa+unaccent; 0003 conta_contabil+arquivo_original+importacao; 0004 chamada_ia; 0005 conta_chave; 0006 lancamento_historico+padrao+perfil; 0007 lançamento com um lado só; 0008 revisado_ia; 0009 conta_bancaria+extrato+movimento_extrato; 0010 modelo_planilha_banco + conta_bancaria.assinatura_planilha; 0011 sugestao; 0012 sugestao.revisado_ia; 0013 sugestao.conferido_por_id/conferido_em; 0014 empresa.limiar_aprovacao; 0015 fornecedor_a_cadastrar + sugestao.fornecedor_id; 0016 exportacao + sugestao.exportacao_id; 0017 exportacao reaberta; 0018 arquivo_original.excluido_em; 0019 exportação automática: empresa.exportacao_automatica + exportacao.automatica/baixado_em; 0020 empresa.codigo_filial + única (codigo_dominio, codigo_filial) NULLS NOT DISTINCT; 0021 exportacao.competencia_fim (exportação de um período); 0022 empresa.pasta_extratos + arquivo_pasta; 0023 sugestao.resposta_cliente/resposta_em; 0024 conferencia_dominio)
+migracoes/      Alembic (0001 usuario+log; 0002 empresa+unaccent; 0003 conta_contabil+arquivo_original+importacao; 0004 chamada_ia; 0005 conta_chave; 0006 lancamento_historico+padrao+perfil; 0007 lançamento com um lado só; 0008 revisado_ia; 0009 conta_bancaria+extrato+movimento_extrato; 0010 modelo_planilha_banco + conta_bancaria.assinatura_planilha; 0011 sugestao; 0012 sugestao.revisado_ia; 0013 sugestao.conferido_por_id/conferido_em; 0014 empresa.limiar_aprovacao; 0015 fornecedor_a_cadastrar + sugestao.fornecedor_id; 0016 exportacao + sugestao.exportacao_id; 0017 exportacao reaberta; 0018 arquivo_original.excluido_em; 0019 exportação automática: empresa.exportacao_automatica + exportacao.automatica/baixado_em; 0020 empresa.codigo_filial + única (codigo_dominio, codigo_filial) NULLS NOT DISTINCT; 0021 exportacao.competencia_fim (exportação de um período); 0022 empresa.pasta_extratos + arquivo_pasta; 0023 sugestao.resposta_cliente/resposta_em; 0024 conferencia_dominio; 0025 empresa.unidade (creche) + únicas por unidade; 0026 linha_demonstrativo + movimento_extrato.desdobrado/parte_de_id)
 scripts/        rotinas dos .bat (instalar + ocultar pastas, iniciar + backup automático, restaurar, rede, configurar_ia, banco_docker, criar_env) + banco_teste e servidor_teste
 docs/           PROGRESSO.md (diário do projeto) e ESPECIFICACAO.md (§)
 tests/          pytest (banco separado <nome>_teste); test_scripts.py confere a organização da pasta principal
@@ -87,6 +87,22 @@ AMOSTRAS/       arquivos reais da Casa Criança (fora do Git)
   passo `_regra_do_escritorio` logo depois da transferência, origem `ESCRITORIO` 97%. **Conferir com o Domínio** =
   `servicos/conferencia_dominio.py` (saldo DIGITADO como o Domínio mostra, `ler_saldo` entende D/C; ainda sem exemplo
   do Razão para ler sozinho). Arquivo escolhido que já envia: `data-enviar-ao-escolher` no `<form>` (arrastar.js).
+- **Contas permitidas (15/10):** toda conta sugerida (regras, demonstrativo e IA) passa por
+  `servicos/contas_permitidas.FiltroContas.ajustar(conta, banco)`: **unidade** (creches que dividem código/CNPJ/plano,
+  `empresa.unidade`; sem ela, a unidade da conta contábil do banco — APAE: projeto ESTIMULANDO) → a conta de outra
+  unidade vira a mesma desta ou a comum, senão None (pendente); **terceiro setor** (`empresa.terceiro_setor`) → conta de
+  fornecedor vira a despesa aprendida pela provisão. Nunca adivinhar a unidade pelo nome da empresa. Fornecedores a
+  cadastrar só com `empresa.conta_por_fornecedor`. Creche: `ligar_pela_unidade` liga CC e poupança à conta de banco
+  que o histórico dela usa (aplicações entre elas = mesma conta = sem lançamento).
+- **Demonstrativo (15/10):** `leitores/demonstrativo.ler_demonstrativo` (colunas pelos títulos do BLOCO 4; à direita do
+  VALOR as creches deixam listas de apoio — ignorar) e `servicos/demonstrativos.importar_demonstrativo` (um por
+  empresa e mês; mandar de novo troca: `desfazer_mes`). `cruzar_mes` roda dentro de `classificar` (extrato que chega
+  depois liga as linhas). Rateio: o movimento original fica `desdobrado` (sem sugestão, fora das listas e da
+  classificação) e as partes têm `parte_de_id` — consulta nova de movimentos deve excluir `desdobrado` (classificação)
+  ou `parte_de_id` (listas “como o banco mostra”). Passo `_pelo_demonstrativo` é o 1º de `PASSOS`; origem
+  `DEMONSTRATIVO`; `Proposta.documento` = nº da nota. Testes: `tests/demonstrativos.py` (`montar_demonstrativo`).
+- **Aplicação/resgate automáticos:** `classificacao.aplicacao_automatica` — pareia com até 3 dias (a poupança
+  registra depois), Rende Fácil sem lançamento, nunca vai para a IA.
 - **Filial:** cada filial é um cadastro (mesmo `codigo_dominio` da matriz + `codigo_filial`). Campo 8 do lanctos.txt = `empresa.codigo_no_lanctos` (filial ou empresa), nunca `codigo_dominio` direto; nas telas/mensagens `rotulo_codigo` (“230 · filial 231”); nos nomes de arquivo `codigo_arquivo`.
 - CNPJ/CPF: sempre por `app/servicos/documentos.py` (aceita CNPJ alfanumérico de jul/2026); gravar normalizado (só letras e números).
 - **Guarda de 5 anos:** todo arquivo entra por `guardar_arquivo` (expira em 5 anos) e é lido por `ler_arquivo` (avisa com `ArquivoApagado` se já venceu). `apagar_vencidos` roda no `INICIAR.bat` (thread do backup): marca `excluido_em`, apaga do disco só a chave que nenhum registro em vigor usa (o mesmo conteúdo é guardado uma vez) e registra um evento.

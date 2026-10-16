@@ -1,12 +1,19 @@
 # PROGRESSO — ZERA CONTÁBIL MAX
 
-Atualizado em: **09/10/2026**
+Atualizado em: **16/10/2026**
 
 ## Próximo passo exato
 **SISTEMA CONCLUÍDO E EM USO (09/10/2026).** Fases 1, 2 e 3 completas e **aceitas pelo usuário** — o `lanctos.txt`
 gerado pelo sistema foi importado no Domínio com sucesso (critério da Fase 3). Visual final “Lingote & Livro-razão”.
 Pasta organizada em 09/10 (código em `sistema\`, ferramentas em `Ferramentas\`, manuais em `Manuais\`).
-Filial (4.2) e período (4.3) feitos em 09/10; visual V1–V4 (navegação, Ctrl+K, atalhos) e as 5 sugestões em 13/10. 390 testes + 7 com IA real passando.
+Filial (4.2) e período (4.3) feitos em 09/10; visual V1–V4 (navegação, Ctrl+K, atalhos) e as 5 sugestões em 13/10.
+15–16/10 (pedido: “identificação ainda imprecisa” + “aceitar o modelo do demonstrativo”): contas por unidade (creche),
+terceiro setor na despesa, aplicação/resgate automáticos, leitores do BB das creches e o DEMONSTRATIVO cruzado com o
+extrato (rateio desdobrado).
+
+**Falta o usuário (16/10):** o extrato da Carmem Dias (conta 78640-3) está no cadastro “ROGERIO PARAVATI” (121 filial
+64). Com autorização, passar a conta para um cadastro novo “Carmem Dias” (121, unidade CARMEM DIAS) e pôr a unidade
+ROGERIO PARAVATI no cadastro da Rogério. Escolher a conta contábil do banco da Rogério (histórico sem lançamentos dela).
 
 **Falta o usuário conferir no Domínio:** importar um lanctos.txt de filial (coluna 8 = código da filial) e um de
 período (vários meses num arquivo só).
@@ -73,6 +80,35 @@ conferir com o Domínio). Próximos possíveis (só quando o usuário pedir):
 - [x] 4.3 Trabalhar por período (de mês/ano a mês/ano) e exportar o período num arquivo só
 
 ## Histórico
+
+### 15–16/10/2026 — Precisão da classificação e demonstrativo das creches
+Medido com os arquivos reais de ago/2026 da associação 121 (Carmem Dias, Jandira, Rogério, Pastor Mario) numa CÓPIA do
+banco (`zera_copia`), sem IA. Antes: contas de outras creches, LYTEX/rateio sem saber o que era, aplicação automática
+virando receita (o repasse de 90 mil contado duas vezes), PDFs das creches lidos só pela IA.
+- **Contas permitidas** (`servicos/contas_permitidas.py`, migração 0025 `empresa.unidade`): creches que dividem código,
+  CNPJ e plano viram cadastros com a **Unidade**; as creches do plano são achadas pelo fim das contas (com os cortes de
+  40 letras e nomes curtos: PARAVATI = ROGERIO PARAVATI); conta de outra creche → a mesma desta (ou a comum), senão
+  pendente; sem unidade no cadastro vale a da conta contábil do banco (APAE: projeto ESTIMULANDO — conferido com o
+  que o usuário aprovou). Unidade NÃO é adivinhada pelo nome da empresa (na APAE daria “APAE” e estragaria).
+  **Terceiro setor**: conta de fornecedor → despesa aprendida pela provisão (APAE: SHIBATA → ALIMENTAÇÃO); sem
+  fornecedores a cadastrar. Classificação e IA (contexto filtrado) passam pelo filtro; a dúvida “mesmo favorecido em
+  contas de creches diferentes” some quando todas viram a mesma conta. Conta do banco da creche pelo histórico dela
+  (`ligar_pela_unidade`: Carmem → 1012, Jandira → 7040; CC e poupança na mesma conta = aplicações não geram lançamento).
+- **Aplicação/resgate automáticos** (`classificacao.aplicacao_automatica`): pareados com até 3 dias de diferença (a
+  poupança registra depois); BB Rende Fácil = sem lançamento; sem par = pendente TRANSFERENCIA (nunca vai para a IA);
+  “Classificar de novo” desfaz a receita que a IA tinha dado. RENDE FACIL saiu da regra de rendimento.
+- **Leitores do BB** no modelo das creches (“Consultas - Extrato de conta corrente” sem o nome do banco; poupança com
+  o cabeçalho numa linha): os 7 PDFs reais fecham com o saldo.
+- **Demonstrativo** (`leitores/demonstrativo.py` + `servicos/demonstrativos.py`, migração 0026 `linha_demonstrativo`
+  + `movimento_extrato.desdobrado/parte_de_id`): colunas pelos títulos; 5 demonstrativos reais somam o “TOTAL DAS
+  DESPESAS”. Cruzamento: nº da transferência + valor → data + valor (desempate pelo nome) → valor único → rateio
+  (subconjunto que soma a transferência: a linha do banco é desdobrada em partes, cada uma com a sua sugestão; a
+  original fica sem sugestão e fora das listas). Passo `_pelo_demonstrativo` (1º): natureza do demonstrativo → conta
+  pelo histórico (traduzida para a creche; vista < 3 vezes = para conferir), senão favorecido/CNPJ de verdade;
+  histórico “FAVORECIDO - ESPECIFICAÇÃO - Nº”. Entra pela aba Extratos (detectado sozinho) e pela pasta do cliente.
+  Resultado real (sem IA): Carmem 39/39 linhas ligadas, 31 aprovadas (todas certas, conferido com o demonstrativo),
+  22 sem lançamento (aplicações), 11 para decidir (rateio sem histórico, 3 rendimentos sem conta da Carmem no plano).
+- A conferência gastou ~US$ 0,13 de IA (auto-configuração da conta bancária na cópia) antes de desligar a IA nela.
 
 ### 13/10/2026 — Sugestão 5: conferir com o Domínio
 - Aba Exportar, quadro “Conferir com o Domínio” (`servicos/conferencia_dominio.py`, tabela `conferencia_dominio`,

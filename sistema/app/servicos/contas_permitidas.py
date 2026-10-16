@@ -171,10 +171,15 @@ class FiltroContas:
     unidade: str = ""
     de_fornecedor: set[int] = field(default_factory=set)
     despesa_do_fornecedor: dict[int, int] = field(default_factory=dict)
+    # a classificação pergunta as mesmas contas muitas vezes: as respostas ficam guardadas enquanto o filtro vive
+    _dona: dict[int, str | None] = field(default_factory=dict, repr=False)
+    _equivalente: dict[tuple[int, str], ContaContabil | None] = field(default_factory=dict, repr=False)
 
     def unidade_da_conta(self, conta: ContaContabil) -> str | None:
-        _, nome = _base_e_nome(conta.descricao)
-        return _unidade_que_casa(nome, self.unidades) if nome else None
+        if conta.id not in self._dona:
+            _, nome = _base_e_nome(conta.descricao)
+            self._dona[conta.id] = _unidade_que_casa(nome, self.unidades) if nome else None
+        return self._dona[conta.id]
 
     def unidade_para(self, banco: ContaContabil | None = None) -> str:
         """A creche/projeto da linha: a do cadastro; senão a da conta contábil do banco (“BANCO DO BRASIL 79391-4 -
@@ -185,6 +190,11 @@ class FiltroContas:
 
     def equivalente(self, conta: ContaContabil, unidade: str) -> ContaContabil | None:
         """A mesma conta desta unidade (ou a comum, sem nome de creche)."""
+        if (conta.id, unidade) not in self._equivalente:
+            self._equivalente[(conta.id, unidade)] = self._procurar_equivalente(conta, unidade)
+        return self._equivalente[(conta.id, unidade)]
+
+    def _procurar_equivalente(self, conta: ContaContabil, unidade: str) -> ContaContabil | None:
         base, _ = _base_e_nome(conta.descricao)
         candidatas = []
         for outra in self.contas.values():
@@ -249,3 +259,59 @@ def carregar_filtro(sessao: Session, empresa: Empresa, contas: list[ContaContabi
             sessao, empresa, filtro.de_fornecedor, naturezas(contas)
         )
     return filtro
+
+
+# ---------------------------------------------------------------- conta do banco da creche
+
+
+def contas_de_banco_da_unidade(sessao: Session, empresa: Empresa, filtro: FiltroContas) -> Counter:
+    """Contas do Ativo onde caem os pagamentos e os repasses das contas da creche no histórico (a Carmem Dias paga
+    tudo e recebe a subvenção na 1012; a Jandira na 7040)."""
+    contagem: Counter = Counter()
+    if not filtro.unidade:
+        return contagem
+    natureza = naturezas(list(filtro.contas.values()))
+    linhas = sessao.execute(
+        select(LancamentoHistorico.conta_debito_id, LancamentoHistorico.conta_credito_id).where(
+            LancamentoHistorico.empresa_id == empresa.id, LancamentoHistorico.sentido.in_(("SAIDA", "ENTRADA"))
+        )
+    )
+    for debito_id, credito_id in linhas:
+        debito, credito = filtro.contas.get(debito_id), filtro.contas.get(credito_id)
+        if debito is None or credito is None:
+            continue
+        if filtro.unidade_da_conta(debito) == filtro.unidade and natureza.get(credito.id) == "ATIVO":
+            contagem[credito.id] += 1
+        elif filtro.unidade_da_conta(credito) == filtro.unidade and natureza.get(debito.id) == "ATIVO":
+            contagem[debito.id] += 1
+    return contagem
+
+
+def ligar_contas_da_unidade(sessao: Session, empresa: Empresa) -> int:
+    """Todas as contas bancárias da creche (ao salvar a unidade no cadastro e no “Classificar de novo”)."""
+    from app.modelos import ContaBancaria
+
+    contas = sessao.scalars(select(ContaBancaria).where(ContaBancaria.empresa_id == empresa.id)).all()
+    return sum(ligar_pela_unidade(sessao, empresa, conta.conta_chave) for conta in contas)
+
+
+def ligar_pela_unidade(sessao: Session, empresa: Empresa, chave) -> bool:
+    """Conta corrente ou poupança de creche sem conta contábil (ou com uma que a creche nunca usou): vale a conta do
+    banco que o histórico dela usa — o escritório lança a conta corrente e a poupança da creche numa conta só, e
+    as aplicações/resgates automáticos entre elas não geram lançamento. A escolha do usuário nunca é trocada."""
+    if chave is None or chave.origem == "USUARIO" or not empresa.unidade:
+        return False
+    filtro = carregar_filtro(sessao, empresa)
+    contagem = contas_de_banco_da_unidade(sessao, empresa, filtro)
+    if not contagem or (chave.conta_id and chave.conta_id in contagem):
+        return False
+    conta_id, vezes = contagem.most_common(1)[0]
+    if vezes < 5 or vezes / sum(contagem.values()) < 0.8:
+        return False
+    conta = filtro.contas[conta_id]
+    chave.conta_id, chave.conta, chave.origem, chave.confianca = conta.id, conta, "REGRA", 90
+    chave.justificativa = (
+        f"Pelo histórico da creche {filtro.unidade}: os pagamentos e os repasses dela caem na conta {conta.rotulo} "
+        f"({vezes} lançamentos)."
+    )
+    return True

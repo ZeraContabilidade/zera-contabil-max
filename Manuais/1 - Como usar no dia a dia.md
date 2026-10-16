@@ -9,6 +9,13 @@ Para cada empresa, uma vez por mês. A barra no topo da empresa mostra onde voc�
    - **Filial:** cada filial é um cadastro. Em “Código da empresa no Domínio” vai o código da **matriz** e em
      “Código da filial” o código da filial no Domínio. O `lanctos.txt` dessa filial sai com o código da filial
      (coluna 8 do arquivo).
+   - **Creches que dividem o mesmo código** (ex.: Carmem Dias, Jandira e Manoel, todas 121): um cadastro para cada
+     creche, com o mesmo código e CNPJ, e o campo **Unidade (creche)** preenchido com o nome que fecha as contas dela
+     no plano (“SALÁRIO MENSAL - **CARMEM DIAS**” → `CARMEM DIAS`). O sistema só sugere as contas dessa creche (ou as
+     comuns): a conta de outra creche vira a mesma conta desta. Também liga sozinho a conta corrente e a poupança da
+     creche à conta de banco que o histórico dela usa.
+   - **Regime “Terceiro setor”** (associações): o pagamento vai direto para a **conta de despesa**, nunca para a conta
+     do fornecedor — a despesa de cada fornecedor vem do histórico (a provisão); sem histórico, a linha fica para você.
 2. **Plano de Contas**: envie o plano exportado do Domínio. O sistema descobre sozinho as contas-chave
    (banco, rendimentos, tarifas…) e se a empresa usa conta individual por fornecedor.
 3. **Aprendizado**: envie o histórico (o `lanctos.txt` dos anos anteriores e/ou o Diário em Excel).
@@ -25,6 +32,14 @@ Para cada empresa, uma vez por mês. A barra no topo da empresa mostra onde voc�
      bancos e planilhas ficam listados para você arrastar (aí a IA lê).
    - **Extrato faltando:** se uma conta teve extrato no mês anterior e não neste (ou o extrato não chega ao fim do mês),
      aparece um aviso na aba Extratos, no cartão da empresa (“⚠ falta 1 extrato”) e no Painel.
+   - **Demonstrativo da prestação de contas (creches):** arraste o Excel do demonstrativo do mês junto com os extratos
+     (ou deixe na pasta do cliente). Cada linha do banco ganha o que o demonstrativo diz: o favorecido de verdade (o banco
+     escreve “LYTEX”, o demonstrativo “SIEMACO - PLANO ODONTOLÓGICO”), o CNPJ, o que foi pago e o nº da nota — e o
+     histórico sai como na planilha antiga: “FAVORECIDO - ESPECIFICAÇÃO - Nº”. A transferência do **rateio das guias**
+     (uma transferência = FGTS + INSS + IRRF…) vira **um lançamento para cada guia**. No quadro **📋 Demonstrativos** da
+     aba Extratos aparece o que está num e não está no outro. Mandar o demonstrativo de novo troca o anterior.
+   - **Aplicação e resgate automáticos** (BB Rende Fácil, poupança): o dinheiro não sai da empresa, então não vira
+     receita nem despesa. A poupança registra 1 a 3 dias depois da conta corrente — o sistema junta as duas pontas.
 3. **Revisão**: a tela já abre só no que precisa de atenção.
    - Troque a conta digitando o código ou parte do nome (ex.: “agua” ou “355”) e clique em **Salvar** — o sistema
      aprende para o mês seguinte.
